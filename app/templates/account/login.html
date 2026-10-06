@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In | Customer Account | {{ brand_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 4rem 1rem 6rem;">
+
+  <div style="max-width: 460px; margin: 0 auto; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 2.75rem 2.25rem; box-shadow: var(--shadow-sm);">
+    
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <span class="section-tag">Customer Portal</span>
+      <h1 style="font-size: 1.85rem; margin-bottom: 0.4rem;">Welcome Back</h1>
+      <p style="color: var(--text-muted); font-size: 0.875rem;">Sign in to track orders, manage delivery addresses, and enjoy faster checkout.</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('account.login', next=next_url) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label for="identifier" style="font-size: 0.875rem; font-weight: 600;">Mobile Number or Email</label>
+        <input type="text" id="identifier" name="identifier" value="{{ identifier or '' }}" required autofocus class="form-control" placeholder="10-digit mobile or email address">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <label for="password" style="font-size: 0.875rem; font-weight: 600;">Password</label>
+        </div>
+        <input type="password" id="password" name="password" required autocomplete="current-password" class="form-control" placeholder="••••••••">
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" style="padding: 0.85rem; font-size: 0.9375rem;">
+        Sign In &rarr;
+      </button>
+
+      <div style="margin-top: 1.75rem; padding-top: 1.5rem; border-top: 1px solid var(--border-light); text-align: center; font-size: 0.875rem; color: var(--text-muted);">
+        Don't have an account yet? 
+        <a href="{{ url_for('account.register', next=next_url) }}" style="color: var(--gold-dark); font-weight: 600; text-decoration: none;">
+          Create One Here
+        </a>
+      </div>
+    </form>
+
+  </div>
+
+</div>
+{% endblock %}

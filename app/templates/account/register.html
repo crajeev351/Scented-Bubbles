@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Create Customer Account | {{ brand_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 4rem 1rem 6rem;">
+
+  <div style="max-width: 500px; margin: 0 auto; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 2.75rem 2.25rem; box-shadow: var(--shadow-sm);">
+    
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <span class="section-tag">Join {{ brand_name }}</span>
+      <h1 style="font-size: 1.85rem; margin-bottom: 0.4rem;">Create Your Account</h1>
+      <p style="color: var(--text-muted); font-size: 0.875rem;">Experience 1-click order tracking and instant checkout across your devices.</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('account.register', next=request.args.get('next')) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label for="name" style="font-size: 0.875rem; font-weight: 600;">Full Name *</label>
+        <input type="text" id="name" name="name" value="{{ name or '' }}" required autofocus class="form-control" placeholder="e.g. John Sharma">
+      </div>
+
+      <div class="form-row" style="margin-bottom: 1.25rem;">
+        <div class="form-group">
+          <label for="phone" style="font-size: 0.875rem; font-weight: 600;">Mobile Number *</label>
+          <input type="tel" id="phone" name="phone" value="{{ phone or '' }}" required class="form-control" placeholder="10-digit number" pattern="[6-9][0-9]{9}" title="10-digit Indian mobile number starting with 6, 7, 8, or 9">
+          <small style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; display: block;">Historical orders with this number will auto-link!</small>
+        </div>
+
+        <div class="form-group">
+          <label for="email" style="font-size: 0.875rem; font-weight: 600;">Email Address</label>
+          <input type="email" id="email" name="email" value="{{ email or '' }}" class="form-control" placeholder="name@example.com">
+          <small style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; display: block;">For order invoices &amp; shipping alerts</small>
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-bottom: 1.5rem;">
+        <div class="form-group">
+          <label for="password" style="font-size: 0.875rem; font-weight: 600;">Password *</label>
+          <input type="password" id="password" name="password" required autocomplete="new-password" minlength="6" class="form-control" placeholder="At least 6 characters">
+        </div>
+
+        <div class="form-group">
+          <label for="confirm_password" style="font-size: 0.875rem; font-weight: 600;">Confirm Password *</label>
+          <input type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password" minlength="6" class="form-control" placeholder="Repeat password">
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" style="padding: 0.85rem; font-size: 0.9375rem;">
+        Create Account &amp; Track Orders &rarr;
+      </button>
+
+      <div style="margin-top: 1.75rem; padding-top: 1.5rem; border-top: 1px solid var(--border-light); text-align: center; font-size: 0.875rem; color: var(--text-muted);">
+        Already have an account? 
+        <a href="{{ url_for('account.login', next=request.args.get('next')) }}" style="color: var(--gold-dark); font-weight: 600; text-decoration: none;">
+          Sign In
+        </a>
+      </div>
+    </form>
+
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{# Dynamic Page Title: e.g. "Royal Oud | Scented Bubbles" #}
+{% block title %}{{ product.name }}{% endblock %}
+{% block meta_description %}{{ product.short_description or (product.full_description[:160] if product.full_description else brand_name) }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  
+  {# Breadcrumb #}
+  <div style="padding: 1.5rem 0 0.5rem; font-size: 0.8125rem; color: var(--text-light);">
+    <a href="{{ url_for('main.index') }}" style="color: var(--text-muted);">Home</a> / 
+    <a href="{{ url_for('products.product_list') }}" style="color: var(--text-muted);">Catalog</a> / 
+    {% if product.categories %}
+      {% for c in product.categories %}
+        <a href="{{ url_for('products.category_detail', slug=c.slug) }}" style="color: var(--text-muted);">{{ c.name }}</a>{% if not loop.last %}, {% endif %}
+      {% endfor %} /
+    {% elif product.category %}
+      <a href="{{ url_for('products.category_detail', slug=product.category.slug) }}" style="color: var(--text-muted);">{{ product.category.name }}</a> /
+    {% endif %}
+    <span>{{ product.name }}</span>
+  </div>
+
+  {% set default_var = product.default_variant %}
+
+  <div class="detail-layout">
+    
+    {# Left: Gallery #}
+    <div class="detail-gallery">
+      <div class="gallery-main">
+        <img id="main-product-img" src="{{ product.primary_image_url }}" {% if product.primary_image_srcset %}srcset="{{ product.primary_image_srcset }}" sizes="(max-width: 768px) 100vw, 600px"{% endif %} alt="{{ product.name }}" fetchpriority="high" width="800" height="800">
+      </div>
+      {% if product.images|length > 1 %}
+        <div style="display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem;">
+          {% for img in product.images %}
+            <div style="width: 72px; height: 72px; border: 1px solid var(--border-light); border-radius: var(--radius-sm); overflow: hidden; cursor: pointer;"
+                 onclick="document.getElementById('main-product-img').src = '{{ img.image_url }}'; document.getElementById('main-product-img').srcset = '{{ img.srcset }}';">
+              <img src="{{ img.thumbnail_url }}" alt="{{ img.alt_text or product.name }}" loading="lazy" width="72" height="72" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    {# Right: Details & Purchase #}
+    <div class="detail-info">
+      <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+        {% if product.categories %}
+          {% for c in product.categories %}
+            <a href="{{ url_for('products.category_detail', slug=c.slug) }}" class="detail-category" style="text-decoration: none;">{{ c.name }}</a>
+          {% endfor %}
+        {% elif product.category %}
+          <span class="detail-category">{{ product.category.name }}</span>
+        {% else %}
+          <span class="detail-category">Fine Fragrance</span>
+        {% endif %}
+      </div>
+      <h1 class="detail-title">{{ product.name }}</h1>
+      
+      {% if product.inspired_by %}
+        <div style="margin-bottom: 1rem;">
+          <span style="display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(197, 160, 89, 0.12); color: #8C6D23; font-size: 0.8125rem; font-weight: 700; padding: 0.35rem 0.85rem; border-radius: var(--radius-pill); border: 1px solid rgba(197, 160, 89, 0.35); letter-spacing: 0.02em;">
+            <svg style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            {{ product.inspired_by if 'inspired' in product.inspired_by.lower() else 'Inspired by ' ~ product.inspired_by }}
+          </span>
+        </div>
+      {% endif %}
+
+      {# Dynamic Price Box #}
+      <div class="detail-price-box">
+        <span id="product-detail-price" class="detail-price">
+          {{ default_var.effective_price | currency if default_var else '₹0.00' }}
+        </span>
+        <span id="product-detail-mrp" class="detail-price-mrp" 
+              style="display: {{ 'inline' if (default_var and default_var.discounted_price and default_var.discounted_price < default_var.price) else 'none' }};">
+          {{ default_var.price | currency if default_var else '' }}
+        </span>
+        <span id="product-detail-discount" class="badge-discount" 
+              style="display: {{ 'inline-block' if (default_var and default_var.discount_percentage > 0) else 'none' }};">
+          {{ default_var.discount_percentage if default_var else 0 }}% OFF
+        </span>
+      </div>
+
+      {# SKU & Stock #}
+      <div style="display: flex; gap: 1.5rem; font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
+        <div>SKU: <strong id="product-detail-sku">{{ default_var.sku if default_var else 'N/A' }}</strong></div>
+        <div id="product-stock-notice">
+          {% if not default_var or default_var.stock == 0 %}
+            <span style="color: #C62828; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem;">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #C62828;"></span>
+              Out of Stock (Currently Unavailable)
+            </span>
+          {% elif default_var.stock <= 5 %}
+            <span style="color: #E65100; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem;">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #E65100; box-shadow: 0 0 6px #E65100;"></span>
+              Low Stock (Only {{ default_var.stock }} remaining &mdash; Grab yours now!)
+            </span>
+          {% else %}
+            <span style="color: #2E7D32; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem;">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #2E7D32;"></span>
+              In Stock (Ready to Dispatch)
+            </span>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Low Stock Urgency Advertising Banner (Appears when stock <= 5 and > 0) #}
+      <div id="product-low-stock-alert" class="low-stock-advertising-banner" 
+           style="display: {{ 'flex' if (default_var and default_var.stock > 0 and default_var.stock <= 5) else 'none' }};">
+        <div class="low-stock-icon-pulse">⚡</div>
+        <div class="low-stock-text">
+          <div class="low-stock-title">
+            <strong>HURRY! LIMITED QUANTITY AVAILABLE</strong>
+            <span class="low-stock-badge">Low Stock &bull; Only <span id="low-stock-count">{{ default_var.stock if default_var else 0 }}</span> left</span>
+          </div>
+          <p class="low-stock-desc">High demand batch! Grab your product now before it sells out.</p>
+        </div>
+      </div>
+
+      {# Out of Stock Banner (Appears when selected variant stock == 0) #}
+      <div id="product-out-of-stock-alert" class="out-of-stock-banner"
+           style="display: {{ 'flex' if (not default_var or default_var.stock == 0) else 'none' }};">
+        <div class="out-of-stock-icon">🚫</div>
+        <div class="out-of-stock-text">
+          <strong>THIS SIZE IS CURRENTLY OUT OF STOCK</strong>
+          <p>We are handcrafting the next batch. Select another size or check back soon!</p>
+        </div>
+      </div>
+
+      {# Variant Selector #}
+      {% if product.active_variants|length > 0 %}
+      <div class="variants-section">
+        <label class="variants-label">Select Size / Volume:</label>
+        <div class="variant-pills">
+          {% for var in product.active_variants %}
+            <button type="button" 
+                    class="variant-btn {{ 'active' if var == default_var else '' }} {{ 'variant-out-of-stock' if var.stock == 0 else '' }}"
+                    data-id="{{ var.id }}"
+                    data-price="{{ var.price }}"
+                    data-discounted-price="{{ var.discounted_price or '' }}"
+                    data-discount-pct="{{ var.discount_percentage }}"
+                    data-sku="{{ var.sku }}"
+                    data-stock="{{ var.stock }}">
+              <span>{{ var.size_label }}</span>
+              {% if var.stock == 0 %}
+                <span class="variant-stock-tag tag-out">Sold Out</span>
+              {% elif var.stock <= 5 %}
+                <span class="variant-stock-tag tag-low">Only {{ var.stock }} left!</span>
+              {% endif %}
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {# Quantity & Actions #}
+      <div style="display: flex; gap: 1rem; align-items: center; margin: 1.5rem 0 2rem; flex-wrap: wrap;">
+        <div class="cart-qty-ctrl" id="product-qty-container" style="opacity: {{ '0.5' if (not default_var or default_var.stock == 0) else '1' }}; pointer-events: {{ 'none' if (not default_var or default_var.stock == 0) else 'auto' }};">
+          <button type="button" class="cart-qty-btn" onclick="let input = document.getElementById('product-qty-input'); input.value = Math.max(1, parseInt(input.value)-1);">-</button>
+          <input type="number" id="product-qty-input" data-qty-input value="1" min="1" max="{{ default_var.stock if (default_var and default_var.stock > 0 and default_var.stock <= 10) else 10 }}" class="cart-qty-input" readonly>
+          <button type="button" class="cart-qty-btn" onclick="let input = document.getElementById('product-qty-input'); let maxV = parseInt(input.getAttribute('max') || '10'); input.value = Math.min(maxV, parseInt(input.value)+1);">+</button>
+        </div>
+
+        <button id="product-detail-add-cart" 
+                class="btn btn-secondary" 
+                style="flex: 1;"
+                data-add-cart 
+                data-variant-id="{{ default_var.id if default_var else '' }}"
+                {{ 'disabled' if (not default_var or default_var.stock == 0) else '' }}>
+          {{ 'Out of Stock' if (not default_var or default_var.stock == 0) else 'Add to Bag' }}
+        </button>
+
+        <button id="product-detail-buy-now" 
+                class="btn btn-primary" 
+                style="flex: 1;"
+                data-variant-id="{{ default_var.id if default_var else '' }}"
+                {{ 'disabled' if (not default_var or default_var.stock == 0) else '' }}>
+          {{ 'Sold Out' if (not default_var or default_var.stock == 0) else 'Buy Now' }}
+        </button>
+      </div>
+
+      {# Product Description #}
+      <div style="margin-bottom: 2rem; color: var(--text-main); font-size: 0.9375rem;">
+        <h4 style="margin-bottom: 0.6rem;">About This Scent</h4>
+        <p>{{ product.full_description or product.short_description }}</p>
+      </div>
+
+
+      {# Usage Instructions #}
+      {% if product.usage_instructions %}
+      <div style="margin-top: 1.5rem; background: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-md); font-size: 0.875rem;">
+        <strong>How to Experience:</strong>
+        <p style="margin-top: 0.25rem; color: var(--text-muted); margin-bottom: 0;">{{ product.usage_instructions }}</p>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+  {# Related Products #}
+  {% if related_products %}
+  <section style="margin-top: 5rem; padding-top: 3rem; border-top: 1px solid var(--border-light);">
+    <div class="section-header">
+      <span class="section-tag">Recommendations</span>
+      <h2 class="section-title">You May Also Appreciate</h2>
+    </div>
+    <div class="product-grid">
+      {% for rel in related_products %}
+      <div class="product-card">
+        <a href="{{ url_for('products.product_detail', slug=rel.slug) }}" class="card-img-wrap">
+          <img src="{{ rel.thumbnail_url }}" {% if rel.primary_image_srcset %}srcset="{{ rel.primary_image_srcset }}" sizes="(max-width: 768px) 50vw, 300px"{% endif %} alt="{{ rel.name }}" loading="lazy" width="400" height="400">
+          {% if not rel.in_stock %}
+            <span class="badge-tag" style="background: #C62828; color: #fff; font-weight: 700;">Out of Stock</span>
+          {% elif rel.default_variant and rel.default_variant.stock <= 5 %}
+            <span class="badge-tag" style="background: #E65100; color: #fff; font-weight: 700;">⚡ Low Stock (Only {{ rel.default_variant.stock }} Left)</span>
+          {% endif %}
+        </a>
+        <div class="card-body">
+          <div class="card-category">{{ rel.category.name if rel.category else 'Fragrance' }}</div>
+          <h3 class="card-title"><a href="{{ url_for('products.product_detail', slug=rel.slug) }}">{{ rel.name }}</a></h3>
+          {% if rel.inspired_by %}
+            <div style="font-size: 0.72rem; color: #8C6D23; font-weight: 600; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.25rem;">
+              <span style="opacity: 0.75;">✨</span>
+              <span>{{ rel.inspired_by if 'inspired' in rel.inspired_by.lower() else 'Inspired by ' ~ rel.inspired_by }}</span>
+            </div>
+          {% endif %}
+          {% if rel.short_description %}
+            <p class="card-notes">{{ rel.short_description }}</p>
+          {% endif %}
+          <div class="card-pricing">
+            <span class="price-current">{{ rel.default_variant.effective_price | currency if rel.default_variant else '' }}</span>
+          </div>
+          <div style="margin-top: 1rem;">
+            <a href="{{ url_for('products.product_detail', slug=rel.slug) }}" class="btn btn-secondary btn-sm btn-block">View Details</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+</div>
+{% endblock %}

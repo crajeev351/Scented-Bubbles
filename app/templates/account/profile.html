@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile &amp; Addresses | {{ brand_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 3rem 1rem 6rem;">
+
+  {# Account Header #}
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1.5rem; margin-bottom: 2.5rem;">
+    <div>
+      <span class="section-tag">Account Settings</span>
+      <h1 style="font-size: 2.2rem; margin-bottom: 0.25rem;">Profile &amp; Delivery Address</h1>
+      <p style="color: var(--text-muted); font-size: 0.9375rem;">
+        Manage your contact details and default shipping destination.
+      </p>
+    </div>
+
+    <div style="display: flex; gap: 0.75rem;">
+      <a href="{{ url_for('account.orders') }}" class="btn btn-primary btn-sm" style="padding: 0.5rem 1.25rem;">
+        📦 View My Orders
+      </a>
+      <a href="{{ url_for('account.logout') }}" class="btn btn-secondary btn-sm" style="padding: 0.5rem 1rem; color: #DC2626; border-color: #FCA5A5;">
+        Sign Out
+      </a>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2.5rem; max-width: 1000px; margin: 0 auto;">
+    
+    {# Left Column: Profile & Shipping Address #}
+    <div style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 2.5rem; box-shadow: var(--shadow-sm);">
+      <h2 style="font-size: 1.35rem; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
+        Contact &amp; Shipping Details
+      </h2>
+
+      <form method="POST" action="{{ url_for('account.profile') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="details">
+
+        <div class="form-row" style="margin-bottom: 1.25rem;">
+          <div class="form-group">
+            <label for="name" style="font-weight: 600; font-size: 0.875rem;">Full Name *</label>
+            <input type="text" id="name" name="name" value="{{ user.name or '' }}" required class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label for="phone" style="font-weight: 600; font-size: 0.875rem;">Registered Phone Number</label>
+            <input type="text" id="phone" value="{{ user.phone or 'Not set' }}" disabled class="form-control" style="background: var(--bg-subtle); color: var(--text-muted); cursor: not-allowed;">
+            <small style="color: var(--text-light); font-size: 0.75rem; margin-top: 0.2rem; display: block;">Primary identifier linked to your shipments</small>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label for="email" style="font-weight: 600; font-size: 0.875rem;">Email Address</label>
+          <input type="email" id="email" name="email" value="{{ user.email or '' }}" class="form-control" placeholder="name@example.com">
+        </div>
+
+        <h3 style="font-size: 1.1rem; margin: 1.75rem 0 1rem; color: var(--gold-dark);">
+          Default Delivery Destination
+        </h3>
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label for="address_line1" style="font-weight: 600; font-size: 0.875rem;">Address Line 1</label>
+          <input type="text" id="address_line1" name="address_line1" value="{{ (customer.address_line1 if customer else '') or '' }}" class="form-control" placeholder="Flat, House no., Apartment or Building">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label for="address_line2" style="font-weight: 600; font-size: 0.875rem;">Address Line 2 (Optional)</label>
+          <input type="text" id="address_line2" name="address_line2" value="{{ (customer.address_line2 if customer else '') or '' }}" class="form-control" placeholder="Street, Sector, Landmark">
+        </div>
+
+        <div class="form-row" style="margin-bottom: 1.75rem;">
+          <div class="form-group">
+            <label for="city" style="font-weight: 600; font-size: 0.875rem;">City</label>
+            <input type="text" id="city" name="city" value="{{ (customer.city if customer else '') or '' }}" class="form-control" placeholder="e.g. Hyderabad">
+          </div>
+
+          <div class="form-group">
+            <label for="state" style="font-weight: 600; font-size: 0.875rem;">State</label>
+            <input type="text" id="state" name="state" value="{{ (customer.state if customer else '') or '' }}" class="form-control" placeholder="e.g. Telangana">
+          </div>
+
+          <div class="form-group">
+            <label for="pincode" style="font-weight: 600; font-size: 0.875rem;">Pincode</label>
+            <input type="text" id="pincode" name="pincode" value="{{ (customer.pincode if customer else '') or '' }}" class="form-control" placeholder="6-digit pincode" maxlength="6">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem;">
+          Save Shipping Details &rarr;
+        </button>
+      </form>
+    </div>
+
+    {# Right Column: Password Change Card #}
+    <div style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 2rem; box-shadow: var(--shadow-sm); height: fit-content;">
+      <h3 style="font-size: 1.2rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
+        Security &amp; Password
+      </h3>
+
+      <form method="POST" action="{{ url_for('account.profile') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="password">
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label for="current_password" style="font-weight: 600; font-size: 0.875rem;">Current Password</label>
+          <input type="password" id="current_password" name="current_password" required class="form-control" placeholder="••••••••">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label for="new_password" style="font-weight: 600; font-size: 0.875rem;">New Password</label>
+          <input type="password" id="new_password" name="new_password" required minlength="6" class="form-control" placeholder="Min. 6 chars">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label for="confirm_new_password" style="font-weight: 600; font-size: 0.875rem;">Confirm New Password</label>
+          <input type="password" id="confirm_new_password" name="confirm_new_password" required minlength="6" class="form-control" placeholder="Repeat new password">
+        </div>
+
+        <button type="submit" class="btn btn-secondary btn-block" style="padding: 0.75rem;">
+          Update Password
+        </button>
+      </form>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

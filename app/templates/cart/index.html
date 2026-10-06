@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Shopping Bag{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2rem; padding-bottom: 4rem;">
+
+  <div style="text-align: center; margin-bottom: 2.5rem;">
+    <h1 style="font-size: 2.2rem; margin-bottom: 0.4rem;">Your Shopping Bag</h1>
+    <p style="color: var(--text-muted); font-size: 0.9375rem;">Review your selected fragrances and car diffusers</p>
+  </div>
+
+  {# Empty State (hidden by default, revealed if empty) #}
+  <div id="cart-empty-state" style="display: none; text-align: center; padding: 5rem 1rem; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); max-width: 600px; margin: 0 auto;">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--gold-primary); margin-bottom: 1rem;">
+      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <path d="M16 10a4 4 0 0 1-8 0"></path>
+    </svg>
+    <h3 style="margin-bottom: 0.5rem;">Your Bag is Currently Empty</h3>
+    <p style="color: var(--text-muted); margin-bottom: 2rem;">Discover our handcrafted collection of fine perfumes and luxury car scents.</p>
+    <a href="{{ url_for('products.product_list') }}" class="btn btn-primary">Start Exploring</a>
+  </div>
+
+  {# Loaded Cart Content #}
+  <div id="cart-main-layout" class="cart-layout" style="display: none;">
+    
+    {# Items Table Card #}
+    <div class="cart-table-card">
+      {# Free Shipping Bar #}
+      <div id="free-shipping-container" style="margin-bottom: 1.5rem; background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm);">
+        <div style="display: flex; justify-content: space-between; font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.4rem;">
+          <span id="free-shipping-msg">Add more items for Free Delivery!</span>
+          <span id="free-shipping-pct">0%</span>
+        </div>
+        <div style="height: 6px; background: #E7DFD5; border-radius: var(--radius-pill); overflow: hidden;">
+          <div id="free-shipping-bar" style="height: 100%; width: 0%; background: var(--gold-primary); transition: width 0.3s ease;"></div>
+        </div>
+      </div>
+
+      {# Table Header #}
+      <div style="display: grid; grid-template-columns: 3fr 1fr 1fr; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-light); padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-light);">
+        <div>Product Details</div>
+        <div style="text-align: center;">Quantity</div>
+        <div style="text-align: right;">Total</div>
+      </div>
+
+      {# Dynamic Line Items Container #}
+      <div id="cart-items-container"></div>
+    </div>
+
+    {# Order Summary Sidebar #}
+    <div>
+      <div class="order-summary-card">
+        <h3 style="font-size: 1.25rem; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-light);">
+          Order Summary
+        </h3>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.9375rem;">
+          <span style="color: var(--text-muted);">Subtotal:</span>
+          <strong id="summary-subtotal">₹0.00</strong>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; font-size: 0.9375rem;">
+          <span style="color: var(--text-muted);">Standard Delivery:</span>
+          <span id="summary-delivery">₹0.00</span>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-light); font-size: 1.15rem;">
+          <strong>Estimated Total:</strong>
+          <strong id="summary-total" style="color: var(--gold-dark); font-size: 1.35rem;">₹0.00</strong>
+        </div>
+
+        <div id="checkout-action-wrap">
+          <a href="{{ url_for('checkout.checkout') }}" id="checkout-proceed-btn" class="btn btn-primary btn-block" style="padding: 0.9rem;">
+            Proceed to Checkout &rarr;
+          </a>
+        </div>
+
+        <div style="margin-top: 1.5rem; font-size: 0.75rem; color: var(--text-light); text-align: center; line-height: 1.5;">
+          <span>🔒 100% Secure Checkout &bull; UPI &amp; COD Supported</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function renderCart() {
+  const emptyState = document.getElementById('cart-empty-state');
+  const mainLayout = document.getElementById('cart-main-layout');
+  const itemsContainer = document.getElementById('cart-items-container');
+
+  const data = await ScentedCart.fetchSummary();
+  if (!data || !data.lines || data.lines.length === 0) {
+    emptyState.style.display = 'block';
+    mainLayout.style.display = 'none';
+    return;
+  }
+
+  emptyState.style.display = 'none';
+  mainLayout.style.display = 'grid';
+
+  // Free shipping progress
+  const progressMsg = document.getElementById('free-shipping-msg');
+  const progressBar = document.getElementById('free-shipping-bar');
+  const progressPct = document.getElementById('free-shipping-pct');
+
+  if (parseFloat(data.remaining_for_free_delivery) <= 0) {
+    progressMsg.innerHTML = '<span style="color: var(--color-success);">✨ You have unlocked Complimentary Free Delivery!</span>';
+    progressBar.style.width = '100%';
+    progressPct.textContent = '100%';
+  } else {
+    progressMsg.textContent = `Add ₹${parseFloat(data.remaining_for_free_delivery).toFixed(2)} more for Free Express Delivery`;
+    progressBar.style.width = `${data.free_delivery_progress}%`;
+    progressPct.textContent = `${data.free_delivery_progress}%`;
+  }
+
+  // Render Line items
+  itemsContainer.innerHTML = data.lines.map(line => `
+    <div class="cart-item-row">
+      <img src="${line.image_url}" alt="${line.product_name}">
+      <div class="cart-item-info">
+        <a href="/products/${line.product_slug}" style="font-weight: 600; font-size: 1rem; color: var(--text-main);">${line.product_name}</a>
+        <div style="font-size: 0.8125rem; color: var(--text-muted);">${line.size_label} &bull; SKU: ${line.sku}</div>
+        <div style="font-size: 0.875rem; margin-top: 0.25rem;">
+          <strong>₹${parseFloat(line.effective_price).toFixed(2)}</strong>
+          ${line.discount_percentage > 0 ? `<span style="font-size: 0.75rem; color: var(--gold-dark); margin-left: 0.4rem;">(${line.discount_percentage}% OFF)</span>` : ''}
+        </div>
+        ${!line.in_stock ? `<div style="color: var(--color-danger); font-size: 0.75rem; font-weight: 600; margin-top: 0.25rem;">Insufficient stock (${line.available_stock} available)</div>` : ''}
+        <button type="button" onclick="handleRemove(${line.variant_id})" style="background: none; border: none; color: #999; font-size: 0.75rem; text-decoration: underline; cursor: pointer; padding: 0; margin-top: 0.4rem;">Remove</button>
+      </div>
+
+      <div class="cart-qty-ctrl">
+        <button type="button" class="cart-qty-btn" onclick="handleQtyChange(${line.variant_id}, ${line.qty - 1})">-</button>
+        <input type="text" class="cart-qty-input" value="${line.qty}" readonly>
+        <button type="button" class="cart-qty-btn" onclick="handleQtyChange(${line.variant_id}, ${line.qty + 1})">+</button>
+      </div>
+
+      <div style="text-align: right; font-weight: 700; font-size: 1.05rem;">
+        ₹${parseFloat(line.line_total).toFixed(2)}
+      </div>
+    </div>
+  `).join('');
+
+  // Summary
+  document.getElementById('summary-subtotal').textContent = `₹${parseFloat(data.subtotal).toFixed(2)}`;
+  const delFee = parseFloat(data.delivery_charge);
+  document.getElementById('summary-delivery').innerHTML = delFee === 0 
+    ? '<span style="color: var(--color-success); font-weight: 600;">FREE</span>' 
+    : `₹${delFee.toFixed(2)}`;
+  document.getElementById('summary-total').textContent = `₹${parseFloat(data.total).toFixed(2)}`;
+
+  const proceedBtn = document.getElementById('checkout-proceed-btn');
+  if (proceedBtn) {
+    if (!data.is_valid) {
+      proceedBtn.classList.add('disabled');
+      proceedBtn.style.opacity = '0.5';
+      proceedBtn.style.pointerEvents = 'none';
+      proceedBtn.textContent = 'Please adjust out-of-stock items';
+    } else {
+      proceedBtn.classList.remove('disabled');
+      proceedBtn.style.opacity = '1';
+      proceedBtn.style.pointerEvents = 'auto';
+      proceedBtn.textContent = 'Proceed to Checkout →';
+    }
+  }
+}
+
+function handleQtyChange(variantId, newQty) {
+  ScentedCart.updateItemQty(variantId, newQty);
+  renderCart();
+}
+
+function handleRemove(variantId) {
+  ScentedCart.removeItem(variantId);
+  renderCart();
+}
+
+document.addEventListener('DOMContentLoaded', renderCart);
+</script>
+{% endblock %}

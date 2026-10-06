@@ -1,0 +1,90 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}Gift Combos &amp; Sets Management{% endblock %}
+
+{% block content %}
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+  <p style="color: var(--text-muted); margin: 0; font-size: 0.9375rem;">
+    Bundle perfumes and car diffusers into attractive gift sets. Stock is derived automatically from component variants.
+  </p>
+  <a href="{{ url_for('admin.combo_create') }}" class="btn btn-primary btn-sm">+ Create New Combo Set</a>
+</div>
+
+<div class="admin-card" style="padding: 0; overflow: hidden;">
+  {% if combos %}
+  <div class="table-responsive">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th style="width: 60px;">Image</th>
+        <th>Combo Name</th>
+        <th>Component Fragrances</th>
+        <th>Combo Price / Savings</th>
+        <th>Stock Status</th>
+        <th style="text-align: center; width: 90px; white-space: nowrap;">Status</th>
+        <th style="text-align: right; width: 140px; white-space: nowrap;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in combos %}
+      <tr>
+        <td>
+          <img src="{{ c.image_url }}" alt="{{ c.name }}" style="width: 48px; height: 48px; border-radius: var(--radius-sm); object-fit: cover; border: 1px solid var(--border-light);">
+        </td>
+        <td>
+          <strong style="color: var(--text-main); font-size: 0.95rem;">{{ c.name }}</strong>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Slug: <code>{{ c.slug }}</code></div>
+        </td>
+        <td style="font-size: 0.8125rem;">
+          <ul style="padding-left: 1.1rem; color: var(--text-muted); margin: 0;">
+            {% for it in c.items %}
+              <li>{{ it.quantity }}x {{ it.variant.product.name }} ({{ it.variant.size_label }})</li>
+            {% endfor %}
+          </ul>
+        </td>
+        <td>
+          <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);">{{ c.combo_price | currency }}</div>
+          {% if c.savings > 0 %}
+            <span style="font-size: 0.75rem; color: #2E7D32; font-weight: 600;">Saves {{ c.savings | currency }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if c.in_stock %}
+            <span style="color: var(--color-success); font-weight: 600; font-size: 0.8125rem;">● Available (Max {{ c.max_available }})</span>
+          {% else %}
+            <span style="color: var(--color-danger); font-weight: 600; font-size: 0.8125rem;">● Component Depleted</span>
+          {% endif %}
+        </td>
+        <td style="text-align: center; white-space: nowrap;">
+          <form method="POST" action="{{ url_for('admin.combo_toggle', id=c.id) }}" style="margin: 0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="status-badge {{ 'status-delivered' if c.active else 'status-cancelled' }}" style="cursor: pointer; border: none; font-size: 0.7rem; padding: 0.2rem 0.55rem; white-space: nowrap;">
+              {{ 'Active' if c.active else 'Disabled' }}
+            </button>
+          </form>
+        </td>
+        <td style="text-align: right; white-space: nowrap;">
+          <div style="display: inline-flex; justify-content: flex-end; align-items: center; gap: 0.35rem; white-space: nowrap;">
+            <a href="{{ url_for('admin.combo_edit', id=c.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;">Edit</a>
+            <form id="del-combo-{{ c.id }}" method="POST" action="{{ url_for('admin.combo_delete', id=c.id) }}" style="margin: 0; display: inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;" onclick="confirmAction('del-combo-{{ c.id }}', 'Archive combo set {{ c.name }}?')">
+                Archive
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+    <div style="padding: 3rem; text-align: center; color: var(--text-muted);">
+      No combos created yet. Click "+ Create New Combo Set" above to build a bundle.
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

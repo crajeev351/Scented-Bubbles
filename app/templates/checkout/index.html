@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2rem; padding-bottom: 4rem;">
+
+  <div style="text-align: center; margin-bottom: 2.5rem;">
+    <h1 style="font-size: 2.2rem; margin-bottom: 0.4rem;">Express Checkout</h1>
+    <p style="color: var(--text-muted); font-size: 0.9375rem;">Fast &amp; secure delivery directly from {{ brand_name }}</p>
+  </div>
+
+  <div class="checkout-layout">
+    
+    {# Left: Customer & Address Form #}
+    <div class="checkout-form-card">
+      <form id="checkout-form" method="POST" action="{{ url_for('checkout.checkout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="idempotency_token" value="{{ idempotency_token }}">
+        <input type="hidden" id="cart-items-json" name="items" value="">
+
+        <h3 style="font-size: 1.25rem; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
+          1. Contact &amp; Shipping Information
+        </h3>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="phone">Indian Mobile Number *</label>
+            <input type="tel" id="phone" name="phone" required maxlength="10" placeholder="e.g. 9876543210" pattern="^[6-9]\d{9}$" class="form-control">
+            <small style="color: var(--text-muted); font-size: 0.75rem;">10 digits without +91 or spaces. Used for order tracking.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="name">Full Name *</label>
+            <input type="text" id="name" name="name" required placeholder="First and last name" class="form-control">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address (Optional)</label>
+          <input type="email" id="email" name="email" placeholder="For instant invoice and tracking updates" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label for="address_line1">Street Address / Flat / House No. *</label>
+          <input type="text" id="address_line1" name="address_line1" required placeholder="e.g. Flat 402, Lotus Residency, 4th Cross" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label for="address_line2">Landmark / Locality (Optional)</label>
+          <input type="text" id="address_line2" name="address_line2" placeholder="e.g. Near City Center Mall" class="form-control">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="city">City *</label>
+            <input type="text" id="city" name="city" required placeholder="e.g. Mumbai, Bangalore" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label for="state">State *</label>
+            <input type="text" id="state" name="state" required placeholder="e.g. Maharashtra, Karnataka" class="form-control">
+          </div>
+        </div>
+
+        <div class="form-group" style="max-width: 240px;">
+          <label for="pincode">Postal Pincode *</label>
+          <input type="text" id="pincode" name="pincode" required maxlength="6" pattern="^\d{6}$" placeholder="e.g. 400001" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label for="order_notes">Delivery Notes (Optional)</label>
+          <textarea id="order_notes" name="order_notes" rows="2" class="form-control" placeholder="Special delivery instructions or gate security instructions"></textarea>
+        </div>
+
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
+          2. Payment Method
+        </h3>
+
+        <div class="payment-options-grid">
+          {# Manual UPI Option #}
+          <label class="payment-option-card selected" id="opt-upi">
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+              <input type="radio" name="payment_method" value="MANUAL_UPI" checked onchange="handlePaymentMethodChange('MANUAL_UPI')">
+              <strong>Scan &amp; Pay via UPI</strong>
+            </div>
+            <p style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0;">
+              Zero transaction fees. Instant QR scan via GPay, PhonePe, Paytm, or BHIM.
+            </p>
+          </label>
+
+          {# Cash on Delivery (COD) Option if enabled in settings #}
+          {% if cod_enabled %}
+          <label class="payment-option-card" id="opt-cod">
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+              <input type="radio" name="payment_method" value="COD" onchange="handlePaymentMethodChange('COD')">
+              <strong>Cash on Delivery (COD)</strong>
+            </div>
+            <p style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0;">
+              Pay cash or courier QR at your doorstep upon handover.
+            </p>
+          </label>
+          {% endif %}
+        </div>
+
+        <div style="margin-top: 2rem;">
+          <button type="submit" id="submit-order-btn" class="btn btn-primary btn-block" style="padding: 1rem; font-size: 1.05rem;">
+            Place Order Now &rarr;
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {# Right: Order Summary Sidebar #}
+    <div>
+      <div class="order-summary-card">
+        <h3 style="font-size: 1.25rem; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-light);">
+          Your Items
+        </h3>
+
+        {# Items list container #}
+        <div id="checkout-items-summary" style="margin-bottom: 1.5rem; max-height: 280px; overflow-y: auto;">
+          <div style="color: var(--text-muted); font-size: 0.875rem;">Loading items...</div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.9375rem;">
+          <span style="color: var(--text-muted);">Subtotal:</span>
+          <strong id="chk-subtotal">₹0.00</strong>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; font-size: 0.9375rem;">
+          <span style="color: var(--text-muted);">Delivery Fee:</span>
+          <span id="chk-delivery">₹0.00</span>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-light); font-size: 1.15rem;">
+          <strong>Total to Pay:</strong>
+          <strong id="chk-total" style="color: var(--gold-dark); font-size: 1.35rem;">₹0.00</strong>
+        </div>
+
+        <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm); font-size: 0.8125rem; color: var(--text-muted); line-height: 1.4;">
+          <strong>Our Guarantee:</strong> All {{ brand_name }} products are packaged with specialized shockproof insulation to ensure zero leakage or breakage during transit.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function handlePaymentMethodChange(method) {
+  document.getElementById('opt-upi')?.classList.toggle('selected', method === 'MANUAL_UPI');
+  document.getElementById('opt-cod')?.classList.toggle('selected', method === 'COD');
+}
+
+async function initCheckout() {
+  const cart = ScentedCart.getCart();
+  if (!cart.length) {
+    alert("Your shopping bag is empty. Redirecting to catalog...");
+    window.location.href = "{{ url_for('products.product_list') }}";
+    return;
+  }
+
+  // Populate hidden input
+  document.getElementById('cart-items-json').value = JSON.stringify(cart);
+
+  // Fetch verified server summary
+  const data = await ScentedCart.fetchSummary();
+  if (!data || !data.lines || data.lines.length === 0) {
+    window.location.href = "{{ url_for('cart.view_cart') }}";
+    return;
+  }
+
+  const container = document.getElementById('checkout-items-summary');
+  container.innerHTML = data.lines.map(line => `
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-light);">
+      <img src="${line.image_url}" alt="${line.product_name}" style="width: 44px; height: 44px; border-radius: var(--radius-sm); object-fit: cover;">
+      <div style="flex: 1; font-size: 0.8125rem;">
+        <div style="font-weight: 600; color: var(--text-main);">${line.product_name}</div>
+        <div style="color: var(--text-muted); font-size: 0.75rem;">${line.size_label} &times; ${line.qty}</div>
+      </div>
+      <div style="font-weight: 600; font-size: 0.875rem;">
+        ₹${parseFloat(line.line_total).toFixed(2)}
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('chk-subtotal').textContent = `₹${parseFloat(data.subtotal).toFixed(2)}`;
+  const del = parseFloat(data.delivery_charge);
+  document.getElementById('chk-delivery').innerHTML = del === 0 ? '<span style="color: var(--color-success); font-weight: 600;">FREE</span>' : `₹${del.toFixed(2)}`;
+  document.getElementById('chk-total').textContent = `₹${parseFloat(data.total).toFixed(2)}`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initCheckout();
+
+  const form = document.getElementById('checkout-form');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      // Validate form
+      if (!form.checkValidity()) {
+        return; // standard browser HTML5 validation kicks in
+      }
+
+      e.preventDefault();
+      const submitBtn = document.getElementById('submit-order-btn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Processing Order...';
+
+      const formData = new FormData(form);
+      const payload = Object.fromEntries(formData.entries());
+      payload.items = ScentedCart.getCart();
+
+      try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        const res = await fetch("{{ url_for('checkout.checkout') }}", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken || ''
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await res.json();
+        if (result.success && result.redirect_url) {
+          // Clear cart from client storage upon successful order creation
+          ScentedCart.clearCart();
+          window.location.href = result.redirect_url;
+        } else {
+          alert(result.error || 'Failed to complete order. Please check your information.');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Place Order Now →';
+        }
+      } catch (err) {
+        console.error('Checkout error:', err);
+        alert('Network error while placing order. Please check your connection.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Place Order Now →';
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

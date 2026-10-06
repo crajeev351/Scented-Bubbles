@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Sign In | {{ brand_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 4rem 0 6rem;">
+
+  <div style="max-width: 440px; margin: 0 auto; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 3rem 2.5rem; box-shadow: var(--shadow-md);">
+    
+    <div style="text-align: center; margin-bottom: 2rem;">
+      {# Inline SVG Bubble Icon #}
+      <svg class="bubble-icon" style="width: 36px; height: 36px; color: var(--gold-primary); margin-bottom: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M9 9a3 3 0 0 1 3-3"/>
+        <circle cx="16" cy="8" r="1.5" fill="currentColor"/>
+        <circle cx="7" cy="15" r="1" fill="currentColor"/>
+      </svg>
+      <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">{{ brand_name }}</h1>
+      <span style="font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--gold-dark); font-weight: 700;">
+        Owner &amp; Store Management
+      </span>
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.login', next=request.args.get('next')) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="form-group">
+        <label for="username">Admin Username</label>
+        <input type="text" id="username" name="username" required autocomplete="username" class="form-control" placeholder="Enter username">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password" class="form-control" placeholder="••••••••">
+      </div>
+
+      <div style="margin-top: 1.5rem;">
+        <button type="submit" class="btn btn-primary btn-block" style="padding: 0.85rem;">
+          Sign In to Portal &rarr;
+        </button>
+      </div>
+
+      <div style="margin-top: 1.5rem; text-align: center; font-size: 0.75rem; color: var(--text-light); line-height: 1.5;">
+        🔒 Rate-limited authentication &bull; Admin accounts created via CLI (<code style="background: var(--bg-subtle); padding: 2px 4px;">flask create-admin</code>)
+      </div>
+    </form>
+
+  </div>
+
+</div>
+{% endblock %}

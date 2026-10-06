@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}About {{ brand_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 3rem; padding-bottom: 5rem;">
+
+  <div style="max-width: 820px; margin: 0 auto; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 3.5rem 3rem; box-shadow: var(--shadow-sm);">
+    
+    <div style="text-align: center; margin-bottom: 3rem;">
+      <span class="section-tag">Our Heritage</span>
+      <h1 style="font-size: 2.6rem; margin: 0.5rem 0 1rem;">The Story of {{ brand_name }}</h1>
+      <p style="color: var(--text-muted); font-size: 1.05rem; max-width: 600px; margin: 0 auto;">
+        Softness, freshness, and quiet luxury handcrafted for your body and your vehicle.
+      </p>
+    </div>
+
+    <div style="font-size: 1.02rem; line-height: 1.85; color: #3A3632; margin-bottom: 2.5rem;">
+      {% if page and page.content %}
+        {{ page.content | safe }}
+      {% else %}
+        <p>
+          At <strong>{{ brand_name }}</strong>, our mission began with a simple philosophy: scent is the invisible architecture of emotion. A gentle whiff of saffron, sea salt, or bourbon vanilla can elevate an ordinary commute or an evening gathering into an unforgettable sanctuary.
+        </p>
+        <p>
+          We source high-grade IFRA compliant fragrance compounds, steam-distilled botanicals, and sustainably harvested woods. Each bottle is macerated in small batches to preserve the delicate volatility of top citrus notes while deepening the rich resinous base notes.
+        </p>
+      {% endif %}
+    </div>
+
+    <div class="features-grid" style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-light);">
+      <div class="feature-box">
+        <h4 style="color: var(--gold-dark);">Pure Formulations</h4>
+        <p>Zero parabens, cosmetic-grade carriers, skin-safe and phthalate-free.</p>
+      </div>
+      <div class="feature-box">
+        <h4 style="color: var(--gold-dark);">Enduring Diffusion</h4>
+        <p>Engineered with porous beechwood caps for consistent, non-overpowering sillage.</p>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

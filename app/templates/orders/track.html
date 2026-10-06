@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Track Your Order | {{ brand_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2.5rem; padding-bottom: 5rem;">
+
+  <div style="max-width: 760px; margin: 0 auto;">
+    
+    {# Page Title #}
+    <div style="text-align: center; margin-bottom: 2.5rem;">
+      <span class="section-tag">Real-Time Fulfillment</span>
+      <h1 style="font-size: 2.2rem; margin-bottom: 0.4rem;">Track Your Order</h1>
+      <p style="color: var(--text-muted); font-size: 0.9375rem;">
+        Follow your handcrafted fragrance from our blending studio to your doorstep.
+      </p>
+    </div>
+
+    {# Customer Account Banner #}
+    <div style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.25rem 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; box-shadow: var(--shadow-sm);">
+      <div>
+        <div style="font-weight: 700; color: var(--gold-dark); font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem;">
+          <span>👤</span> Signed in as {{ user.name or user.phone }} ({{ user.phone }})
+        </div>
+        <div style="font-size: 0.8125rem; color: var(--text-muted); margin-top: 2px;">
+          Showing only your current active shipments in fulfillment.
+        </div>
+      </div>
+      <a href="{{ url_for('account.orders') }}" class="btn btn-secondary btn-sm" style="background: #FFFFFF;">
+        Account Dashboard &rarr;
+      </a>
+    </div>
+
+    {# Case 1: No Active Orders in Transit (Delivered / None Placed) #}
+    {% if not current_orders %}
+      <div style="background: var(--bg-surface); border: 1px dashed var(--border-light); border-radius: var(--radius-md); padding: 3.5rem 2rem; text-align: center; box-shadow: var(--shadow-sm);">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">📦✨</div>
+        <h2 style="font-size: 1.4rem; margin-bottom: 0.5rem; color: var(--text-main);">No Active Orders in Transit</h2>
+        <p style="color: var(--text-muted); font-size: 0.9375rem; max-width: 480px; margin: 0 auto 1.75rem; line-height: 1.5;">
+          You currently have no orders in fulfillment. All your previous packages have been delivered to your doorstep.
+        </p>
+        <a href="{{ url_for('products.product_list') }}" class="btn btn-primary" style="padding: 0.8rem 2rem; font-weight: 600;">
+          Explore Fragrances &amp; Combos &rarr;
+        </a>
+      </div>
+
+    {# Case 2: Active Current Order(s) #}
+    {% else %}
+
+      {# Multiple Active Orders Switcher (if customer placed 2+ active orders) #}
+      {% if current_orders | length > 1 %}
+      <div style="margin-bottom: 1.5rem; display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem;">
+        {% for o in current_orders %}
+        <a href="{{ url_for('orders.track_order', order_id=o.order_id) }}" 
+           style="padding: 0.5rem 1rem; border-radius: var(--radius-pill); font-size: 0.8125rem; font-weight: 700; text-decoration: none; white-space: nowrap; transition: all 0.2s;
+                  {% if o.order_id == order.order_id %}
+                    background: var(--gold-dark); color: #fff;
+                  {% else %}
+                    background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border-light);
+                  {% endif %}">
+          #{{ o.order_id }} ({{ o.order_status }})
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {# Single Current Active Order Tracking Card #}
+      {% if order %}
+      <div style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 2.25rem; box-shadow: var(--shadow-sm);">
+        
+        <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--border-light); padding-bottom: 1.25rem; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <span style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold-dark); display: block; margin-bottom: 2px;">Current Active Shipment</span>
+            <h2 style="font-size: 1.5rem; margin: 0; color: var(--text-main);">Order #{{ order.order_id }}</h2>
+            <span style="font-size: 0.8125rem; color: var(--text-muted); display: block; margin-top: 4px;">Placed on {{ (order.created_at | ist).strftime('%d %B %Y at %I:%M %p') }}</span>
+          </div>
+          <div>
+            <span style="background: var(--gold-light); color: var(--gold-dark); font-weight: 700; font-size: 0.8125rem; padding: 0.35rem 0.9rem; border-radius: var(--radius-pill); text-transform: uppercase;">
+              Status: {{ order.order_status }}
+            </span>
+          </div>
+        </div>
+
+        {# 4-Step In-Transit Visual Timeline #}
+        <div style="margin: 2rem 0; background: var(--bg-subtle); padding: 1.75rem 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+          {% set steps = [
+            {'id': 'PENDING', 'label': 'Order Placed', 'time': order.created_at},
+            {'id': 'CONFIRMED', 'label': 'Confirmed', 'time': order.confirmed_at},
+            {'id': 'PACKED', 'label': 'Packed & Ready', 'time': order.packed_at},
+            {'id': 'SHIPPED', 'label': 'Dispatched / In Transit', 'time': order.shipped_at}
+          ] %}
+          {% set step_ids = ['PENDING', 'CONFIRMED', 'PACKED', 'SHIPPED'] %}
+          {% set current_idx = step_ids.index(order.order_status) if order.order_status in step_ids else 0 %}
+          
+          <div style="display: flex; justify-content: space-between; position: relative; text-align: center;">
+            {% for s in steps %}
+            {% set is_done = loop.index0 <= current_idx %}
+            <div style="flex: 1; position: relative;">
+              <div style="width: 34px; height: 34px; border-radius: var(--radius-pill); margin: 0 auto 0.5rem; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700;
+                {% if is_done %}
+                  background: var(--gold-dark); color: #FFFFFF; box-shadow: 0 2px 6px rgba(197, 160, 89, 0.4);
+                {% else %}
+                  background: var(--border-light); color: var(--text-muted);
+                {% endif %}">
+                {% if is_done %}✓{% else %}{{ loop.index }}{% endif %}
+              </div>
+              <div style="font-size: 0.8125rem; font-weight: 600; color: {{ 'var(--text-main)' if is_done else 'var(--text-muted)' }};">
+                {{ s.label }}
+              </div>
+              {% if s.time %}
+                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">
+                  {{ (s.time | ist).strftime('%d %b, %I:%M %p') }}
+                </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        {# Courier Tracking Box (if dispatched) #}
+        {% if order.courier_name or order.tracking_number %}
+        <div style="background: rgba(197, 160, 89, 0.1); border: 1px solid var(--gold-primary); border-radius: var(--radius-sm); padding: 1.25rem; margin-bottom: 2rem;">
+          <h4 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--gold-dark); font-weight: 700;">
+            🚚 Courier Dispatch Details
+          </h4>
+          <div style="font-size: 0.875rem; color: var(--text-main); line-height: 1.6;">
+            <div><strong>Courier Partner:</strong> {{ order.courier_name or 'Express Logistics' }}</div>
+            {% if order.tracking_number %}
+              <div><strong>AWB / Tracking Number:</strong> <code>{{ order.tracking_number }}</code></div>
+            {% endif %}
+          </div>
+          {% if order.tracking_url %}
+            <a href="{{ order.tracking_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="margin-top: 0.75rem; background: #FFFFFF; font-weight: 600;">
+              Live Courier Tracking &rarr;
+            </a>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {# Delivery Address & Order Summary #}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; border-top: 1px solid var(--border-light); padding-top: 1.5rem;">
+          <div>
+            <h4 style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.5rem;">
+              Delivery Address
+            </h4>
+            <div style="font-size: 0.875rem; color: var(--text-main); line-height: 1.5;">
+              <strong>{{ order.shipping_name }}</strong><br>
+              {{ order.shipping_address_line1 }}<br>
+              {% if order.shipping_address_line2 %}{{ order.shipping_address_line2 }}<br>{% endif %}
+              {{ order.shipping_city }}, {{ order.shipping_state }} - {{ order.shipping_pincode }}<br>
+              📱 {{ order.shipping_phone }}
+            </div>
+          </div>
+
+          <div>
+            <h4 style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.5rem;">
+              Order Value &amp; Payment
+            </h4>
+            <div style="font-size: 0.875rem; color: var(--text-main); line-height: 1.5;">
+              <div><strong>Payment Method:</strong> {{ order.payment_method }}</div>
+              <div><strong>Payment Status:</strong> {{ order.payment_status }}</div>
+              <div style="margin-top: 0.5rem; font-size: 1.15rem; font-weight: 700; color: var(--gold-dark);">
+                Total: {{ order.total_amount | currency }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {# Items Snapshot #}
+        <div style="margin-top: 2rem; border-top: 1px solid var(--border-light); padding-top: 1.25rem;">
+          <h4 style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.75rem;">
+            Items in this Shipment ({{ order.items | length }})
+          </h4>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            {% for item in order.items %}
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; padding: 0.5rem 0; border-bottom: 1px dashed var(--border-light);">
+              <div>
+                <strong>{{ item.product_name }}</strong> &bull; {{ item.size_label }}
+                <span style="color: var(--text-muted); font-size: 0.8125rem;">&times; {{ item.quantity }}</span>
+              </div>
+              <div style="font-weight: 600;">
+                {{ item.total_price | currency }}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+      </div>
+      {% endif %}
+
+    {% endif %}
+
+  </div>
+
+</div>
+
+<script>
+// Automatically wipe any legacy unauthenticated device tracking cache to protect privacy
+try {
+  localStorage.removeItem("sb_recent_orders");
+} catch (e) {}
+</script>
+{% endblock %}

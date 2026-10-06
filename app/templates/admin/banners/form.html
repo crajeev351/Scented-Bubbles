@@ -1,0 +1,256 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}{{ 'Edit Hero Banner' if banner else 'Add Hero Banner' }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 780px; margin: 0 auto;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <div>
+      <h2 style="font-size: 1.5rem; margin: 0;">{{ 'Edit Hero Banner' if banner else 'Create New Hero Banner' }}</h2>
+      <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0.25rem 0 0;">
+        Design promotional banners for the homepage hero carousel with custom buttons, product links, and darkened luxury overlays.
+      </p>
+    </div>
+    <a href="{{ url_for('admin.banner_list') }}" class="btn btn-secondary btn-sm">&larr; Back to Banners</a>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" class="admin-card" style="padding: 2rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    {# Section 1: Banner Typography & Copy #}
+    <div style="margin-bottom: 2rem;">
+      <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1.25rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+        <span style="color: var(--gold-primary);">✦</span> Banner Headlines & Promotional Copy
+      </h3>
+
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label for="tagline" style="font-weight: 600;">Upper Tagline / Question Badge</label>
+        <input type="text" id="tagline" name="tagline" value="{{ banner.tagline if banner and banner.tagline else '' }}" class="form-control" placeholder="e.g. What's your Mood Today? or SPECIAL COMBO OFFER">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Appears as a prominent gold badge/tagline directly above the main title.</small>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label for="title" style="font-weight: 600;">Main Headline Title *</label>
+        <input type="text" id="title" name="title" value="{{ banner.title if banner else '' }}" required class="form-control" placeholder="e.g. Buy Any 3 Perfumes @ ₹1,099 or Artisanal Fine Fragrances">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label for="subtitle" style="font-weight: 600;">Promotional Subtitle / Offer Details</label>
+        <textarea id="subtitle" name="subtitle" rows="2" class="form-control" placeholder="e.g. Handcrafted Eau de Parfums inspired by iconic fragrances. Free luxury travel pouch with every combo.">{{ banner.subtitle if banner and banner.subtitle else '' }}</textarea>
+      </div>
+    </div>
+
+    <hr style="border: none; border-top: 1px solid var(--border-light); margin: 2rem 0;">
+
+    {# Section 2: Banner Destination & Action Buttons #}
+    <div style="margin-bottom: 2rem;">
+      <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1.25rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+        <span style="color: var(--gold-primary);">🎯</span> Banner Destination & Call-To-Action Buttons
+      </h3>
+
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Where should this Banner take the customer?</label>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem;">
+          
+          <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border: 1.5px solid var(--border-light); border-radius: 8px; cursor: pointer; background: #fff;" id="label-target-product">
+            <input type="radio" name="target_type" value="product" {{ 'checked' if banner and banner.target_type == 'product' else '' }} onchange="toggleTargetFields()">
+            <span style="font-weight: 600; font-size: 0.875rem;">🎯 Specific Product</span>
+          </label>
+
+          <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border: 1.5px solid var(--border-light); border-radius: 8px; cursor: pointer; background: #fff;" id="label-target-combo">
+            <input type="radio" name="target_type" value="combo" {{ 'checked' if banner and banner.target_type == 'combo' else '' }} onchange="toggleTargetFields()">
+            <span style="font-weight: 600; font-size: 0.875rem;">🎁 Specific Combo</span>
+          </label>
+
+          <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border: 1.5px solid var(--border-light); border-radius: 8px; cursor: pointer; background: #fff;" id="label-target-category">
+            <input type="radio" name="target_type" value="category" {{ 'checked' if banner and banner.target_type == 'category' else '' }} onchange="toggleTargetFields()">
+            <span style="font-weight: 600; font-size: 0.875rem;">📂 Category Range</span>
+          </label>
+
+          <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border: 1.5px solid var(--border-light); border-radius: 8px; cursor: pointer; background: #fff;" id="label-target-custom">
+            <input type="radio" name="target_type" value="custom" {{ 'checked' if not banner or not banner.target_type or banner.target_type == 'custom' else '' }} onchange="toggleTargetFields()">
+            <span style="font-weight: 600; font-size: 0.875rem;">🔗 Custom URL</span>
+          </label>
+        </div>
+      </div>
+
+      {# Dropdown for Product #}
+      <div id="target-product-group" class="form-group" style="display: none; background: rgba(197, 160, 89, 0.08); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-light); margin-bottom: 1.25rem;">
+        <label for="product_id" style="font-weight: 600; color: #8C6D23;">Select Destination Product *</label>
+        <select id="product_id" name="product_id" class="form-control" style="background: #fff;">
+          <option value="">-- Choose a Product --</option>
+          {% for p in products %}
+            <option value="{{ p.id }}" {{ 'selected' if banner and banner.target_type == 'product' and banner.target_id == p.id else '' }}>
+              {{ p.name }} {% if p.inspired_by %}(Inspired by {{ p.inspired_by }}){% endif %}
+            </option>
+          {% endfor %}
+        </select>
+        <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 4px;">Clicking banner or button will take shopper straight to this product's detail page.</small>
+      </div>
+
+      {# Dropdown for Combo #}
+      <div id="target-combo-group" class="form-group" style="display: none; background: rgba(197, 160, 89, 0.08); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-light); margin-bottom: 1.25rem;">
+        <label for="combo_id" style="font-weight: 600; color: #8C6D23;">Select Destination Combo Deal *</label>
+        <select id="combo_id" name="combo_id" class="form-control" style="background: #fff;">
+          <option value="">-- Choose a Combo Deal --</option>
+          {% for c in combos %}
+            <option value="{{ c.id }}" {{ 'selected' if banner and banner.target_type == 'combo' and banner.target_id == c.id else '' }}>
+              {{ c.name }} (₹{{ "%.2f"|format(c.combo_price) }})
+            </option>
+          {% endfor %}
+        </select>
+        <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 4px;">Directs customer to this curated multi-pack / bundle page.</small>
+      </div>
+
+      {# Dropdown for Category #}
+      <div id="target-category-group" class="form-group" style="display: none; background: rgba(197, 160, 89, 0.08); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-light); margin-bottom: 1.25rem;">
+        <label for="category_id" style="font-weight: 600; color: #8C6D23;">Select Destination Category *</label>
+        <select id="category_id" name="category_id" class="form-control" style="background: #fff;">
+          <option value="">-- Choose a Category --</option>
+          {% for cat in categories %}
+            <option value="{{ cat.id }}" {{ 'selected' if banner and banner.target_type == 'category' and banner.target_id == cat.id else '' }}>
+              {{ cat.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {# Custom URL input #}
+      <div id="target-custom-group" class="form-group" style="margin-bottom: 1.25rem;">
+        <label for="link_url" style="font-weight: 600;">Custom Destination URL</label>
+        <input type="text" id="link_url" name="link_url" value="{{ banner.link_url if banner and banner.link_url else '/products' }}" class="form-control" placeholder="e.g. /products, /combos, or https://...">
+      </div>
+
+      {# Button customization #}
+      <div class="form-row" style="margin-top: 1.25rem;">
+        <div class="form-group" style="flex: 1;">
+          <label for="button_text" style="font-weight: 600;">Primary Button Text</label>
+          <input type="text" id="button_text" name="button_text" value="{{ banner.button_text if banner and banner.button_text else 'SHOP NOW' }}" class="form-control" placeholder="e.g. SHOP NOW, BUY NOW @ ₹1,099, CLAIM COMBO">
+        </div>
+
+        <div class="form-group" style="flex: 1;">
+          <label for="secondary_button_text" style="font-weight: 600;">Optional Secondary Button Text</label>
+          <input type="text" id="secondary_button_text" name="secondary_button_text" value="{{ banner.secondary_button_text if banner and banner.secondary_button_text else '' }}" class="form-control" placeholder="e.g. VIEW ALL COMBOS (leave empty to hide)">
+        </div>
+      </div>
+
+      <div class="form-group" id="secondary-link-group" style="margin-top: 0.5rem; {{ 'display: none;' if not (banner and banner.secondary_button_text) else '' }}">
+        <label for="secondary_button_link" style="font-weight: 600;">Secondary Button Destination Link</label>
+        <input type="text" id="secondary_button_link" name="secondary_button_link" value="{{ banner.secondary_button_link if banner and banner.secondary_button_link else '/combos' }}" class="form-control" placeholder="/combos">
+      </div>
+    </div>
+
+    <hr style="border: none; border-top: 1px solid var(--border-light); margin: 2rem 0;">
+
+    {# Section 3: Background Image & Dark Overlay #}
+    <div style="margin-bottom: 2rem;">
+      <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1.25rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+        <span style="color: var(--gold-primary);">🖼️</span> Background Image & Dark Luxury Overlay
+      </h3>
+
+      {# Dimension Guidance Box #}
+      <div style="background: rgba(197, 160, 89, 0.12); border: 1.5px dashed var(--gold-primary, #C5A059); border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 1.25rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; color: #8C6D23; font-weight: 700; font-size: 0.875rem;">
+            <span>📐 Recommended Dimensions:</span>
+            <span style="background: #8C6D23; color: #fff; padding: 0.15rem 0.55rem; border-radius: 4px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.02em;">
+              1920 × 600 px (or 1200 × 500 px, ~16:5 ratio)
+            </span>
+          </div>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Format: JPG, PNG, WebP &bull; Max: 5 MB</span>
+        </div>
+        <p style="margin: 0.5rem 0 0; font-size: 0.8125rem; color: var(--text-muted); line-height: 1.45;">
+          • <strong>Auto-Fit Protection:</strong> If an image of any other dimension or ratio (e.g. square, portrait, or tall) is uploaded, our auto-fit engine will automatically center-crop and fit it to the banner without stretching or distortion.<br>
+          • <strong>Darkened Overlay:</strong> A subtle luxury dark vignette is automatically layered over the image so your headline, offer badge, and buttons stand out crisply with 100% contrast.
+        </p>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label for="image" style="font-weight: 600;">Upload Hero Background Image</label>
+        <input type="file" id="image" name="image" accept=".jpg,.jpeg,.png,.webp" class="form-control" style="background: #fff;">
+      </div>
+
+      {# Darkness overlay control #}
+      <div class="form-group" style="background: var(--bg-subtle, #FAF8F5); padding: 1rem 1.25rem; border-radius: 8px; border: 1px solid var(--border-light); margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="overlay_opacity" style="font-weight: 600; margin: 0;">Background Dark Overlay Intensity</label>
+          <span id="opacity-val" style="font-weight: 700; font-size: 0.875rem; color: #8C6D23; background: rgba(197, 160, 89, 0.15); padding: 0.15rem 0.5rem; border-radius: 4px;">
+            {{ banner.overlay_opacity if banner and banner.overlay_opacity is not none else 55 }}% Dark
+          </span>
+        </div>
+        <input type="range" id="overlay_opacity" name="overlay_opacity" min="20" max="85" step="5" value="{{ banner.overlay_opacity if banner and banner.overlay_opacity is not none else 55 }}" style="width: 100%; accent-color: var(--gold-primary);" oninput="document.getElementById('opacity-val').textContent = this.value + '% Dark';">
+        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+          <span>Lighter (20%)</span>
+          <span>Balanced / Recommended (55%)</span>
+          <span>Deep Luxury Dark (85%)</span>
+        </div>
+      </div>
+
+      {% if banner and banner.image_url %}
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-light);">
+          <span style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.5rem; color: var(--text-main);">Current Banner Preview</span>
+          <img src="{{ banner.image_url }}" alt="Current Banner" style="max-height: 140px; width: auto; max-width: 100%; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border-light); box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+        </div>
+      {% endif %}
+    </div>
+
+    <hr style="border: none; border-top: 1px solid var(--border-light); margin: 2rem 0;">
+
+    {# Section 4: Settings #}
+    <div class="form-row">
+      <div class="form-group" style="width: 140px;">
+        <label for="display_order" style="font-weight: 600;">Display Order</label>
+        <input type="number" id="display_order" name="display_order" value="{{ banner.display_order if banner else 1 }}" class="form-control">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">1 appears first</small>
+      </div>
+
+      <div class="form-group" style="display: flex; align-items: flex-end; padding-bottom: 0.5rem;">
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+          <input type="checkbox" name="active" value="1" {{ 'checked' if not banner or banner.active else '' }}>
+          <strong style="font-size: 0.95rem;">Active (Visible on homepage hero carousel)</strong>
+        </label>
+      </div>
+    </div>
+
+    <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+      <button type="submit" class="btn btn-primary" style="padding: 0.85rem 2.25rem; font-weight: 700;">
+        {{ 'Save Changes' if banner else 'Create Hero Banner' }}
+      </button>
+      <a href="{{ url_for('admin.banner_list') }}" class="btn btn-secondary" style="padding: 0.85rem 1.5rem;">Cancel</a>
+    </div>
+
+  </form>
+
+</div>
+
+<script>
+function toggleTargetFields() {
+  var selected = document.querySelector('input[name="target_type"]:checked');
+  var val = selected ? selected.value : 'custom';
+  
+  var pGroup = document.getElementById('target-product-group');
+  var cGroup = document.getElementById('target-combo-group');
+  var catGroup = document.getElementById('target-category-group');
+  var customGroup = document.getElementById('target-custom-group');
+
+  if (pGroup) pGroup.style.display = (val === 'product') ? 'block' : 'none';
+  if (cGroup) cGroup.style.display = (val === 'combo') ? 'block' : 'none';
+  if (catGroup) catGroup.style.display = (val === 'category') ? 'block' : 'none';
+  if (customGroup) customGroup.style.display = (val === 'custom') ? 'block' : 'none';
+}
+
+// Show/hide secondary link input based on secondary button text
+document.getElementById('secondary_button_text').addEventListener('input', function() {
+  var secGroup = document.getElementById('secondary-link-group');
+  if (secGroup) {
+    secGroup.style.display = this.value.trim().length > 0 ? 'block' : 'none';
+  }
+});
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', function() {
+  toggleTargetFields();
+});
+</script>
+{% endblock %}

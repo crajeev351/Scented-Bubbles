@@ -1,0 +1,135 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Inventory Management & Stock Control{% endblock %}
+
+{% block content %}
+<div class="admin-header-actions">
+  <div>
+    <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">
+      Inventory & Stock Control
+    </h1>
+    <p style="color: var(--text-muted); font-size: 0.875rem;">
+      Monitor live bottle and diffuser stock levels with configurable replenishment thresholds.
+    </p>
+  </div>
+</div>
+
+{# Threshold Configuration & Status Filters #}
+<div style="background: #FFFFFF; border-radius: var(--radius-md); padding: 1.25rem 1.5rem; border: 1px solid var(--border-light); margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+  
+  <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+    <a href="{{ url_for('admin.inventory', threshold=threshold, q=search_query) }}" class="btn btn-sm {{ 'btn-primary' if filter_type == 'all' else 'btn-secondary' }}">
+      All Variants ({{ total_variants }})
+    </a>
+    <a href="{{ url_for('admin.inventory', filter='low_stock', threshold=threshold, q=search_query) }}" class="btn btn-sm {{ 'btn-primary' if filter_type == 'low_stock' else 'btn-secondary' }}" style="{{ 'background: #E65100; border-color: #E65100;' if filter_type == 'low_stock' else '' }}">
+      Low Stock ({{ low_stock_count }})
+    </a>
+    <a href="{{ url_for('admin.inventory', filter='out_of_stock', threshold=threshold, q=search_query) }}" class="btn btn-sm {{ 'btn-primary' if filter_type == 'out_of_stock' else 'btn-secondary' }}" style="{{ 'background: #C62828; border-color: #C62828;' if filter_type == 'out_of_stock' else '' }}">
+      Out of Stock ({{ out_of_stock_count }})
+    </a>
+    <a href="{{ url_for('admin.inventory', filter='healthy', threshold=threshold, q=search_query) }}" class="btn btn-sm {{ 'btn-primary' if filter_type == 'healthy' else 'btn-secondary' }}">
+      Healthy Stock
+    </a>
+  </div>
+
+  <form method="GET" action="{{ url_for('admin.inventory') }}" style="display: flex; gap: 0.75rem; align-items: center;">
+    <input type="hidden" name="filter" value="{{ filter_type }}">
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <label style="font-size: 0.8125rem; font-weight: 600; color: var(--text-muted); white-space: nowrap;">Low Threshold:</label>
+      <input type="number" name="threshold" value="{{ threshold }}" min="1" max="100" class="form-control" style="width: 70px; padding: 0.35rem 0.5rem; text-align: center;">
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <input type="text" name="q" value="{{ search_query }}" placeholder="Search SKU or name..." class="form-control" style="width: 180px; padding: 0.35rem 0.6rem;">
+    </div>
+    <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+  </form>
+
+</div>
+
+{# Inventory Table #}
+<div class="admin-card">
+  <div class="table-responsive">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>SKU</th>
+          <th>Product & Size</th>
+          <th>Price</th>
+          <th>Stock Units</th>
+          <th>Status</th>
+          <th style="text-align: right;">Quick Stock Adjust</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in variants %}
+        <tr>
+          <td style="font-family: monospace; font-weight: 700; color: var(--text-main);">
+            {{ v.sku }}
+          </td>
+          <td>
+            <a href="{{ url_for('admin.product_edit', id=v.product.id) }}" style="font-weight: 600; color: var(--text-main);">
+              {{ v.product.name }}
+            </a>
+            <div style="font-size: 0.8125rem; color: var(--text-muted);">
+              Variant: {{ v.size_label }}
+            </div>
+          </td>
+          <td>
+            <div style="font-weight: 600;">{{ v.price | currency }}</div>
+            {% if v.discounted_price %}
+              <div style="font-size: 0.75rem; color: #2E7D32;">Offer: {{ v.discounted_price | currency }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <span style="font-size: 1.15rem; font-weight: 700; color: {{ '#C62828' if v.stock == 0 else ('#E65100' if v.stock <= threshold else '#2E7D32') }};">
+              {{ v.stock }}
+            </span>
+          </td>
+          <td>
+            {% if v.stock == 0 %}
+              <span class="status-badge status-failed">Out of Stock</span>
+            {% elif v.stock <= threshold %}
+              <span class="status-badge status-pending">Low Stock (≤ {{ threshold }})</span>
+            {% else %}
+              <span class="status-badge status-paid">In Stock</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            <form method="POST" action="{{ url_for('admin.variant_quick_update', id=v.id) }}" style="display: inline-flex; gap: 0.4rem; justify-content: flex-end; align-items: center;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="price" value="{{ v.price }}">
+              <input type="hidden" name="discounted_price" value="{{ v.discounted_price or '' }}">
+              <input type="number" name="stock" value="{{ v.stock }}" min="0" class="form-control" style="width: 75px; padding: 0.3rem 0.5rem; text-align: center; font-size: 0.875rem;">
+              <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.3rem 0.6rem;">Set</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+            No inventory items matching current filter criteria.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# Pagination #}
+{% if pagination and pagination.pages > 1 %}
+<div class="pagination-bar" style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+  <span style="font-size: 0.8125rem; color: var(--text-muted);">
+    Page {{ pagination.page }} of {{ pagination.pages }}
+  </span>
+  <div style="display: flex; gap: 0.5rem;">
+    {% if pagination.has_prev %}
+      <a href="{{ url_for('admin.inventory', page=pagination.prev_num, filter=filter_type, threshold=threshold, q=search_query) }}" class="btn btn-secondary btn-sm">&larr; Prev</a>
+    {% endif %}
+    {% if pagination.has_next %}
+      <a href="{{ url_for('admin.inventory', page=pagination.next_num, filter=filter_type, threshold=threshold, q=search_query) }}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

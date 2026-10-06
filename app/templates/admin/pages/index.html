@@ -1,0 +1,44 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}Policy &amp; Informational Pages{% endblock %}
+
+{% block content %}
+
+<p style="color: var(--text-muted); margin-bottom: 2rem; font-size: 0.9375rem;">
+  Edit database-driven terms, privacy, shipping, and refund policies. Brand references are automatically kept consistent.
+</p>
+
+<div class="admin-card" style="padding: 0; overflow: hidden;">
+  <div class="table-responsive">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>Page Title</th>
+        <th>URL Slug</th>
+        <th style="width: 100px; text-align: center; white-space: nowrap;">Status</th>
+        <th>Last Updated</th>
+        <th style="text-align: right; width: 140px; white-space: nowrap;">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pages %}
+      <tr>
+        <td><strong style="color: var(--text-main);">{{ p.title }}</strong></td>
+        <td><code>/policies/{{ p.slug }}</code></td>
+        <td style="text-align: center; white-space: nowrap;">
+          <span class="status-badge {{ 'status-delivered' if p.is_active else 'status-cancelled' }}">
+            {{ 'Active' if p.is_active else 'Disabled' }}
+          </span>
+        </td>
+        <td style="font-size: 0.8125rem; color: var(--text-muted);">{{ (p.updated_at | ist).strftime('%d %b %Y, %I:%M %p') }}</td>
+        <td style="text-align: right; white-space: nowrap;">
+          <a href="{{ url_for('admin.page_edit', slug=p.slug) }}" class="btn btn-secondary btn-sm" style="white-space: nowrap;">Edit Content &rarr;</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+{% endblock %}

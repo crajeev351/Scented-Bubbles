@@ -1,0 +1,102 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}{{ 'Edit Category: ' ~ category.name if category else 'Add New Category' }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 650px; margin: 0 auto;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h2 style="font-size: 1.5rem; margin: 0;">{{ 'Edit Category: ' ~ category.name if category else 'Create New Category' }}</h2>
+    <a href="{{ url_for('admin.category_list') }}" class="btn btn-secondary btn-sm">&larr; Back to Categories</a>
+  </div>
+
+  {% if category and category.is_deleted %}
+  <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 0.85rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+    <div>
+      <strong style="color: #b45309;">Archived Category:</strong>
+      <span style="color: #92400e; font-size: 0.875rem;"> This category is currently archived and hidden from the storefront. Saving changes with <em>Active</em> checked will restore it.</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <form method="POST" enctype="multipart/form-data" class="admin-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+      <label for="name">Category Name *</label>
+      <input type="text" id="name" name="name" value="{{ category.name if category else '' }}" required class="form-control" placeholder="e.g. Luxury Car Perfumes">
+    </div>
+
+    <div class="form-group">
+      <label for="slug">URL Slug *</label>
+      <input type="text" id="slug" name="slug" value="{{ category.slug if category else '' }}" class="form-control" placeholder="Leave empty to auto-slugify name">
+    </div>
+
+    <div class="form-group">
+      <label for="description">Short Description</label>
+      <textarea id="description" name="description" rows="3" class="form-control" placeholder="Visible on collection cards and category header">{{ category.description if category else '' }}</textarea>
+    </div>
+
+    {# Category Card Background Image with Dimensions & Auto-Fit Protection #}
+    <div class="form-group" style="margin: 1.5rem 0; padding: 1.25rem; background: var(--bg-subtle, #FAF8F5); border: 1px solid var(--border-light, #E8E2D9); border-radius: 8px;">
+      <label for="image" style="font-weight: 700; font-size: 0.95rem; display: block; margin-bottom: 0.35rem; color: var(--text-main);">
+        Category Card Background Image
+      </label>
+      
+      {# Dimension Guidance Box #}
+      <div style="background: rgba(197, 160, 89, 0.12); border: 1.5px dashed var(--gold-primary, #C5A059); border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 1rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; color: #8C6D23; font-weight: 700; font-size: 0.875rem;">
+            <span>📐 Recommended Dimensions:</span>
+            <span style="background: #8C6D23; color: #fff; padding: 0.15rem 0.55rem; border-radius: 4px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.02em;">
+              800 × 450 px (16:9 Landscape)
+            </span>
+          </div>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Minimum: 600 × 350 px &bull; Max: 5 MB</span>
+        </div>
+        <p style="margin: 0.5rem 0 0; font-size: 0.8125rem; color: var(--text-muted); line-height: 1.45;">
+          • <strong>Storefront Display:</strong> This image appears as the background on the homepage collection cards.<br>
+          • <strong>Auto-Fit Protection:</strong> If an image of any other dimension or ratio (e.g. square, vertical, or panoramic) is uploaded, our system will automatically center-crop and fit it to the card size without stretching or distortion.
+        </p>
+      </div>
+
+      <input type="file" id="image" name="image" accept=".jpg,.jpeg,.png,.webp" class="form-control" style="background: #fff;">
+
+      {% if category and (category.display_image_url or category.image_url) %}
+      <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-light); display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;">
+        <img src="{{ category.display_image_url or category.image_url }}" alt="{{ category.name }}" style="width: 160px; height: 90px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-light); box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+        <div>
+          <span style="font-size: 0.85rem; font-weight: 600; display: block; color: var(--text-main);">Current Card Background</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 2px;">Image is active on homepage category card.</span>
+          <label style="font-size: 0.8125rem; color: var(--color-danger, #C62828); cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.4rem; font-weight: 600;">
+            <input type="checkbox" name="remove_image" value="1"> Remove background image (revert to default gradient)
+          </label>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="form-group">
+      <label for="display_order">Display Order Priority</label>
+      <input type="number" id="display_order" name="display_order" value="{{ category.display_order if category else 0 }}" class="form-control" style="width: 120px;">
+      <small style="color: var(--text-muted); font-size: 0.75rem;">Lower numbers appear first (e.g. 1, 2, 3)</small>
+    </div>
+
+    <div style="margin: 1.5rem 0;">
+      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+        <input type="checkbox" name="active" value="1" {{ 'checked' if not category or category.active else '' }}>
+        <strong>Active (Visible in Storefront navigation)</strong>
+      </label>
+    </div>
+
+    <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+      <button type="submit" class="btn btn-primary" style="padding: 0.85rem 2rem;">
+        {{ 'Save Changes' if category else 'Create Category' }}
+      </button>
+      <a href="{{ url_for('admin.category_list') }}" class="btn btn-secondary" style="padding: 0.85rem 1.5rem;">Cancel</a>
+    </div>
+
+  </form>
+
+</div>
+{% endblock %}

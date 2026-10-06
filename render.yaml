@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: scented-bubbles
+    env: python
+    region: singapore # or oregon, frankfurt, ohio
+    plan: free # or starter
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn wsgi:app --workers 2 --threads 4 --timeout 120"
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false # Set in Render dashboard to your Supabase PostgreSQL connection string
+      - key: STORAGE_BACKEND
+        value: supabase # 'supabase', 'cloudinary', 's3', or 'local'
+      - key: SUPABASE_URL
+        sync: false # e.g. https://xyzcompany.supabase.co
+      - key: SUPABASE_KEY
+        sync: false # Your Supabase service_role or anon key
+      - key: SUPABASE_BUCKET
+        value: media

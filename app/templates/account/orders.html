@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}My Orders &amp; Tracking | {{ brand_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 3rem 1rem 6rem;">
+
+  {# Account Header #}
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1.5rem; margin-bottom: 2.5rem;">
+    <div>
+      <span class="section-tag">Account Dashboard</span>
+      <h1 style="font-size: 2.2rem; margin-bottom: 0.25rem;">My Orders &amp; Shipments</h1>
+      <p style="color: var(--text-muted); font-size: 0.9375rem;">
+        Welcome back, <strong>{{ user.name or user.phone }}</strong> ({{ user.phone }})
+      </p>
+    </div>
+
+    <div style="display: flex; gap: 0.75rem;">
+      <a href="{{ url_for('account.profile') }}" class="btn btn-secondary btn-sm" style="padding: 0.5rem 1rem;">
+        ⚙️ Profile &amp; Addresses
+      </a>
+      <a href="{{ url_for('account.logout') }}" class="btn btn-secondary btn-sm" style="padding: 0.5rem 1rem; color: #DC2626; border-color: #FCA5A5;">
+        Sign Out
+      </a>
+    </div>
+  </div>
+
+  {# Orders List #}
+  {% if not orders %}
+    <div style="background: var(--bg-surface); border: 1px dashed var(--border-light); border-radius: var(--radius-md); padding: 4rem 2rem; text-align: center; max-width: 600px; margin: 0 auto;">
+      <div style="width: 56px; height: 56px; border-radius: var(--radius-pill); background: var(--bg-subtle); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; color: var(--gold-dark);">
+        📦✨
+      </div>
+      <h3 style="font-size: 1.35rem; margin-bottom: 0.5rem;">No Active Orders in Fulfillment</h3>
+      <p style="color: var(--text-muted); font-size: 0.9375rem; margin-bottom: 1.5rem;">
+        You currently have no orders in transit. All your previous packages have been successfully delivered to your doorstep.
+      </p>
+      <a href="{{ url_for('products.product_list') }}" class="btn btn-primary" style="padding: 0.75rem 1.8rem;">
+        Explore Fine Fragrances &rarr;
+      </a>
+    </div>
+  {% else %}
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+      {% for order in orders %}
+      <div style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 2rem; box-shadow: var(--shadow-sm);">
+        
+        {# Order Card Header #}
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-light); padding-bottom: 1.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.3rem;">
+              <h2 style="font-size: 1.35rem; margin: 0; font-family: var(--font-sans); font-weight: 700;">
+                Order #{{ order.order_id }}
+              </h2>
+              <span style="font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.75rem; border-radius: var(--radius-pill); text-transform: uppercase;
+                {% if order.order_status == 'DELIVERED' %}
+                  background: #DCFCE7; color: #166534;
+                {% elif order.order_status == 'CANCELLED' %}
+                  background: #FEE2E2; color: #991B1B;
+                {% else %}
+                  background: var(--gold-light); color: var(--gold-dark);
+                {% endif %}">
+                {{ order.order_status }}
+              </span>
+            </div>
+            <span style="font-size: 0.8125rem; color: var(--text-muted);">
+              Placed on {{ (order.created_at | ist).strftime('%d %B %Y at %I:%M %p') }}
+            </span>
+          </div>
+
+          <div style="text-align: right;">
+            <div style="font-size: 1.25rem; font-weight: 700; color: var(--gold-dark);">
+              {{ order.total_amount | currency }}
+            </div>
+            <div style="font-size: 0.8125rem; color: var(--text-muted);">
+              {{ order.payment_method }} &bull; 
+              <span style="font-weight: 600; color: {{ '#166534' if order.payment_status == 'PAID' else 'var(--text-main)' }};">
+                {{ order.payment_status }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {# Timeline Visualizer for Active Orders #}
+        {% if order.order_status != 'CANCELLED' %}
+        <div style="margin: 1.75rem 0 2rem; background: var(--bg-subtle); padding: 1.5rem 1.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
+          {% set steps = [
+            {'id': 'PENDING', 'label': 'Placed', 'time': order.created_at},
+            {'id': 'CONFIRMED', 'label': 'Confirmed', 'time': order.confirmed_at},
+            {'id': 'PACKED', 'label': 'Packed', 'time': order.packed_at},
+            {'id': 'SHIPPED', 'label': 'Shipped', 'time': order.shipped_at},
+            {'id': 'DELIVERED', 'label': 'Delivered', 'time': order.delivered_at}
+          ] %}
+          {% set step_ids = ['PENDING', 'CONFIRMED', 'PACKED', 'SHIPPED', 'DELIVERED'] %}
+          {% set current_idx = step_ids.index(order.order_status) if order.order_status in step_ids else 0 %}
+          
+          <div style="display: flex; justify-content: space-between; position: relative; text-align: center;">
+            {% for s in steps %}
+            {% set is_done = loop.index0 <= current_idx %}
+            <div style="flex: 1; position: relative;">
+              <div style="width: 32px; height: 32px; border-radius: var(--radius-pill); margin: 0 auto 0.4rem; display: flex; align-items: center; justify-content: center; font-size: 0.8125rem; font-weight: 700;
+                          background: {{ 'var(--gold-primary)' if is_done else '#E5E7EB' }};
+                          color: {{ '#FFFFFF' if is_done else '#6B7280' }}; transition: all 0.3s ease;">
+                {% if loop.index0 < current_idx %}
+                  ✓
+                {% else %}
+                  {{ loop.index }}
+                {% endif %}
+              </div>
+              <div style="font-size: 0.78rem; font-weight: {{ '700' if is_done else '400' }}; color: {{ 'var(--text-main)' if is_done else 'var(--text-light)' }};">
+                {{ s.label }}
+              </div>
+              <div style="font-size: 0.7rem; color: {{ 'var(--gold-dark)' if is_done else 'var(--text-light)' }}; margin-top: 0.2rem; line-height: 1.2;">
+                {% if s.time %}
+                  <strong>{{ (s.time | ist).strftime('%d %b') }}</strong><br>
+                  <span>{{ (s.time | ist).strftime('%I:%M %p') }}</span>
+                {% elif is_done %}
+                  <span style="color: #16A34A; font-weight: 600;">Done</span>
+                {% else %}
+                  <span style="color: #9CA3AF;">Pending</span>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          {% if order.courier_name or order.tracking_number %}
+          <div style="margin-top: 1.25rem; padding: 0.65rem 0.85rem; background: #FFFFFF; border: 1px solid var(--border-light); border-radius: var(--radius-sm); font-size: 0.8125rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+              🚚 Dispatched via <strong>{{ order.courier_name or 'Courier' }}</strong> &bull; Tracking AWB: <code style="font-weight: 700; color: var(--gold-dark);">{{ order.tracking_number }}</code>
+            </div>
+            <a href="{{ url_for('orders.track_order') }}?order_id={{ order.order_id }}" class="btn btn-secondary btn-sm" style="font-size: 0.75rem; padding: 0.25rem 0.65rem;">
+              Full Tracking &rarr;
+            </a>
+          </div>
+          {% endif %}
+        </div>
+        {% else %}
+        <div style="margin: 1.25rem 0; background: #FEE2E2; color: #991B1B; padding: 0.85rem 1.25rem; border-radius: var(--radius-sm); font-size: 0.875rem;">
+          This order was cancelled. Please contact customer support if you need assistance.
+        </div>
+        {% endif %}
+
+        {# Order Details Grid #}
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; font-size: 0.875rem; border-top: 1px solid var(--border-light); padding-top: 1.25rem;">
+          
+          {# Items Snapshot #}
+          <div>
+            <div style="font-weight: 600; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.75rem; margin-bottom: 0.75rem;">
+              Items in Shipment ({{ order.items | length }})
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+              {% for item in order.items %}
+              <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.5rem; border-bottom: 1px dotted var(--border-light);">
+                <div>
+                  <span style="font-weight: 600;">{{ item.product_name_snapshot }}</span>
+                  <span style="color: var(--text-muted); font-size: 0.8125rem; margin-left: 0.4rem;">
+                    ({{ item.variant_label_snapshot }}) &times; {{ item.quantity }}
+                  </span>
+                </div>
+                <div style="font-weight: 600;">
+                  {{ item.total_price | currency }}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          {# Delivery Address & Action #}
+          <div style="background: var(--bg-surface); border-left: 1px solid var(--border-light); padding-left: 1.5rem;">
+            <div style="font-weight: 600; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.75rem; margin-bottom: 0.5rem;">
+              Delivering To
+            </div>
+            <div style="line-height: 1.45; color: var(--text-main);">
+              <strong>{{ order.shipping_name }}</strong><br>
+              {{ order.shipping_address_line1 }}{% if order.shipping_address_line2 %}, {{ order.shipping_address_line2 }}{% endif %}<br>
+              {{ order.shipping_city }}, {{ order.shipping_state }} - {{ order.shipping_pincode }}<br>
+              <span style="color: var(--text-muted); font-size: 0.8125rem;">Phone: {{ order.shipping_phone }}</span>
+            </div>
+
+            <div style="margin-top: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem;">
+              <a href="{{ url_for('orders.track_order', order_id=order.order_id) }}" class="btn btn-secondary btn-block btn-sm" style="text-align: center;">
+                🔍 Live Tracking Detail &rarr;
+              </a>
+
+              {% if order.payment_method == 'MANUAL_UPI' and order.payment_status != 'PAID' and order.order_status != 'CANCELLED' %}
+                <a href="{{ url_for('orders.upi_pay', order_id=order.order_id) }}" class="btn btn-primary btn-block btn-sm" style="text-align: center;">
+                  ⚡ Complete UPI Payment
+                </a>
+              {% endif %}
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

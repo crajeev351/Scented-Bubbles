@@ -1,0 +1,349 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}Order #{{ order.order_id }}{% endblock %}
+
+{% block content %}
+
+<div style="margin-bottom: 1.5rem;">
+  <a href="{{ url_for('admin.order_list') }}" style="color: var(--gold-dark); font-size: 0.875rem;">&larr; Back to Orders List</a>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; align-items: start;">
+  
+  {# Left Column: Order Items Snapshot & Shipping #}
+  <div>
+    
+    {# Order Banner Card #}
+    <div class="admin-card" style="margin-bottom: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-light);">
+        <div>
+          <h2 style="font-size: 1.6rem; margin: 0; font-family: var(--font-sans);">Order #{{ order.order_id }}</h2>
+          <span style="font-size: 0.8125rem; color: var(--text-muted);">Placed on {{ (order.created_at | ist).strftime('%d %B %Y at %I:%M %p') }}</span>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <span class="status-badge status-{{ order.order_status.lower() }}">{{ order.order_status }}</span>
+          <span class="status-badge status-{{ order.payment_status.lower() }}">{{ order.payment_status }}</span>
+        </div>
+      </div>
+
+      {# Status Transition Control Bar #}
+      <div style="background: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-sm); margin-bottom: 1.5rem; border: 1px solid var(--border-light);">
+        <label style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.75rem;">
+          Workflow Status Actions &amp; Fulfillment Milestones:
+        </label>
+        
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-start;">
+          {% if allowed_transitions %}
+            {% for next_st in allowed_transitions %}
+              {% if next_st == 'SHIPPED' %}
+                {# Specialized Dispatch / Courier Form for SHIPPED #}
+                <div style="background: #FFFFFF; border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 1rem; width: 100%; margin-bottom: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                  <div style="font-weight: 700; font-size: 0.875rem; color: var(--gold-dark); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.4rem;">
+                    🚚 Dispatch Order &bull; Record Courier &amp; Tracking
+                  </div>
+                  <form method="POST" action="{{ url_for('admin.order_update_status', order_id=order.order_id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="status" value="SHIPPED">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.75rem; align-items: end;">
+                      <div>
+                        <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Courier Partner</label>
+                        <input type="text" name="courier_name" placeholder="e.g. Delhivery, BlueDart, DTDC" class="form-control" style="font-size: 0.84rem; padding: 0.45rem 0.65rem;" required>
+                      </div>
+                      <div>
+                        <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Tracking / AWB Number</label>
+                        <input type="text" name="tracking_number" placeholder="e.g. AWB123456789IN" class="form-control" style="font-size: 0.84rem; padding: 0.45rem 0.65rem;" required>
+                      </div>
+                      <div>
+                        <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Tracking URL (Optional)</label>
+                        <input type="url" name="tracking_url" placeholder="https://..." class="form-control" style="font-size: 0.84rem; padding: 0.45rem 0.65rem;">
+                      </div>
+                      <div>
+                        <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.55rem 1.1rem; white-space: nowrap;">
+                          Mark Shipped &rarr;
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              {% elif next_st != 'CANCELLED' %}
+                <form method="POST" action="{{ url_for('admin.order_update_status', order_id=order.order_id) }}" style="margin: 0;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="status" value="{{ next_st }}">
+                  <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.5rem 1rem;">
+                    Advance to &bull; {{ next_st }}
+                  </button>
+                </form>
+              {% endif %}
+            {% endfor %}
+
+            {% if 'CANCELLED' in allowed_transitions %}
+              <form id="cancel-order-form" method="POST" action="{{ url_for('admin.order_cancel', order_id=order.order_id) }}" style="margin: 0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="reason" value="Cancelled by admin from order detail page">
+                <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); padding: 0.5rem 1rem;" 
+                        onclick="confirmAction('cancel-order-form', 'Cancel Order #{{ order.order_id }}? All reserved stock will immediately be restored to the catalog.')">
+                  Cancel Order (Restore Stock)
+                </button>
+              </form>
+            {% endif %}
+          {% else %}
+            <span style="font-size: 0.84rem; color: var(--text-muted); font-weight: 500;">
+              ✓ Order workflow is finalized ({{ order.order_status }}).
+            </span>
+          {% endif %}
+
+          {% if order.order_status in ['DELIVERED', 'CANCELLED'] %}
+            <form id="delete-order-form" method="POST" action="{{ url_for('admin.order_delete', order_id=order.order_id) }}" style="margin: 0; margin-left: auto;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); border-color: #FCA5A5; padding: 0.5rem 1rem;" 
+                      onclick="confirmAction('delete-order-form', 'Permanently delete Order #{{ order.order_id }}? This will permanently purge the order and line items to free server database storage.')">
+                🗑️ Permanently Delete Order (Purge Data)
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Items Snapshot Table #}
+      <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Items Snapshot</h3>
+      <div class="table-responsive">
+      <table class="admin-table" style="margin-bottom: 1.5rem;">
+        <thead>
+          <tr>
+            <th>Product &amp; Size</th>
+            <th>SKU Snapshot</th>
+            <th>Unit Price</th>
+            <th>Quantity</th>
+            <th style="text-align: right;">Line Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in order.items %}
+          <tr>
+            <td>
+              <strong style="color: var(--text-main);">{{ item.product_name_snapshot }}</strong>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Size: {{ item.variant_label_snapshot }}</div>
+            </td>
+            <td><code>{{ item.sku_snapshot }}</code></td>
+            <td>{{ item.unit_price_snapshot | currency }}</td>
+            <td><strong>{{ item.quantity }}</strong></td>
+            <td style="text-align: right; font-weight: 700;">{{ item.total_price | currency }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+
+      {# Totals #}
+      <div style="max-width: 320px; margin-left: auto; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.875rem;">
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted);">Subtotal:</span>
+          <span>{{ order.subtotal | currency }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted);">Delivery Charge:</span>
+          <span>{{ 'FREE' if order.delivery_charge == 0 else (order.delivery_charge | currency) }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: 700; border-top: 1px solid var(--border-light); padding-top: 0.5rem;">
+          <span>Total:</span>
+          <span style="color: var(--gold-dark);">{{ order.total_amount | currency }}</span>
+        </div>
+      </div>
+    </div>
+
+    {# Shipping & Customer Card #}
+    <div class="admin-card">
+      <h3 style="font-size: 1.1rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
+        Delivery Destination &amp; Customer Information
+      </h3>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; font-size: 0.875rem;">
+        <div>
+          <label style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.3rem;">Recipient:</label>
+          <div style="font-weight: 600; font-size: 1rem;">{{ order.shipping_name }}</div>
+          <div style="color: var(--text-muted); margin-top: 0.2rem;">
+            📞 <span class="masked-data-container">
+              <span id="detail-phone" data-full="{{ order.shipping_phone }}" data-masked="{{ order.shipping_phone | mask_phone }}">
+                {{ order.shipping_phone | mask_phone }}
+              </span>
+              <button type="button" class="reveal-btn" onclick="toggleReveal('detail-phone', this)">👁 Reveal</button>
+            </span>
+          </div>
+          {% if order.customer and order.customer.email %}
+            <div style="color: var(--text-muted); margin-top: 0.2rem;">
+              ✉️ <span class="masked-data-container">
+                <span id="detail-email" data-full="{{ order.customer.email }}" data-masked="{{ order.customer.email | mask_email }}">
+                  {{ order.customer.email | mask_email }}
+                </span>
+                <button type="button" class="reveal-btn" onclick="toggleReveal('detail-email', this)">👁</button>
+              </span>
+            </div>
+          {% endif %}
+        </div>
+
+        <div>
+          <label style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.3rem;">Shipping Address:</label>
+          <div style="line-height: 1.5;">
+            {{ order.shipping_address_line1 }}<br>
+            {% if order.shipping_address_line2 %}{{ order.shipping_address_line2 }}<br>{% endif %}
+            {{ order.shipping_city }}, {{ order.shipping_state }} - <strong>{{ order.shipping_pincode }}</strong>
+          </div>
+        </div>
+      </div>
+
+      {% if order.notes %}
+      <div style="margin-top: 1.25rem; background: var(--bg-subtle); padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.8125rem;">
+        <strong>Customer / Order Notes:</strong>
+        <p style="margin: 0.2rem 0 0; color: var(--text-muted);">{{ order.notes }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {# 3. Fulfillment Timeline & Timestamped Audit Trail #}
+    <div class="admin-card" style="margin-top: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 0.75rem; margin-bottom: 1.25rem;">
+        <h3 style="font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+          <span>⏱</span> Fulfillment Timeline &amp; Timestamped Logs
+        </h3>
+        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+          Current Stage: <strong style="color: var(--gold-dark);">{{ order.order_status }}</strong>
+        </span>
+      </div>
+
+      {# Courier Highlight if Shipped #}
+      {% if order.courier_name or order.tracking_number %}
+      <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: var(--radius-sm); padding: 0.85rem 1.15rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <div style="font-size: 0.8125rem; font-weight: 700; color: #166534; display: flex; align-items: center; gap: 0.4rem;">
+            <span>🚚</span> Dispatched via {{ order.courier_name or 'Courier Partner' }}
+          </div>
+          <div style="font-size: 0.84rem; color: #14532D; margin-top: 0.2rem;">
+            Tracking / AWB Number: <code style="font-weight: 700; background: #DCFCE7; padding: 0.15rem 0.4rem; border-radius: 3px;">{{ order.tracking_number }}</code>
+            {% if order.shipped_at %}
+              &bull; <span style="font-size: 0.78rem; color: #15803D;">Shipped on {{ (order.shipped_at | ist).strftime('%d %b %Y at %I:%M %p') }}</span>
+            {% endif %}
+          </div>
+        </div>
+        {% if order.tracking_url %}
+          <a href="{{ order.tracking_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="background: #16A34A; color: #FFFFFF; font-size: 0.78rem; font-weight: 600;">
+            Track on Courier Site &rarr;
+          </a>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {# Milestone Timeline #}
+      <div style="position: relative; padding-left: 2rem; display: flex; flex-direction: column; gap: 1.5rem;">
+        <div style="position: absolute; left: 9px; top: 8px; bottom: 10px; width: 2px; background: var(--border-light);"></div>
+
+        {% if order.status_history %}
+          {% for h in order.status_history %}
+          <div style="position: relative; display: flex; flex-direction: column; gap: 0.2rem;">
+            {# Dot indicator #}
+            <div style="position: absolute; left: -2rem; top: 3px; width: 12px; height: 12px; border-radius: 50%;
+                        background: {{ '#2E7D32' if h.status == 'DELIVERED' else ('#DC2626' if h.status == 'CANCELLED' else 'var(--gold-primary)') }};
+                        border: 2px solid #FFFFFF; box-shadow: 0 0 0 2px var(--border-light);"></div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.5rem;">
+              <div style="font-weight: 700; font-size: 0.925rem; color: var(--text-main);">
+                {{ h.title }}
+                <span class="status-badge status-{{ h.status.lower() }}" style="font-size: 0.7rem; padding: 0.1rem 0.45rem; margin-left: 0.35rem;">
+                  {{ h.status }}
+                </span>
+              </div>
+              <div style="font-size: 0.8125rem; color: var(--text-muted); font-weight: 500;">
+                📅 <strong>{{ (h.created_at | ist).strftime('%d %b %Y') }}</strong> at <strong>{{ (h.created_at | ist).strftime('%I:%M %p') }}</strong>
+              </div>
+            </div>
+
+            {% if h.notes %}
+              <div style="font-size: 0.84rem; color: var(--text-main); background: var(--bg-subtle); padding: 0.4rem 0.75rem; border-radius: 4px; margin-top: 0.15rem; line-height: 1.4;">
+                {{ h.notes }}
+              </div>
+            {% endif %}
+
+            <div style="font-size: 0.72rem; color: var(--text-light);">
+              Updated by: <strong>{{ h.created_by }}</strong>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="color: var(--text-muted); font-size: 0.875rem;">
+            Initial order placed on {{ (order.created_at | ist).strftime('%d %B %Y at %I:%M %p') }}.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  {# Right Column: Payment Verification & WhatsApp Direct #}
+  <div>
+    
+    {# Payment Verification Card #}
+    <div class="admin-card" style="margin-bottom: 1.5rem;">
+      <h3 style="font-size: 1.1rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
+        Payment Verification
+      </h3>
+
+      <div style="font-size: 0.875rem; margin-bottom: 1.25rem; line-height: 1.6;">
+        <div><strong>Method:</strong> {{ order.payment_method }}</div>
+        <div><strong>Amount:</strong> {{ order.total_amount | currency }}</div>
+        <div><strong>Status:</strong> <span class="status-badge status-{{ order.payment_status.lower() }}">{{ order.payment_status }}</span></div>
+        {% if order.latest_payment and order.latest_payment.utr %}
+          <div style="margin-top: 0.5rem; background: var(--bg-subtle); padding: 0.5rem; border-radius: var(--radius-sm);">
+            <strong>Customer Submitted UTR:</strong><br>
+            <code style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">{{ order.latest_payment.utr }}</code>
+          </div>
+        {% endif %}
+      </div>
+
+      {% if order.payment_status == 'PENDING_VERIFICATION' %}
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; border-top: 1px solid var(--border-light); padding-top: 1rem;">
+          <form method="POST" action="{{ url_for('admin.order_verify_payment', order_id=order.order_id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary btn-block" style="background: var(--color-success); border-color: var(--color-success);">
+              ✓ Verify Payment (Mark PAID)
+            </button>
+          </form>
+
+          <form id="reject-pay-form" method="POST" action="{{ url_for('admin.order_reject_payment', order_id=order.order_id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="button" class="btn btn-secondary btn-block" style="color: var(--color-danger);"
+                    onclick="confirmAction('reject-pay-form', 'Reject payment for order #{{ order.order_id }}? The order will be cancelled and reserved stock returned to catalog.')">
+              ✗ Reject Payment (Restores Stock)
+            </button>
+          </form>
+        </div>
+      {% elif order.payment_status == 'PAID' %}
+        <div style="background: #E8F5E9; color: #2E7D32; padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8125rem; font-weight: 600;">
+          ✓ Payment verified and recorded in store accounts.
+        </div>
+      {% elif order.payment_status == 'FAILED' %}
+        <div style="background: #FFEBEE; color: #C62828; padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8125rem; font-weight: 600;">
+          ✗ Payment was marked FAILED. Stock has been restored.
+        </div>
+      {% endif %}
+    </div>
+
+    {# Direct WhatsApp Contact Card #}
+    <div class="admin-card">
+      <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem; color: #2E7D32;">
+        💬 Customer WhatsApp
+      </h3>
+      <p style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 1rem;">
+        Contact <strong>{{ order.shipping_name }}</strong> regarding shipment tracking, dispatch confirmation, or delivery address confirmation.
+      </p>
+
+      {% if admin_wa_link %}
+        <a href="{{ admin_wa_link }}" target="_blank" rel="noopener noreferrer" class="btn btn-block" style="background: #25D366; color: #FFFFFF; font-weight: 700;">
+          Chat with Customer &rarr;
+        </a>
+      {% endif %}
+    </div>
+
+  </div>
+
+</div>
+
+{% endblock %}

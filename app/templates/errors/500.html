@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 5rem 0; text-align: center;">
+  <div style="max-width: 520px; margin: 0 auto; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 3.5rem 2rem; box-shadow: var(--shadow-sm);">
+    <span class="section-tag" style="color: var(--color-danger);">500 Internal Error</span>
+    <h1 style="font-size: 2.2rem; margin: 0.5rem 0 1rem;">Momentary Scent Disturbance</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 2rem;">
+      We encountered an unexpected technical issue. Our team has been notified and is attending to it. Please refresh or try again in a moment.
+    </p>
+    <a href="{{ url_for('main.index') }}" class="btn btn-primary">Return Home</a>
+  </div>
+</div>
+{% endblock %}

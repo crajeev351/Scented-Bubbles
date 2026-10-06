@@ -1,0 +1,161 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}Fragrance Catalog Management{% endblock %}
+
+{% block content %}
+
+{# Action Header & Filters #}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+  <form method="GET" action="{{ url_for('admin.product_list') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+    <input type="text" name="q" value="{{ search_query }}" placeholder="Search by name, note..." class="form-control" style="width: 220px; font-size: 0.875rem;">
+    
+    <select name="category_id" onchange="this.form.submit()" class="form-control" style="width: auto; font-size: 0.875rem;">
+      <option value="">All Categories</option>
+      {% for cat in categories %}
+        <option value="{{ cat.id }}" {{ 'selected' if selected_category_id == cat.id else '' }}>{{ cat.name }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="status" onchange="this.form.submit()" class="form-control" style="width: auto; font-size: 0.875rem;">
+      <option value="">All Statuses</option>
+      <option value="active" {{ 'selected' if status_filter == 'active' else '' }}>Active</option>
+      <option value="inactive" {{ 'selected' if status_filter == 'inactive' else '' }}>Inactive</option>
+    </select>
+
+    <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+    {% if search_query or selected_category_id or status_filter %}
+      <a href="{{ url_for('admin.product_list') }}" class="btn btn-secondary btn-sm" style="color: #999;">Reset</a>
+    {% endif %}
+  </form>
+
+  <a href="{{ url_for('admin.product_create') }}" class="btn btn-primary btn-sm">+ Add New Product</a>
+</div>
+
+{# Products List #}
+<div class="admin-card" style="padding: 0; overflow: hidden;">
+  {% if products %}
+  <div class="table-responsive">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th style="width: 50px;">Image</th>
+        <th>Product &amp; Category</th>
+        <th style="max-width: 170px;">Inspired By</th>
+        <th style="min-width: 290px;">Variants (Quick Price &amp; Stock Edit)</th>
+        <th style="text-align: center; width: 90px; white-space: nowrap;">Status</th>
+        <th style="text-align: right; width: 140px; white-space: nowrap;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in products %}
+      <tr>
+        <td style="width: 50px;">
+          <img src="{{ p.primary_image_url }}" alt="{{ p.name }}" style="width: 44px; height: 44px; border-radius: var(--radius-sm); object-fit: cover; border: 1px solid var(--border-light);">
+        </td>
+        <td>
+          <strong style="font-size: 0.92rem; color: var(--text-main); display: block;">{{ p.name }}</strong>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
+            <span>Categories:</span>
+            {% if p.categories %}
+              {% for c in p.categories %}
+                <span style="display: inline-block; background: rgba(197, 160, 89, 0.15); color: #8C6D23; padding: 0.05rem 0.45rem; border-radius: 10px; font-size: 0.7rem; font-weight: 600;">{{ c.name }}</span>
+              {% endfor %}
+            {% elif p.category %}
+              <span style="display: inline-block; background: rgba(197, 160, 89, 0.15); color: #8C6D23; padding: 0.05rem 0.45rem; border-radius: 10px; font-size: 0.7rem; font-weight: 600;">{{ p.category.name }}</span>
+            {% else %}
+              <span>Uncategorized</span>
+            {% endif %}
+            <span style="color: var(--border-light);">&bull;</span>
+            <span>Slug: <code>{{ p.slug }}</code></span>
+          </div>
+          <div style="margin-top: 0.25rem; display: flex; gap: 4px; flex-wrap: wrap;">
+            {% if p.featured %}<span class="badge-tag" style="position: static; font-size: 0.65rem; padding: 1px 6px;">Featured</span>{% endif %}
+            {% if p.bestseller %}<span class="badge-tag" style="position: static; font-size: 0.65rem; padding: 1px 6px; background: var(--gold-primary); color: #fff;">Bestseller</span>{% endif %}
+          </div>
+        </td>
+        <td style="font-size: 0.8125rem; color: var(--text-muted); max-width: 170px;">
+          {% if p.inspired_by %}
+            <span style="display: inline-block; background: rgba(197, 160, 89, 0.12); color: #8C6D23; padding: 0.2rem 0.55rem; border-radius: var(--radius-pill); font-weight: 700; font-size: 0.78rem; border: 1px solid rgba(197, 160, 89, 0.25);">
+              {{ p.inspired_by if 'inspired' in p.inspired_by.lower() else 'Inspired by ' ~ p.inspired_by }}
+            </span>
+          {% else %}
+            <span style="color: var(--text-light); font-style: italic;">—</span>
+          {% endif %}
+        </td>
+        <td style="min-width: 290px;">
+          {# Quick Price & Stock Update Form per variant #}
+          <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+            {% for v in p.active_variants %}
+            <form method="POST" action="{{ url_for('admin.variant_quick_update', id=v.id) }}" style="display: flex; align-items: center; gap: 0.35rem; background: var(--bg-subtle); padding: 0.25rem 0.45rem; border-radius: var(--radius-sm); flex-wrap: nowrap;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <span style="font-size: 0.75rem; font-weight: 600; min-width: 58px; white-space: nowrap;">{{ v.size_label }}:</span>
+              
+              <div style="display: flex; align-items: center; font-size: 0.75rem;" title="Regular Price">
+                <span style="color: var(--text-muted); margin-right: 1px;">₹</span>
+                <input type="number" step="0.01" name="price" value="{{ v.price }}" title="Regular Price" class="form-control quick-edit-input" style="width: 62px; padding: 2px 4px; height: 24px; font-size: 0.75rem; text-align: right;">
+              </div>
+
+              <div style="display: flex; align-items: center; font-size: 0.75rem;" title="Discounted Price (Optional)">
+                <span style="color: var(--gold-dark); margin-right: 1px;">₹</span>
+                <input type="number" step="0.01" name="discounted_price" value="{{ v.discounted_price or '' }}" placeholder="Sale" class="form-control quick-edit-input" style="width: 58px; padding: 2px 4px; height: 24px; font-size: 0.75rem; text-align: right;">
+              </div>
+
+              <div style="display: flex; align-items: center; font-size: 0.75rem;" title="Stock Quantity">
+                <span style="color: var(--text-muted); margin-right: 1px; font-size: 0.7rem;">Stk:</span>
+                <input type="number" name="stock" value="{{ v.stock }}" class="form-control quick-edit-input" style="width: 44px; padding: 2px 4px; height: 24px; font-size: 0.75rem; text-align: center; {{ 'border-color: #C62828;' if v.stock <= 5 else '' }}">
+              </div>
+
+              <button type="submit" class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 0.72rem; height: 24px; line-height: 1; flex-shrink: 0;" title="Save Quick Update">
+                ✓
+              </button>
+            </form>
+            {% endfor %}
+          </div>
+        </td>
+        <td style="text-align: center; white-space: nowrap;">
+          <form method="POST" action="{{ url_for('admin.product_toggle', id=p.id) }}" style="margin: 0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="status-badge {{ 'status-delivered' if p.active else 'status-cancelled' }}" style="cursor: pointer; border: none; font-size: 0.7rem; padding: 0.2rem 0.55rem; white-space: nowrap;">
+              {{ 'Active' if p.active else 'Disabled' }}
+            </button>
+          </form>
+        </td>
+        <td style="text-align: right; white-space: nowrap;">
+          <div style="display: inline-flex; justify-content: flex-end; align-items: center; gap: 0.35rem; white-space: nowrap;">
+            <a href="{{ url_for('admin.product_edit', id=p.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;">Edit</a>
+            <form id="del-prod-{{ p.id }}" method="POST" action="{{ url_for('admin.product_delete', id=p.id) }}" style="margin: 0; display: inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;" onclick="confirmAction('del-prod-{{ p.id }}', 'Archive product {{ p.name }}? It will be removed from customer view.')">
+                Archive
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {# Pagination #}
+  {% if pagination and pagination.pages > 1 %}
+  <div style="display: flex; justify-content: center; gap: 0.5rem; padding: 1.25rem; border-top: 1px solid var(--border-light);">
+    {% for page_num in pagination.iter_pages() %}
+      {% if page_num %}
+        <a href="{{ url_for('admin.product_list', page=page_num, category_id=selected_category_id, q=search_query, status=status_filter) }}" 
+           class="btn btn-sm {{ 'btn-dark' if page_num == pagination.page else 'btn-secondary' }}">
+          {{ page_num }}
+        </a>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div style="padding: 3rem; text-align: center; color: var(--text-muted);">
+    No products found matching your search and filter criteria.
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

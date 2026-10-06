@@ -1,0 +1,91 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}Hero Promotional Banners{% endblock %}
+
+{% block content %}
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+  <p style="color: var(--text-muted); margin: 0; font-size: 0.9375rem;">
+    Customize the top promotional sliders displayed on the Scented Bubbles homepage.
+  </p>
+  <a href="{{ url_for('admin.banner_create') }}" class="btn btn-primary btn-sm">+ Add New Banner</a>
+</div>
+
+<div class="admin-card" style="padding: 0; overflow: hidden;">
+  {% if banners %}
+  <div class="table-responsive">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th style="width: 140px;">Preview</th>
+        <th style="width: 70px;">Order</th>
+        <th>Title &amp; Subtitle</th>
+        <th>Target URL</th>
+        <th style="text-align: center; width: 90px; white-space: nowrap;">Status</th>
+        <th style="text-align: right; width: 140px; white-space: nowrap;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in banners %}
+      <tr>
+        <td>
+          <img src="{{ b.image_url }}" alt="{{ b.title }}" style="width: 120px; height: 50px; border-radius: var(--radius-sm); object-fit: cover; border: 1px solid var(--border-light);">
+        </td>
+        <td><strong>#{{ b.display_order }}</strong></td>
+        <td>
+          {% if b.tagline %}
+            <span style="display: inline-block; font-size: 0.6875rem; font-weight: 700; color: #8C6D23; background: rgba(197, 160, 89, 0.15); padding: 0.1rem 0.45rem; border-radius: 4px; text-transform: uppercase; margin-bottom: 2px;">
+              {{ b.tagline }}
+            </span>
+          {% endif %}
+          <strong style="color: var(--text-main); display: block;">{{ b.title }}</strong>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">{{ b.subtitle or '-' }}</div>
+        </td>
+        <td>
+          <div style="font-size: 0.8125rem;">
+            {% if b.target_type == 'product' and b.target_object %}
+              <span style="color: #2E7D32; font-weight: 600;">🎯 Product:</span> {{ b.target_object.name }}
+            {% elif b.target_type == 'combo' and b.target_object %}
+              <span style="color: #6A1B9A; font-weight: 600;">🎁 Combo:</span> {{ b.target_object.name }}
+            {% elif b.target_type == 'category' and b.target_object %}
+              <span style="color: #0277BD; font-weight: 600;">📂 Category:</span> {{ b.target_object.name }}
+            {% else %}
+              <code style="font-size: 0.75rem;">{{ b.resolved_link_url }}</code>
+            {% endif %}
+          </div>
+          <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">
+            Button: <strong>{{ b.display_button_text }}</strong>
+          </div>
+        </td>
+        <td style="text-align: center; white-space: nowrap;">
+          <form method="POST" action="{{ url_for('admin.banner_toggle', id=b.id) }}" style="margin: 0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="status-badge {{ 'status-delivered' if b.active else 'status-cancelled' }}" style="cursor: pointer; border: none; font-size: 0.7rem; padding: 0.2rem 0.55rem; white-space: nowrap;">
+              {{ 'Active' if b.active else 'Disabled' }}
+            </button>
+          </form>
+        </td>
+        <td style="text-align: right; white-space: nowrap;">
+          <div style="display: inline-flex; justify-content: flex-end; align-items: center; gap: 0.35rem; white-space: nowrap;">
+            <a href="{{ url_for('admin.banner_edit', id=b.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;">Edit</a>
+            <form id="del-banner-{{ b.id }}" method="POST" action="{{ url_for('admin.banner_delete', id=b.id) }}" style="margin: 0; display: inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;" onclick="confirmAction('del-banner-{{ b.id }}', 'Remove banner {{ b.title }}?')">
+                Remove
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+    <div style="padding: 3rem; text-align: center; color: var(--text-muted);">
+      No banners configured. Add your first hero slider to showcase your fragrances!
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

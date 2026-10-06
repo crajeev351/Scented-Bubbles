@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}{{ selected_category.name if selected_category else 'All Fragrances' }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2rem; padding-bottom: 4rem;">
+  
+  {# Header / Breadcrumb #}
+  <div style="margin-bottom: 2rem; text-align: center;">
+    <span class="section-tag">{{ brand_name }} Fragrance House</span>
+    <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">
+      {{ selected_category.name if selected_category else 'The Fragrance Catalog' }}
+    </h1>
+    <p style="color: var(--text-muted); max-width: 600px; margin: 0 auto;">
+      {{ selected_category.description if selected_category else 'Explore our complete library of artisanal Eau de Parfums and long-lasting car diffusers.' }}
+    </p>
+  </div>
+
+  {# Filter & Category Tabs #}
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-light);">
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <a href="{{ url_for('products.product_list') }}" 
+         class="btn btn-sm {{ 'btn-dark' if not selected_category else 'btn-secondary' }}">
+        All Items
+      </a>
+      {% for cat in categories %}
+        <a href="{{ url_for('products.product_list', category=cat.slug) }}" 
+           class="btn btn-sm {{ 'btn-dark' if selected_category and selected_category.slug == cat.slug else 'btn-secondary' }}">
+          {{ cat.name }}
+        </a>
+      {% endfor %}
+    </div>
+
+    {# Sort Selector #}
+    <form method="GET" action="{{ request.path }}" style="display: flex; align-items: center; gap: 0.5rem;">
+      {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category.slug }}">{% endif %}
+      {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+      <label for="sort-select" style="font-size: 0.8125rem; font-weight: 600; color: var(--text-muted);">Sort By:</label>
+      <select id="sort-select" name="sort" onchange="this.form.submit()" class="form-control" style="padding: 0.4rem 0.8rem; width: auto; font-size: 0.875rem;">
+        <option value="newest" {{ 'selected' if sort_by == 'newest' else '' }}>Newest Releases</option>
+        <option value="bestseller" {{ 'selected' if sort_by == 'bestseller' else '' }}>Bestsellers</option>
+        <option value="featured" {{ 'selected' if sort_by == 'featured' else '' }}>Featured</option>
+      </select>
+    </form>
+  </div>
+
+  {# Search query feedback #}
+  {% if search_query %}
+    <div style="margin-bottom: 1.5rem; font-size: 0.9375rem;">
+      Showing results for: <strong>"{{ search_query }}"</strong> — 
+      <a href="{{ url_for('products.product_list') }}" style="color: var(--gold-dark); text-decoration: underline;">Clear search</a>
+    </div>
+  {% endif %}
+
+  {# Product Grid #}
+  {% if products %}
+    <div class="product-grid">
+      {% for prod in products %}
+      <div class="product-card">
+        <a href="{{ url_for('products.product_detail', slug=prod.slug) }}" class="card-img-wrap">
+          <img src="{{ prod.thumbnail_url }}" {% if prod.primary_image_srcset %}srcset="{{ prod.primary_image_srcset }}" sizes="(max-width: 768px) 50vw, 300px"{% endif %} alt="{{ prod.name }}" loading="lazy" width="400" height="400">
+          {% if not prod.in_stock %}
+            <span class="badge-tag" style="background: #C62828; color: #fff; font-weight: 700;">Out of Stock</span>
+          {% elif prod.default_variant and prod.default_variant.stock <= 5 %}
+            <span class="badge-tag" style="background: #E65100; color: #fff; font-weight: 700;">⚡ Low Stock (Only {{ prod.default_variant.stock }} Left)</span>
+          {% elif prod.bestseller %}
+            <span class="badge-tag">Bestseller</span>
+          {% elif prod.featured %}
+            <span class="badge-tag">Featured</span>
+          {% endif %}
+          {% if prod.default_variant and prod.default_variant.discount_percentage > 0 %}
+            <span class="badge-discount">{{ prod.default_variant.discount_percentage }}% OFF</span>
+          {% endif %}
+        </a>
+        <div class="card-body">
+          <div class="card-category">{{ prod.category.name if prod.category else 'Fragrance' }}</div>
+          <h3 class="card-title">
+            <a href="{{ url_for('products.product_detail', slug=prod.slug) }}">{{ prod.name }}</a>
+          </h3>
+          {% if prod.inspired_by %}
+            <div style="font-size: 0.72rem; color: #8C6D23; font-weight: 600; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.25rem;">
+              <span style="opacity: 0.75;">✨</span>
+              <span>{{ prod.inspired_by if 'inspired' in prod.inspired_by.lower() else 'Inspired by ' ~ prod.inspired_by }}</span>
+            </div>
+          {% endif %}
+          {% if prod.short_description %}
+            <p class="card-notes">{{ prod.short_description }}</p>
+          {% endif %}
+          
+          <div class="card-pricing">
+            {% if prod.default_variant %}
+              <span class="price-current">{{ prod.default_variant.effective_price | currency }}</span>
+              {% if prod.default_variant.discounted_price and prod.default_variant.discounted_price < prod.default_variant.price %}
+                <span class="price-original">{{ prod.default_variant.price | currency }}</span>
+              {% endif %}
+            {% endif %}
+          </div>
+          {% if not prod.in_stock %}
+            <div style="font-size: 0.72rem; color: #C62828; font-weight: 700; margin-top: 0.25rem;">● Out of Stock</div>
+          {% elif prod.default_variant and prod.default_variant.stock <= 5 %}
+            <div style="font-size: 0.72rem; color: #E65100; font-weight: 700; margin-top: 0.25rem;">⚡ Low Stock &bull; Grab yours now!</div>
+          {% endif %}
+
+          <div style="margin-top: 1rem;">
+            {% if prod.default_variant and prod.in_stock and prod.default_variant.stock > 0 %}
+              <button class="btn btn-secondary btn-sm btn-block" data-add-cart data-variant-id="{{ prod.default_variant.id }}">
+                Add to Bag
+              </button>
+            {% else %}
+              <button class="btn btn-secondary btn-sm btn-block" disabled style="opacity: 0.6; cursor: not-allowed;">
+                Out of Stock
+              </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {# Server-side Pagination Links #}
+    {% if pagination and pagination.pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 3rem;">
+      {% if pagination.has_prev %}
+        <a href="{{ url_for('products.product_list', page=pagination.prev_num, category=request.args.get('category'), q=search_query, sort=sort_by) }}" class="btn btn-secondary btn-sm">&larr; Previous</a>
+      {% endif %}
+
+      {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+          <a href="{{ url_for('products.product_list', page=p, category=request.args.get('category'), q=search_query, sort=sort_by) }}" 
+             class="btn btn-sm {{ 'btn-dark' if p == pagination.page else 'btn-secondary' }}">
+            {{ p }}
+          </a>
+        {% else %}
+          <span style="padding: 0.4rem 0.8rem; color: var(--text-light);">...</span>
+        {% endif %}
+      {% endfor %}
+
+      {% if pagination.has_next %}
+        <a href="{{ url_for('products.product_list', page=pagination.next_num, category=request.args.get('category'), q=search_query, sort=sort_by) }}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  {% else %}
+    <div style="text-align: center; padding: 5rem 0; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+      <h3 style="margin-bottom: 0.5rem;">No Fragrances Found</h3>
+      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Try modifying your search query or selecting a different category.</p>
+      <a href="{{ url_for('products.product_list') }}" class="btn btn-primary">Browse All Fragrances</a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

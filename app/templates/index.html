@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block title %}Artisanal Fine Fragrances & Car Perfumes{% endblock %}
+{% block meta_description %}Experience luxury Eau de Parfums and handcrafted car diffusers by {{ brand_name }}. Pure botanical extracts and enduring elegance.{% endblock %}
+
+{% block head %}
+{% if banners and banners[0] %}
+  <link rel="preload" as="image" href="{{ banners[0].image_url }}" fetchpriority="high">
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{# 1. Hero Promotional Slider / Banner #}
+{% if banners %}
+<section class="hero-slider-section" id="hero-slider" aria-label="Featured Promotions">
+  <div class="container hero-slider-container">
+    <div class="hero-slides-track">
+      {% for hero in banners %}
+      {% set op = ((hero.overlay_opacity or 55) / 100)|round(2) %}
+      {% set op_start = (op * 1.15)|round(2) if (op * 1.15) <= 0.98 else 0.98 %}
+      {% set op_mid = (op * 0.85)|round(2) %}
+      {% set op_end = (op * 0.50)|round(2) %}
+      <div class="hero-slide {% if loop.first %}active{% endif %}" data-slide-index="{{ loop.index0 }}" style="background-image: linear-gradient(90deg, rgba(14, 13, 11, {{ op_start }}) 0%, rgba(14, 13, 11, {{ op_mid }}) 55%, rgba(14, 13, 11, {{ op_end }}) 100%), url('{{ hero.image_url }}');">
+        <div class="hero-content">
+          {% if hero.tagline %}
+            <span class="hero-tagline"><span class="hero-badge">{{ hero.tagline }}</span></span>
+          {% else %}
+            <span class="hero-tagline">{{ brand_name }} Luxury Collection</span>
+          {% endif %}
+
+          <h1 class="hero-title">{{ hero.title }}</h1>
+
+          {% if hero.subtitle %}
+            <p class="hero-desc">{{ hero.subtitle }}</p>
+          {% endif %}
+
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <a href="{{ hero.resolved_link_url }}" class="btn btn-primary hero-btn-main">
+              {{ hero.display_button_text }} &rarr;
+            </a>
+            {% if hero.secondary_button_text and hero.secondary_button_link %}
+              <a href="{{ hero.secondary_button_link }}" class="btn btn-secondary hero-btn-sub">
+                {{ hero.secondary_button_text }}
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if banners|length > 1 %}
+    {# Previous & Next Navigation Controls #}
+    <button type="button" class="hero-nav-arrow hero-nav-prev" id="hero-prev" aria-label="Previous Slide">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
+    <button type="button" class="hero-nav-arrow hero-nav-next" id="hero-next" aria-label="Next Slide">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </button>
+
+    {# Navigation Dots #}
+    <div class="hero-dots" id="hero-dots">
+      {% for hero in banners %}
+      <button type="button" class="hero-dot {% if loop.first %}active{% endif %}" data-index="{{ loop.index0 }}" aria-label="Slide {{ loop.index }}"></button>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+<div class="container">
+
+  {# 2. Shop By Category #}
+  {% if categories %}
+  <section style="margin-bottom: 4rem;">
+    <div class="section-header">
+      <span class="section-tag">Collections</span>
+      <h2 class="section-title">Shop by Category</h2>
+      <p class="section-subtitle">Fine body fragrances and enduring car scent diffusers</p>
+    </div>
+    <div class="category-grid">
+      {% for cat in categories %}
+      {% set bg_img = cat.display_image_url or cat.image_url %}
+      <a href="{{ url_for('products.category_detail', slug=cat.slug) }}" 
+         class="category-card {{ 'has-bg-image' if bg_img else '' }}" 
+         style="{% if bg_img %}background-image: linear-gradient(180deg, rgba(20, 18, 16, 0.22) 0%, rgba(20, 18, 16, 0.82) 100%), url('{{ bg_img }}');{% else %}background: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(244,239,235,0.95) 100%);{% endif %}">
+        <div class="category-card-inner">
+          <span class="category-card-tag">Curated Range</span>
+          <h3 class="category-card-title">{{ cat.name }}</h3>
+          {% if cat.description %}
+            <p class="category-card-desc">{{ cat.description }}</p>
+          {% endif %}
+          <span class="btn {{ 'btn-primary' if bg_img else 'btn-secondary' }} btn-sm category-card-btn">Explore Range &rarr;</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# 3. Featured Products #}
+  {% if featured_products %}
+  <section style="margin-bottom: 4rem;">
+    <div class="section-header">
+      <span class="section-tag">Artisanal Blends</span>
+      <h2 class="section-title">Featured Creations</h2>
+      <p class="section-subtitle">Selected perfumes hand-poured with high-concentration IFRA oils</p>
+    </div>
+    <div class="product-grid">
+      {% for prod in featured_products %}
+      <div class="product-card">
+        <a href="{{ url_for('products.product_detail', slug=prod.slug) }}" class="card-img-wrap">
+          <img src="{{ prod.thumbnail_url }}" {% if prod.primary_image_srcset %}srcset="{{ prod.primary_image_srcset }}" sizes="(max-width: 768px) 50vw, 300px"{% endif %} alt="{{ prod.name }}" loading="lazy" width="400" height="400">
+          {% if not prod.in_stock %}
+            <span class="badge-tag" style="background: #C62828; color: #fff; font-weight: 700;">Out of Stock</span>
+          {% elif prod.default_variant and prod.default_variant.stock <= 5 %}
+            <span class="badge-tag" style="background: #E65100; color: #fff; font-weight: 700;">⚡ Low Stock (Only {{ prod.default_variant.stock }} Left)</span>
+          {% elif prod.featured %}
+            <span class="badge-tag">Featured</span>
+          {% endif %}
+          {% if prod.default_variant and prod.default_variant.discount_percentage > 0 %}
+            <span class="badge-discount">{{ prod.default_variant.discount_percentage }}% OFF</span>
+          {% endif %}
+        </a>
+        <div class="card-body">
+          <div class="card-category">{{ prod.category.name if prod.category else 'Fragrance' }}</div>
+          <h3 class="card-title"><a href="{{ url_for('products.product_detail', slug=prod.slug) }}">{{ prod.name }}</a></h3>
+          {% if prod.inspired_by %}
+            <div style="font-size: 0.72rem; color: #8C6D23; font-weight: 600; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.25rem;">
+              <span style="opacity: 0.75;">✨</span>
+              <span>{{ prod.inspired_by if 'inspired' in prod.inspired_by.lower() else 'Inspired by ' ~ prod.inspired_by }}</span>
+            </div>
+          {% endif %}
+          {% if prod.short_description %}
+            <p class="card-notes">{{ prod.short_description }}</p>
+          {% endif %}
+          
+          <div class="card-pricing">
+            {% if prod.default_variant %}
+              <span class="price-current">{{ prod.default_variant.effective_price | currency }}</span>
+              {% if prod.default_variant.discounted_price and prod.default_variant.discounted_price < prod.default_variant.price %}
+                <span class="price-original">{{ prod.default_variant.price | currency }}</span>
+              {% endif %}
+            {% endif %}
+          </div>
+          {% if not prod.in_stock %}
+            <div style="font-size: 0.72rem; color: #C62828; font-weight: 700; margin-top: 0.25rem;">● Out of Stock</div>
+          {% elif prod.default_variant and prod.default_variant.stock <= 5 %}
+            <div style="font-size: 0.72rem; color: #E65100; font-weight: 700; margin-top: 0.25rem;">⚡ Low Stock &bull; Grab yours now!</div>
+          {% endif %}
+          
+          <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+            {% if prod.default_variant and prod.in_stock and prod.default_variant.stock > 0 %}
+              <button class="btn btn-secondary btn-sm btn-block" data-add-cart data-variant-id="{{ prod.default_variant.id }}">
+                Add to Bag
+              </button>
+            {% else %}
+              <button class="btn btn-secondary btn-sm btn-block" disabled style="opacity: 0.6; cursor: not-allowed;">
+                Out of Stock
+              </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# 4. Curated Combos #}
+  {% if combos %}
+  <section style="margin-bottom: 4rem;">
+    <div class="section-header">
+      <span class="section-tag">Value Sets</span>
+      <h2 class="section-title">Curated Gift Combos</h2>
+      <p class="section-subtitle">Harmonious fragrance sets paired with luxury car diffusers</p>
+    </div>
+    <div class="combo-grid">
+      {% for combo in combos %}
+      <div class="combo-card">
+        <a href="{{ url_for('products.combo_detail', slug=combo.slug) }}" class="card-img-wrap">
+          <img src="{{ combo.thumbnail_url }}" {% if combo.image_srcset %}srcset="{{ combo.image_srcset }}" sizes="(max-width: 768px) 100vw, 400px"{% endif %} alt="{{ combo.name }}" loading="lazy" width="400" height="400">
+          {% if combo.savings > 0 %}
+            <span class="badge-discount">Save {{ combo.savings | currency }}</span>
+          {% endif %}
+        </a>
+        <div class="combo-body">
+          {% if combo.savings > 0 %}
+            <span class="combo-savings-tag">Save {{ combo.savings | currency }} vs Individual</span>
+          {% endif %}
+          <h3 class="card-title" style="margin-bottom: 0.5rem;"><a href="{{ url_for('products.combo_detail', slug=combo.slug) }}">{{ combo.name }}</a></h3>
+          <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem; flex: 1;">{{ combo.short_description }}</p>
+          
+          <div class="card-pricing" style="margin-bottom: 1rem;">
+            <span class="price-current">{{ combo.combo_price | currency }}</span>
+            {% if combo.original_price > combo.combo_price %}
+              <span class="price-original">{{ combo.original_price | currency }}</span>
+            {% endif %}
+          </div>
+          
+          <a href="{{ url_for('products.combo_detail', slug=combo.slug) }}" class="btn btn-secondary btn-sm btn-block">
+            View Combo Set &rarr;
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# 5. Best Sellers #}
+  {% if bestsellers %}
+  <section style="margin-bottom: 4rem;">
+    <div class="section-header">
+      <span class="section-tag">Customer Favorites</span>
+      <h2 class="section-title">Most Loved Scents</h2>
+      <p class="section-subtitle">Our highest rated Eau de Parfums and wooden diffusers</p>
+    </div>
+    <div class="product-grid">
+      {% for prod in bestsellers %}
+      <div class="product-card">
+        <a href="{{ url_for('products.product_detail', slug=prod.slug) }}" class="card-img-wrap">
+          <img src="{{ prod.thumbnail_url }}" {% if prod.primary_image_srcset %}srcset="{{ prod.primary_image_srcset }}" sizes="(max-width: 768px) 50vw, 300px"{% endif %} alt="{{ prod.name }}" loading="lazy" width="400" height="400">
+          {% if not prod.in_stock %}
+            <span class="badge-tag" style="background: #C62828; color: #fff; font-weight: 700;">Out of Stock</span>
+          {% elif prod.default_variant and prod.default_variant.stock <= 5 %}
+            <span class="badge-tag" style="background: #E65100; color: #fff; font-weight: 700;">⚡ Low Stock (Only {{ prod.default_variant.stock }} Left)</span>
+          {% else %}
+            <span class="badge-tag" style="background: var(--gold-primary); color: #fff;">Bestseller</span>
+          {% endif %}
+        </a>
+        <div class="card-body">
+          <div class="card-category">{{ prod.category.name if prod.category else 'Fragrance' }}</div>
+          <h3 class="card-title"><a href="{{ url_for('products.product_detail', slug=prod.slug) }}">{{ prod.name }}</a></h3>
+          {% if prod.inspired_by %}
+            <div style="font-size: 0.72rem; color: #8C6D23; font-weight: 600; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.25rem;">
+              <span style="opacity: 0.75;">✨</span>
+              <span>{{ prod.inspired_by if 'inspired' in prod.inspired_by.lower() else 'Inspired by ' ~ prod.inspired_by }}</span>
+            </div>
+          {% endif %}
+          {% if prod.short_description %}
+            <p class="card-notes">{{ prod.short_description }}</p>
+          {% endif %}
+          
+          <div class="card-pricing">
+            {% if prod.default_variant %}
+              <span class="price-current">{{ prod.default_variant.effective_price | currency }}</span>
+              {% if prod.default_variant.discounted_price and prod.default_variant.discounted_price < prod.default_variant.price %}
+                <span class="price-original">{{ prod.default_variant.price | currency }}</span>
+              {% endif %}
+            {% endif %}
+          </div>
+          {% if not prod.in_stock %}
+            <div style="font-size: 0.72rem; color: #C62828; font-weight: 700; margin-top: 0.25rem;">● Out of Stock</div>
+          {% elif prod.default_variant and prod.default_variant.stock <= 5 %}
+            <div style="font-size: 0.72rem; color: #E65100; font-weight: 700; margin-top: 0.25rem;">⚡ Low Stock &bull; Grab yours now!</div>
+          {% endif %}
+
+          <div style="margin-top: 1rem;">
+            {% if prod.default_variant and prod.in_stock and prod.default_variant.stock > 0 %}
+              <button class="btn btn-secondary btn-sm btn-block" data-add-cart data-variant-id="{{ prod.default_variant.id }}">
+                Add to Bag
+              </button>
+            {% else %}
+              <button class="btn btn-secondary btn-sm btn-block" disabled style="opacity: 0.6; cursor: not-allowed;">
+                Out of Stock
+              </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# 6. Why Choose Scented Bubbles #}
+  <section class="features-section">
+    <div class="features-grid">
+      <div class="feature-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+        </svg>
+        <h4>High Oil Concentration</h4>
+        <p>Pure Eau de Parfum formulations yielding 12+ hours of lingering sillage and projection.</p>
+      </div>
+
+      <div class="feature-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+        <h4>Handcrafted In India</h4>
+        <p>Blended in artisanal small batches using IFRA certified oils and sustainably sourced woods.</p>
+      </div>
+
+      <div class="feature-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="1" y="3" width="15" height="13"></rect>
+          <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+          <circle cx="5.5" cy="18.5" r="2.5"></circle>
+          <circle cx="18.5" cy="18.5" r="2.5"></circle>
+        </svg>
+        <h4>Complimentary Delivery</h4>
+        <p>Free express courier across India on all orders exceeding ₹{{ store_settings.get('free_delivery_threshold', '999') }}.</p>
+      </div>
+
+      <div class="feature-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <h4>Direct WhatsApp Support</h4>
+        <p>Instant personal assistance directly with our fragrance concierge via WhatsApp.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}

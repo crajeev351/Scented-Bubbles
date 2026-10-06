@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Curated Fragrance Combos{% endblock %}
+{% block meta_description %}Save up to 30% on curated perfume and car diffuser sets by {{ brand_name }}. Perfectly paired scents for home, body, and travel.{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2rem; padding-bottom: 4rem;">
+
+  <div style="text-align: center; margin-bottom: 3rem;">
+    <span class="section-tag">{{ brand_name }} Exclusive Sets</span>
+    <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">Curated Fragrance Combos</h1>
+    <p style="color: var(--text-muted); max-width: 600px; margin: 0 auto;">
+      Specially bundled Eau de Parfums and luxury automotive diffusers designed to complement each other with exceptional savings.
+    </p>
+  </div>
+
+  {% if combos %}
+  <div class="combo-grid">
+    {% for combo in combos %}
+    <div class="combo-card">
+      <a href="{{ url_for('products.combo_detail', slug=combo.slug) }}" class="card-img-wrap">
+        <img src="{{ combo.thumbnail_url }}" {% if combo.image_srcset %}srcset="{{ combo.image_srcset }}" sizes="(max-width: 768px) 100vw, 400px"{% endif %} alt="{{ combo.name }}" loading="lazy" width="400" height="400">
+        {% if combo.savings > 0 %}
+          <span class="badge-discount">Save {{ combo.savings | currency }}</span>
+        {% endif %}
+      </a>
+      <div class="combo-body">
+        {% if combo.savings > 0 %}
+          <span class="combo-savings-tag">Save {{ combo.savings | currency }} vs Separate</span>
+        {% endif %}
+        <h3 class="card-title" style="margin-bottom: 0.5rem;">
+          <a href="{{ url_for('products.combo_detail', slug=combo.slug) }}">{{ combo.name }}</a>
+        </h3>
+        <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.25rem; flex: 1;">
+          {{ combo.short_description }}
+        </p>
+        
+        {# Included Items Summary #}
+        <div style="background: var(--bg-subtle); padding: 0.75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem; font-size: 0.8125rem;">
+          <strong style="display: block; margin-bottom: 0.35rem; color: var(--text-main);">Included in this set:</strong>
+          <ul style="padding-left: 1.25rem; color: var(--text-muted);">
+            {% for item in combo.items %}
+              <li>{{ item.quantity }}x {{ item.variant.product.name }} ({{ item.variant.size_label }})</li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div class="card-pricing" style="margin-bottom: 1.25rem;">
+          <span class="price-current">{{ combo.combo_price | currency }}</span>
+          {% if combo.original_price > combo.combo_price %}
+            <span class="price-original">{{ combo.original_price | currency }}</span>
+          {% endif %}
+        </div>
+        
+        <a href="{{ url_for('products.combo_detail', slug=combo.slug) }}" class="btn btn-secondary btn-sm btn-block">
+          View Set &amp; Add &rarr;
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <div style="text-align: center; padding: 4rem 0;">
+      <h3>No Combos Available</h3>
+      <p style="color: var(--text-muted);">Check back soon for upcoming holiday and gift sets.</p>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

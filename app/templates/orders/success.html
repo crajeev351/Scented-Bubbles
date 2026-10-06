@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Order Confirmed | #{{ order.order_id }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 3rem; padding-bottom: 5rem;">
+
+  <div style="max-width: 720px; margin: 0 auto;">
+    
+    {# Success Card #}
+    <div style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 3rem 2.5rem; text-align: center; margin-bottom: 2rem; box-shadow: var(--shadow-sm);">
+      <div style="width: 64px; height: 64px; border-radius: var(--radius-pill); background: var(--color-success-bg); color: var(--color-success); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+
+      <span class="section-tag" style="color: var(--color-success);">Order Placed Successfully</span>
+      <h1 style="font-size: 2.2rem; margin-bottom: 0.5rem;">Thank You, {{ order.shipping_name }}!</h1>
+      <p style="color: var(--text-muted); font-size: 1rem; max-width: 520px; margin: 0 auto 1.5rem;">
+        Your order <strong>#{{ order.order_id }}</strong> has been recorded and is now in our fulfillment queue.
+      </p>
+
+      {# WhatsApp Click-to-chat CTA #}
+      {% if whatsapp_link %}
+      <div style="margin: 2rem 0; background: #E8F5E9; border: 1px solid #C8E6C9; padding: 1.5rem; border-radius: var(--radius-md); text-align: center;">
+        <h4 style="color: #2E7D32; font-family: var(--font-sans); margin-bottom: 0.4rem; font-size: 1.05rem;">
+          💬 Connect on WhatsApp for Instant Updates
+        </h4>
+        <p style="font-size: 0.875rem; color: #388E3C; margin-bottom: 1rem;">
+          Click below to send your order confirmation directly to our {{ brand_name }} team.
+        </p>
+        <a href="{{ whatsapp_link }}" target="_blank" rel="noopener noreferrer" class="btn" style="background: #25D366; color: #FFFFFF; font-weight: 700; border-radius: var(--radius-pill); padding: 0.75rem 1.8rem;">
+          Open Order Chat on WhatsApp &rarr;
+        </a>
+      </div>
+      {% endif %}
+
+      {# Post-Checkout Account Conversion Card (Shown if Guest) #}
+      {% if not current_user %}
+      <div id="quick-signup-card" style="margin: 2rem 0; background: var(--gold-light); border: 1px solid var(--border-light); padding: 1.75rem; border-radius: var(--radius-md); text-align: left;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;">
+          <span style="font-size: 1.25rem;">✨</span>
+          <h4 style="margin: 0; font-size: 1.05rem; color: var(--gold-dark); font-family: var(--font-sans); font-weight: 700;">
+            Track with 1-Click &amp; Save Details for Future Orders
+          </h4>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+          Set a password for your number <strong>{{ order.shipping_phone }}</strong> to create your {{ brand_name }} customer account.
+        </p>
+
+        <form id="quick-signup-form" onsubmit="handleQuickSignup(event)">
+          <input type="hidden" id="qs-name" value="{{ order.shipping_name }}">
+          <input type="hidden" id="qs-phone" value="{{ order.shipping_phone }}">
+          <input type="hidden" id="qs-email" value="{{ (order.customer.email if order.customer and order.customer.email else '') }}">
+          
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <input type="password" id="qs-password" placeholder="Create a password (min 6 chars)" minlength="6" required class="form-control" style="flex: 1; min-width: 220px; background: #FFFFFF;">
+            <button type="submit" id="qs-btn" class="btn btn-primary" style="padding: 0.75rem 1.5rem; white-space: nowrap;">
+              Save My Account &rarr;
+            </button>
+          </div>
+          <div id="qs-feedback" style="font-size: 0.8125rem; margin-top: 0.6rem; display: none;"></div>
+        </form>
+      </div>
+      {% endif %}
+
+      <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+        <a href="{{ url_for('orders.track_order') }}" class="btn btn-secondary btn-sm">
+          Track Your Order
+        </a>
+        <a href="{{ url_for('products.product_list') }}" class="btn btn-primary btn-sm">
+          Continue Shopping
+        </a>
+      </div>
+    </div>
+
+    {# Order Details Card #}
+    <div style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 2rem;">
+      <h3 style="font-size: 1.25rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
+        Order Summary ({{ order.order_id }})
+      </h3>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; font-size: 0.875rem;">
+        <div>
+          <div style="color: var(--text-muted); margin-bottom: 0.25rem;">Payment Method:</div>
+          <strong>{{ order.payment_method }}</strong>
+          <span style="font-size: 0.75rem; background: var(--bg-subtle); padding: 0.2rem 0.5rem; border-radius: var(--radius-pill); margin-left: 0.4rem;">
+            {{ order.payment_status }}
+          </span>
+          {% if order.latest_payment and order.latest_payment.utr %}
+            <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.25rem;">
+              UTR: {{ order.latest_payment.utr }}
+            </div>
+          {% endif %}
+        </div>
+
+        <div>
+          <div style="color: var(--text-muted); margin-bottom: 0.25rem;">Delivery Destination:</div>
+          <div><strong>{{ order.shipping_name }}</strong> ({{ order.shipping_phone }})</div>
+          <div style="color: var(--text-muted); font-size: 0.8125rem;">
+            {{ order.shipping_address_line1 }}
+            {% if order.shipping_address_line2 %}, {{ order.shipping_address_line2 }}{% endif %},
+            {{ order.shipping_city }}, {{ order.shipping_state }} - {{ order.shipping_pincode }}
+          </div>
+        </div>
+      </div>
+
+      {# Items Snapshot Table #}
+      <div style="border-top: 1px solid var(--border-light); padding-top: 1rem;">
+        <h4 style="font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-light); margin-bottom: 0.75rem;">
+          Items Purchased
+        </h4>
+        {% for item in order.items %}
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--border-light); font-size: 0.9375rem;">
+          <div>
+            <strong>{{ item.product_name_snapshot }}</strong>
+            <span style="color: var(--text-muted); font-size: 0.8125rem;">({{ item.variant_label_snapshot }}) &times; {{ item.quantity }}</span>
+          </div>
+          <div style="font-weight: 600;">
+            {{ item.total_price | currency }}
+          </div>
+        </div>
+        {% endfor %}
+
+        <div style="padding-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9375rem;">
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Subtotal:</span>
+            <span>{{ order.subtotal | currency }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Delivery Charge:</span>
+            <span>{{ 'FREE' if order.delivery_charge == 0 else (order.delivery_charge | currency) }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: 700; border-top: 1px solid var(--border-light); padding-top: 0.5rem;">
+            <span>Total Amount:</span>
+            <span style="color: var(--gold-dark);">{{ order.total_amount | currency }}</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Wipe out any unauthenticated device tracking cache to protect privacy
+try {
+  localStorage.removeItem("sb_recent_orders");
+} catch (e) {}
+
+// 2. Handle 1-click password creation
+function handleQuickSignup(event) {
+  event.preventDefault();
+  const password = document.getElementById("qs-password").value;
+  const name = document.getElementById("qs-name").value;
+  const phone = document.getElementById("qs-phone").value;
+  const email = document.getElementById("qs-email").value;
+  const btn = document.getElementById("qs-btn");
+  const feedback = document.getElementById("qs-feedback");
+
+  if (!password || password.length < 6) {
+    feedback.style.display = "block";
+    feedback.style.color = "var(--color-danger)";
+    feedback.textContent = "Please enter a password with at least 6 characters.";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Creating Account...";
+
+  const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+  const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
+  fetch("{{ url_for('account.quick_signup') }}", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": csrfToken
+    },
+    body: JSON.stringify({
+      password: password,
+      name: name,
+      phone: phone,
+      email: email
+    })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.success) {
+      document.getElementById("quick-signup-card").innerHTML = `
+        <div style="background: #E8F5E9; border: 1px solid #C8E6C9; padding: 1.25rem; border-radius: var(--radius-sm); text-align: center;">
+          <h4 style="color: #2E7D32; margin-bottom: 0.25rem; font-family: var(--font-sans);">🎉 Account Created &amp; Linked!</h4>
+          <p style="font-size: 0.85rem; color: #388E3C; margin-bottom: 0.75rem;">
+            Your account is ready. You can now view all your past and current shipments in one place.
+          </p>
+          <a href="${data.redirect_url}" class="btn btn-primary btn-sm">
+            View My Orders Dashboard &rarr;
+          </a>
+        </div>
+      `;
+    } else {
+      btn.disabled = false;
+      btn.textContent = "Save My Account →";
+      feedback.style.display = "block";
+      feedback.style.color = "var(--color-danger)";
+      feedback.textContent = data.error || "Failed to create account. Please try again.";
+    }
+  })
+  .catch(function(err) {
+    btn.disabled = false;
+    btn.textContent = "Save My Account →";
+    feedback.style.display = "block";
+    feedback.style.color = "var(--color-danger)";
+    feedback.textContent = "Network error. Please try again.";
+  });
+}
+</script>
+{% endblock %}
+

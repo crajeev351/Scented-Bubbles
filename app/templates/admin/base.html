@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}Admin Dashboard{% endblock %} | {{ brand_name }} Portal</title>
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    /* Admin Dedicated Styles */
+    .admin-layout {
+      display: flex;
+      min-height: 100vh;
+      background: #F4EFEB;
+    }
+    .admin-sidebar {
+      width: 250px;
+      background: #1C1A18;
+      color: #FAF8F5;
+      padding: 1.5rem 0;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      transition: margin-left 0.25s ease;
+      position: relative;
+      z-index: 100;
+    }
+    .admin-sidebar.collapsed {
+      margin-left: -250px;
+    }
+    .admin-sidebar-header {
+      padding: 0 1.5rem 1.5rem;
+      border-bottom: 1px solid #2B2825;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .admin-nav-list {
+      list-style: none;
+      padding: 1rem 0;
+      flex: 1;
+    }
+    .admin-nav-item a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.5rem;
+      color: #B5AFA6;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    .admin-nav-item a:hover, .admin-nav-item a.active {
+      color: #FFFFFF;
+      background: rgba(197, 160, 89, 0.12);
+      border-left-color: var(--gold-primary);
+    }
+    .admin-main-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+    .admin-topbar {
+      background: #FFFFFF;
+      border-bottom: 1px solid var(--border-light);
+      padding: 0.85rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .admin-body {
+      padding: 1.5rem 2rem;
+      flex: 1;
+      min-width: 0;
+    }
+    @media (max-width: 1200px) {
+      .admin-topbar {
+        padding: 0.75rem 1.25rem;
+      }
+      .admin-body {
+        padding: 1.25rem 1.25rem;
+      }
+    }
+    @media (max-width: 768px) {
+      .admin-topbar {
+        padding: 0.65rem 0.85rem;
+      }
+      .admin-body {
+        padding: 1rem 0.75rem;
+      }
+    }
+    .admin-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      padding: 1.75rem;
+      margin-bottom: 2rem;
+    }
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .table-responsive::-webkit-scrollbar {
+      height: 6px;
+    }
+    .table-responsive::-webkit-scrollbar-track {
+      background: #F4EFEB;
+      border-radius: 3px;
+    }
+    .table-responsive::-webkit-scrollbar-thumb {
+      background: #D5CBBF;
+      border-radius: 3px;
+    }
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+      background: var(--gold-primary);
+    }
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .admin-table th {
+      text-align: left;
+      padding: 0.65rem 0.85rem;
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.72rem;
+      border-bottom: 1px solid var(--border-light);
+      white-space: nowrap;
+    }
+    .admin-table td {
+      padding: 0.75rem 0.85rem;
+      border-bottom: 1px solid var(--border-light);
+      vertical-align: middle;
+    }
+    .admin-table tr:hover td {
+      background: #FAF8F5;
+    }
+    /* Hide number input spinners on quick edit fields */
+    .quick-edit-input::-webkit-outer-spin-button,
+    .quick-edit-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .quick-edit-input {
+      -moz-appearance: textfield;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .status-pending { background: #FFF3E0; color: #E65100; }
+    .status-confirmed { background: #E1F5FE; color: #0277BD; }
+    .status-packed { background: #EDE7F6; color: #512DA8; }
+    .status-shipped { background: #E0F2F1; color: #00695C; }
+    .status-delivered { background: #E8F5E9; color: #2E7D32; }
+    .status-cancelled { background: #FFEBEE; color: #C62828; }
+    .status-paid { background: #E8F5E9; color: #2E7D32; }
+    .status-failed { background: #FFEBEE; color: #C62828; }
+    .status-refunded { background: #ECEFF1; color: #455A64; }
+    .status-archived { background: #ECEFF1; color: #546E7A; }
+    
+    .badge-count {
+      background: #C62828;
+      color: #FFFFFF;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: var(--radius-pill);
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <div class="admin-layout">
+    
+    {# Admin Sidebar #}
+    <aside class="admin-sidebar">
+      <div class="admin-sidebar-header">
+        <svg style="width: 24px; height: 24px; color: var(--gold-primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M9 9a3 3 0 0 1 3-3"/>
+          <circle cx="16" cy="8" r="1.5" fill="currentColor"/>
+          <circle cx="7" cy="15" r="1" fill="currentColor"/>
+        </svg>
+        <span style="font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700;">{{ brand_name }}</span>
+      </div>
+
+      <ul class="admin-nav-list">
+        <li class="admin-nav-item">
+          <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint == 'admin.dashboard' else '' }}">
+            <span>📊 Dashboard</span>
+          </a>
+        </li>
+        <li class="admin-nav-item">
+          <a href="{{ url_for('admin.analytics') }}" class="{{ 'active' if 'analytics' in request.endpoint else '' }}">
+            <span>📈 Analytics</span>
+          </a>
+        </li>
+        <li class="admin-nav-item">
+          <a href="{{ url_for('admin.order_list') }}" class="{{ 'active' if 'order' in request.endpoint else '' }}">
+            <span>📦 Orders</span>
+            {% if pending_orders_count and pending_orders_count > 0 %}
+              <span class="badge-count">{{ pending_orders_count }}</span>
+            {% endif %}
+          </a>
+        </li>
+        <li class="admin-nav-item">
+          <a href="{{ url_for('admin.inventory') }}" class="{{ 'active' if 'inventory' in request.endpoint else '' }}">
+            <span>🏷️ Inventory</span>
+            {% if low_stock_count and low_stock_count > 0 %}
+              <span class="badge-count" style="background: #E65100;">{{ low_stock_count }}</span>
+            {% endif %}
+          </a>
+        </li>
+        <li class="admin-nav-item">
+          <a href="{{ url_for('admin.product_list') }}" class="{{ 'active' if 'product' in request.endpoint else '' }}">
+            <span>🌿 Products</span>
+          </a>
+        </li>
+        <li class="admin-nav-item">
+          <a href="{{ url_for('admin.category_list') }}" class="{{ 'active' if 'category' in request.endpoint else '' }}">
+            <span>📁 Categories</span>
+          </a>
+        </li>
+        <li class="admin-nav-item">
+          <a href="{{ url_for('admin.combo_list') }}" class="{{ 'active' if 'combo' in request.endpoint else '' }}">
+            <span>🎁 Combos</span>
+          </a>
+        </li>
+        <li class="admin-nav-item">
+          <a href="{{ url_for('admin.banner_list') }}" class="{{ 'active' if 'banner' in request.endpoint else '' }}">
+            <span>🖼️ Hero Banners</span>
+          </a>
+        </li>
+        <li class="admin-nav-item">
+          <a href="{{ url_for('admin.customer_list') }}" class="{{ 'active' if 'customer' in request.endpoint else '' }}">
+            <span>👥 Customers</span>
+          </a>
+        </li>
+        <li class="admin-nav-item">
+          <a href="{{ url_for('admin.page_list') }}" class="{{ 'active' if 'page' in request.endpoint else '' }}">
+            <span>📄 Policy Pages</span>
+          </a>
+        </li>
+        <li class="admin-nav-item">
+          <a href="{{ url_for('admin.settings') }}" class="{{ 'active' if request.endpoint == 'admin.settings' else '' }}">
+            <span>⚙️ Store Settings</span>
+          </a>
+        </li>
+        <li class="admin-nav-item">
+          <a href="{{ url_for('admin.security') }}" class="{{ 'active' if request.endpoint == 'admin.security' else '' }}">
+            <span>🛡️ Security &amp; 2FA</span>
+          </a>
+        </li>
+      </ul>
+
+      <div style="padding: 1rem 1.5rem; border-top: 1px solid #2B2825; font-size: 0.8125rem;">
+        <a href="{{ url_for('main.index') }}" target="_blank" style="color: var(--gold-primary); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.6rem;">
+          <span>View Live Storefront &nearr;</span>
+        </a>
+        <a href="{{ url_for('admin.logout') }}" style="color: #999;">Sign Out</a>
+      </div>
+    </aside>
+
+    {# Admin Main Content Area #}
+    <div class="admin-main-wrap">
+      
+      {# Topbar #}
+      <header class="admin-topbar">
+        <div style="display: flex; align-items: center; gap: 0.85rem;">
+          <button id="sidebarToggle" type="button" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.6rem; font-size: 1.1rem; line-height: 1; border: 1px solid var(--border-light); background: #FAF8F5; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Sidebar">
+            ☰
+          </button>
+          <div>
+            <span style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.05em;">Admin Portal</span>
+            <h2 style="font-size: 1.25rem; font-family: var(--font-sans); font-weight: 700; margin: 0;">
+              {% block page_title %}Dashboard{% endblock %}
+            </h2>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <span style="font-size: 0.875rem; color: var(--text-muted);">
+            Administrator: <strong>{{ session.get('admin_username', 'Admin') }}</strong>
+          </span>
+          <a href="{{ url_for('admin.logout') }}" class="btn btn-secondary btn-sm">Sign Out</a>
+        </div>
+      </header>
+
+      {# Flash Messages #}
+      <div style="padding: 1rem 2rem 0;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'danger' if category == 'error' else category }}" style="margin-bottom: 1rem;">
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+      </div>
+
+      {# Main Body Content #}
+      <main class="admin-body">
+        {% block content %}{% endblock %}
+      </main>
+
+    </div>
+  </div>
+
+  {# Destructive Action Confirm Modal Helper #}
+  <script>
+    function confirmAction(formId, promptMessage) {
+      if (confirm(promptMessage || 'Are you sure you want to perform this action?')) {
+        document.getElementById(formId).submit();
+      }
+    }
+    // Sidebar toggle persistence
+    (function() {
+      const sidebar = document.querySelector('.admin-sidebar');
+      const toggleBtn = document.getElementById('sidebarToggle');
+      if (toggleBtn && sidebar) {
+        if (localStorage.getItem('sb_admin_sidebar_collapsed') === 'true') {
+          sidebar.classList.add('collapsed');
+        }
+        toggleBtn.addEventListener('click', function() {
+          sidebar.classList.toggle('collapsed');
+          localStorage.setItem('sb_admin_sidebar_collapsed', sidebar.classList.contains('collapsed'));
+        });
+      }
+    })();
+
+    // Global Customer Sensitive Data Reveal / Mask Toggle
+    function toggleReveal(id, btn) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const isMasked = el.textContent.trim() === el.dataset.masked.trim();
+      if (isMasked) {
+        el.textContent = el.dataset.full;
+        btn.textContent = "🔒 Hide";
+        btn.style.color = "var(--color-danger)";
+      } else {
+        el.textContent = el.dataset.masked;
+        btn.textContent = "👁 Reveal";
+        btn.style.color = "var(--text-muted)";
+      }
+    }
+  </script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

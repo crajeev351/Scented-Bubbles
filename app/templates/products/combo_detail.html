@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}{{ combo.name }}{% endblock %}
+{% block meta_description %}{{ combo.short_description or (combo.full_description[:160] if combo.full_description else brand_name) }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2rem; padding-bottom: 4rem;">
+
+  <div style="font-size: 0.8125rem; color: var(--text-light); margin-bottom: 1.5rem;">
+    <a href="{{ url_for('main.index') }}" style="color: var(--text-muted);">Home</a> / 
+    <a href="{{ url_for('products.combo_list') }}" style="color: var(--text-muted);">Combos</a> / 
+    <span>{{ combo.name }}</span>
+  </div>
+
+  <div class="detail-layout">
+    
+    {# Combo Image #}
+    <div class="detail-gallery">
+      <div class="gallery-main">
+        <img src="{{ combo.image_url }}" {% if combo.image_srcset %}srcset="{{ combo.image_srcset }}" sizes="(max-width: 768px) 100vw, 800px"{% endif %} alt="{{ combo.name }}" fetchpriority="high" width="800" height="800">
+      </div>
+    </div>
+
+    {# Combo Information #}
+    <div class="detail-info">
+      <span class="detail-category">Curated Fragrance Duo / Set</span>
+      <h1 class="detail-title">{{ combo.name }}</h1>
+
+      {% if combo.savings > 0 %}
+        <div style="margin-bottom: 1rem;">
+          <span class="combo-savings-tag">
+            You Save {{ combo.savings | currency }} with this bundle
+          </span>
+        </div>
+      {% endif %}
+
+      <div class="detail-price-box">
+        <span class="detail-price">{{ combo.combo_price | currency }}</span>
+        {% if combo.original_price > combo.combo_price %}
+          <span class="detail-price-mrp">{{ combo.original_price | currency }}</span>
+        {% endif %}
+      </div>
+
+      {# Stock availability derived from component variants #}
+      <div style="margin-bottom: 1.5rem;">
+        {% if combo.in_stock %}
+          <span style="color: var(--color-success); font-weight: 600; font-size: 0.875rem;">
+            ● Set Available (All component fragrances in stock)
+          </span>
+        {% else %}
+          <span style="color: var(--color-danger); font-weight: 600; font-size: 0.875rem;">
+            ● Temporarily Unavailable (One or more items currently out of stock)
+          </span>
+        {% endif %}
+      </div>
+
+      <div style="margin-bottom: 2rem; font-size: 0.9375rem; color: var(--text-muted);">
+        <p>{{ combo.full_description or combo.short_description }}</p>
+      </div>
+
+      {# Included Items Breakdown #}
+      <div class="fragrance-notes-card" style="margin-bottom: 2rem;">
+        <h4 style="margin-bottom: 1rem; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-main);">
+          Components Included in this Set
+        </h4>
+        {% for item in combo.items %}
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--border-light);">
+          <div>
+            <strong style="color: var(--text-main);">{{ item.variant.product.name }}</strong>
+            <span style="color: var(--text-muted); font-size: 0.8125rem;">({{ item.variant.size_label }})</span>
+            <div style="font-size: 0.75rem; color: var(--text-light);">Qty: {{ item.quantity }}</div>
+          </div>
+          <div style="text-align: right;">
+            <span style="font-weight: 600;">{{ (item.variant.effective_price * item.quantity) | currency }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      {# Add Combo To Cart Action #}
+      <div>
+        {% if combo.in_stock %}
+          <button id="add-combo-btn" class="btn btn-primary btn-block" style="padding: 1rem;">
+            Add Complete Combo to Bag &bull; {{ combo.combo_price | currency }}
+          </button>
+        {% else %}
+          <button class="btn btn-primary btn-block" disabled style="opacity: 0.6; padding: 1rem;">
+            Component Out of Stock
+          </button>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const addBtn = document.getElementById('add-combo-btn');
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      // Add each item in combo
+      const comboItems = [
+        {% for item in combo.items %}
+          { variant_id: {{ item.variant.id }}, qty: {{ item.quantity }} },
+        {% endfor %}
+      ];
+      comboItems.forEach(it => ScentedCart.addItem(it.variant_id, it.qty));
+      ScentedCart.showToast("Combo set added to bag!");
+      setTimeout(() => {
+        window.location.href = "{{ url_for('cart.view_cart') }}";
+      }, 500);
+    });
+  }
+});
+</script>
+{% endblock %}

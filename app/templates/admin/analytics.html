@@ -1,0 +1,639 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Sales Analytics & Business Intelligence{% endblock %}
+
+{% block extra_head %}
+{# Chart.js loaded ONLY on admin analytics page as strictly specified in guidelines #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  .analytics-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .kpi-card {
+    background: #FFFFFF;
+    border-radius: var(--radius-md);
+    padding: 1.25rem 1.5rem;
+    border: 1px solid var(--border-light);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--gold, #C5A059);
+  }
+  .kpi-label {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+  }
+  .kpi-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .kpi-subtext {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+  }
+
+  .fulfillment-strip {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    background: #FFFFFF;
+    border-radius: var(--radius-md);
+    padding: 1rem 1.5rem;
+    border: 1px solid var(--border-light);
+    margin-bottom: 2rem;
+    align-items: center;
+  }
+  .fulfillment-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    background: var(--bg-cream, #FAF7F2);
+    border: 1px solid var(--border-light);
+  }
+
+  .charts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .chart-card {
+    background: #FFFFFF;
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    border: 1px solid var(--border-light);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    display: flex;
+    flex-direction: column;
+  }
+  .chart-card.full-width {
+    grid-column: span 2;
+  }
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+  }
+  .chart-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .chart-container {
+    position: relative;
+    height: 280px;
+    width: 100%;
+  }
+
+  .analytics-table-wrap {
+    margin-top: 1.25rem;
+    border-top: 1px solid var(--border-light);
+    padding-top: 1rem;
+  }
+  .analytics-table {
+    width: 100%;
+    font-size: 0.8125rem;
+    border-collapse: collapse;
+  }
+  .analytics-table th {
+    text-align: left;
+    color: var(--text-muted);
+    font-weight: 600;
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .analytics-table td {
+    padding: 0.45rem 0.5rem;
+    border-bottom: 1px solid #F5EFEB;
+    color: var(--text-main);
+  }
+
+  .filter-panel {
+    background: #FFFFFF;
+    border-radius: var(--radius-md);
+    padding: 1.25rem 1.5rem;
+    border: 1px solid var(--border-light);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  @media (max-width: 992px) {
+    .charts-grid { grid-template-columns: 1fr; }
+    .chart-card.full-width { grid-column: span 1; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header-actions" style="margin-bottom: 1.5rem;">
+  <div>
+    <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">
+      Business Analytics & Reports
+    </h1>
+    <p style="color: var(--text-muted); font-size: 0.875rem;">
+      High-performance real-time analytics computed directly by SQL aggregations.
+    </p>
+  </div>
+</div>
+
+{# Date-Range Filter Form #}
+<div class="filter-panel" style="flex-direction: column; align-items: stretch; gap: 1rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <form method="GET" action="{{ url_for('admin.analytics') }}" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <label style="font-size: 0.8125rem; font-weight: 600; color: var(--text-muted);">From:</label>
+        <input type="date" name="start_date" value="{{ start_date }}" class="form-control" style="padding: 0.4rem 0.75rem; font-size: 0.875rem;">
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <label style="font-size: 0.8125rem; font-weight: 600; color: var(--text-muted);">To:</label>
+        <input type="date" name="end_date" value="{{ end_date }}" class="form-control" style="padding: 0.4rem 0.75rem; font-size: 0.875rem;">
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <label style="font-size: 0.8125rem; font-weight: 600; color: var(--text-muted);">Filter Basis:</label>
+        <select name="date_basis" class="form-control" style="padding: 0.4rem 0.75rem; font-size: 0.875rem; background: var(--bg-surface);">
+          <option value="placed" {% if date_basis != 'activity' %}selected{% endif %}>Order Placed Date (Revenue)</option>
+          <option value="activity" {% if date_basis == 'activity' %}selected{% endif %}>Fulfillment &amp; Activity Date</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="padding: 0.45rem 1.2rem; font-size: 0.875rem;">
+        Filter Range
+      </button>
+      {% if start_date or end_date %}
+        <a href="{{ url_for('admin.analytics') }}" class="btn btn-secondary" style="padding: 0.45rem 1rem; font-size: 0.875rem;">
+          Clear
+        </a>
+      {% endif %}
+    </form>
+
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;" onclick="setPreset(7)">Last 7 Days</button>
+      <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;" onclick="setPreset(30)">Last 30 Days</button>
+      <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;" onclick="setPreset(90)">Last 90 Days</button>
+    </div>
+  </div>
+
+  <div style="font-size: 0.78rem; color: var(--text-muted); background: var(--bg-subtle); padding: 0.5rem 0.85rem; border-radius: 4px; display: flex; align-items: center; gap: 0.5rem;">
+    <span>💡</span>
+    <span>
+      {% if date_basis == 'activity' %}
+        <strong>Fulfillment Activity View:</strong> Metrics reflect orders that were processed, updated, paid, or delivered within the selected dates.
+      {% else %}
+        <strong>Order Booking View (Standard):</strong> Revenue and orders belong to the date the customer placed the order. Switch <em>Filter Basis</em> to <em>Fulfillment &amp; Activity Date</em> to analyze deliveries processed today.
+      {% endif %}
+    </span>
+  </div>
+</div>
+
+{# Executive KPI Cards #}
+<div class="analytics-kpis">
+  <div class="kpi-card">
+    <div class="kpi-label">Gross Net Revenue</div>
+    <div class="kpi-value" style="color: var(--gold-dark, #A88438);">{{ kpis.net_revenue | currency }}</div>
+    <div class="kpi-subtext">Excludes cancelled orders</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Verified Paid Revenue</div>
+    <div class="kpi-value" style="color: #2E7D32;">{{ kpis.paid_revenue | currency }}</div>
+    <div class="kpi-subtext">Confirmed payments received</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Total Volume Orders</div>
+    <div class="kpi-value">{{ kpis.total_orders }}</div>
+    <div class="kpi-subtext">{{ kpis.valid_orders }} fulfilled or active</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Average Order Value (AOV)</div>
+    <div class="kpi-value">{{ kpis.aov | currency }}</div>
+    <div class="kpi-subtext">Per active order</div>
+  </div>
+</div>
+
+{# Fulfillment & Action Strip #}
+<div class="fulfillment-strip">
+  <span style="font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+    Store Live Pipeline:
+  </span>
+  <div class="fulfillment-pill" style="border-left: 3px solid #2E7D32;">
+    <span style="color: #2E7D32; font-weight: 700;">{{ kpis.live_store_delivered }}</span> Delivered
+  </div>
+  <div class="fulfillment-pill" style="border-left: 3px solid #0097A7;">
+    <span style="color: #0097A7; font-weight: 700;">{{ kpis.live_store_shipped }}</span> Shipped
+  </div>
+  <div class="fulfillment-pill" style="border-left: 3px solid #E65100;">
+    <span style="color: #E65100; font-weight: 700;">{{ kpis.live_store_pending }}</span> Pending Orders
+  </div>
+  <div class="fulfillment-pill" style="border-left: 3px solid #1976D2;">
+    <span style="color: #1976D2; font-weight: 700;">{{ kpis.live_store_pending_upi }}</span> Awaiting UPI Verification
+  </div>
+  {% if start_date or end_date %}
+  <span style="margin-left: auto; font-size: 0.78rem; color: var(--text-muted);">
+    Filtered Range Deliveries: <strong>{{ kpis.delivered_orders_count }}</strong>
+  </span>
+  {% endif %}
+</div>
+
+{# 7 Interactive Charts #}
+<div class="charts-grid">
+  
+  {# 1. Daily Revenue Trend #}
+  <div class="chart-card full-width">
+    <div class="chart-header">
+      <h3 class="chart-title">1. Daily Revenue Trend (INR)</h3>
+      <span style="font-size: 0.8125rem; color: var(--text-muted);">SQL Aggregate Time-Series</span>
+    </div>
+    <div class="chart-container" style="height: 300px;">
+      <canvas id="dailyRevenueChart"></canvas>
+    </div>
+  </div>
+
+  {# 2. Monthly Revenue Trend #}
+  <div class="chart-card">
+    <div class="chart-header">
+      <h3 class="chart-title">2. Monthly Revenue Growth</h3>
+      <span style="font-size: 0.8125rem; color: var(--text-muted);">Gross monthly sales</span>
+    </div>
+    <div class="chart-container">
+      <canvas id="monthlyRevenueChart"></canvas>
+    </div>
+  </div>
+
+  {# 3. Orders by Hour #}
+  <div class="chart-card">
+    <div class="chart-header">
+      <h3 class="chart-title">3. Peak Order Times (24h)</h3>
+      <span style="font-size: 0.8125rem; color: var(--text-muted);">Customer order traffic</span>
+    </div>
+    <div class="chart-container">
+      <canvas id="hourlyOrdersChart"></canvas>
+    </div>
+  </div>
+
+  {# 4. Order Status Distribution #}
+  <div class="chart-card">
+    <div class="chart-header">
+      <h3 class="chart-title">4. Orders by Fulfillment Status</h3>
+      <span style="font-size: 0.8125rem; color: var(--text-muted);">Order lifecycle</span>
+    </div>
+    <div class="chart-container">
+      <canvas id="orderStatusChart"></canvas>
+    </div>
+  </div>
+
+  {# 5. Payment Status Distribution #}
+  <div class="chart-card">
+    <div class="chart-header">
+      <h3 class="chart-title">5. Orders by Payment Status</h3>
+      <span style="font-size: 0.8125rem; color: var(--text-muted);">Payment reconciliations</span>
+    </div>
+    <div class="chart-container">
+      <canvas id="paymentStatusChart"></canvas>
+    </div>
+  </div>
+
+  {# 6. Top Bestsellers #}
+  <div class="chart-card">
+    <div class="chart-header">
+      <h3 class="chart-title">6. Top 10 Bestselling Perfumes (Units Sold)</h3>
+      <span style="font-size: 0.8125rem; color: var(--text-muted);">Customer favorites</span>
+    </div>
+    <div class="chart-container">
+      <canvas id="bestsellersChart"></canvas>
+    </div>
+    {% if bestsellers and bestsellers.top_products %}
+    <div class="analytics-table-wrap">
+      <table class="analytics-table">
+        <thead>
+          <tr>
+            <th style="width: 30px;">#</th>
+            <th>Fragrance Name</th>
+            <th style="text-align: center;">Units</th>
+            <th style="text-align: right;">Revenue</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in bestsellers.top_products[:5] %}
+          <tr>
+            <td style="color: var(--gold-dark); font-weight: 700;">{{ loop.index }}</td>
+            <td style="font-weight: 600;">{{ item.name }}</td>
+            <td style="text-align: center;">{{ item.units }}</td>
+            <td style="text-align: right; font-weight: 600;">₹{{ '{:,.2f}'.format(item.revenue) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+  {# 7. Sales by Category #}
+  <div class="chart-card">
+    <div class="chart-header">
+      <h3 class="chart-title">7. Revenue Share by Category</h3>
+      <span style="font-size: 0.8125rem; color: var(--text-muted);">Category performance</span>
+    </div>
+    <div class="chart-container">
+      <canvas id="categorySalesChart"></canvas>
+    </div>
+    {% if category_sales and category_sales.breakdown %}
+    <div class="analytics-table-wrap">
+      <table class="analytics-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th style="text-align: center;">Units</th>
+            <th style="text-align: right;">Revenue</th>
+            <th style="text-align: right;">Share</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in category_sales.breakdown %}
+          <tr>
+            <td style="font-weight: 600;">{{ item.name }}</td>
+            <td style="text-align: center;">{{ item.units }}</td>
+            <td style="text-align: right; font-weight: 600;">₹{{ '{:,.2f}'.format(item.revenue) }}</td>
+            <td style="text-align: right; color: var(--gold-dark); font-weight: 700;">{{ item.share }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+  function setPreset(days) {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days);
+    
+    const pad = (n) => String(n).padStart(2, '0');
+    const formatLocal = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    window.location.href = `{{ url_for('admin.analytics') }}?start_date=${formatLocal(start)}&end_date=${formatLocal(end)}`;
+  }
+
+  // Pre-aggregated server series passed directly to Chart.js
+  const dailyData = {{ daily_trend | tojson }};
+  const monthlyData = {{ monthly_trend | tojson }};
+  const statusData = {{ status_dist | tojson }};
+  const paymentData = {{ payment_dist | tojson }};
+  const bestsellerData = {{ bestsellers | tojson }};
+  const categoryData = {{ category_sales | tojson }};
+  const hourlyData = {{ hourly_orders | tojson }};
+
+  // Color Palette tailored to Scented Bubbles luxury branding
+  const GOLD = '#C5A059';
+  const GOLD_LIGHT = 'rgba(197, 160, 89, 0.2)';
+  const DARK = '#1C1A18';
+
+  // Semantic color mappings
+  const STATUS_COLORS = {
+    'DELIVERED': '#2E7D32',
+    'SHIPPED': '#0097A7',
+    'PACKED': '#7B1FA2',
+    'CONFIRMED': '#1976D2',
+    'PENDING': '#E65100',
+    'CANCELLED': '#C62828'
+  };
+
+  const PAYMENT_COLORS = {
+    'PAID': '#2E7D32',
+    'PENDING_VERIFICATION': '#E65100',
+    'REFUNDED': '#78909C',
+    'FAILED': '#C62828'
+  };
+
+  const CATEGORY_COLORS = ['#C5A059', '#3E2723', '#2E7D32', '#1976D2', '#7B1FA2', '#E65100'];
+
+  // Currency tooltip formatter
+  const inrTooltip = {
+    callbacks: {
+      label: function(context) {
+        let label = context.dataset.label || '';
+        if (label) label += ': ';
+        if (context.parsed.y !== null && context.parsed.y !== undefined) {
+          label += '₹' + Number(context.parsed.y).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+        } else if (context.parsed !== null && context.parsed !== undefined) {
+          label += '₹' + Number(context.parsed).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+        }
+        return label;
+      }
+    }
+  };
+
+  // 1. Daily Revenue Chart
+  new Chart(document.getElementById('dailyRevenueChart'), {
+    type: 'line',
+    data: {
+      labels: dailyData.labels,
+      datasets: [{
+        label: 'Net Revenue',
+        data: dailyData.revenue,
+        borderColor: GOLD,
+        backgroundColor: GOLD_LIGHT,
+        fill: true,
+        tension: 0.3,
+        borderWidth: 2,
+        pointBackgroundColor: GOLD,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: inrTooltip
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: '#F0EBE5' },
+          ticks: {
+            callback: (val) => '₹' + Number(val).toLocaleString('en-IN')
+          }
+        },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // 2. Monthly Revenue Chart
+  new Chart(document.getElementById('monthlyRevenueChart'), {
+    type: 'bar',
+    data: {
+      labels: monthlyData.labels,
+      datasets: [{
+        label: 'Monthly Revenue',
+        data: monthlyData.revenue,
+        backgroundColor: GOLD,
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: inrTooltip
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: '#F0EBE5' },
+          ticks: {
+            callback: (val) => '₹' + Number(val).toLocaleString('en-IN')
+          }
+        },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // 3. Hourly Orders Chart
+  new Chart(document.getElementById('hourlyOrdersChart'), {
+    type: 'bar',
+    data: {
+      labels: hourlyData.labels,
+      datasets: [{
+        label: 'Orders',
+        data: hourlyData.data,
+        backgroundColor: '#2E7D32',
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: '#F0EBE5' },
+          ticks: { precision: 0 }
+        },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // 4. Order Status Distribution Chart
+  new Chart(document.getElementById('orderStatusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: statusData.labels,
+      datasets: [{
+        data: statusData.data,
+        backgroundColor: statusData.labels.map(l => STATUS_COLORS[l] || '#9E9E9E'),
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } }
+      }
+    }
+  });
+
+  // 5. Payment Status Distribution Chart
+  new Chart(document.getElementById('paymentStatusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: paymentData.labels,
+      datasets: [{
+        data: paymentData.data,
+        backgroundColor: paymentData.labels.map(l => PAYMENT_COLORS[l] || '#9E9E9E'),
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } }
+      }
+    }
+  });
+
+  // 6. Top Bestsellers Chart
+  new Chart(document.getElementById('bestsellersChart'), {
+    type: 'bar',
+    data: {
+      labels: bestsellerData.labels,
+      datasets: [{
+        label: 'Units Sold',
+        data: bestsellerData.units,
+        backgroundColor: DARK,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: { color: '#F0EBE5' },
+          ticks: { precision: 0 }
+        },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+
+  // 7. Sales by Category Chart
+  new Chart(document.getElementById('categorySalesChart'), {
+    type: 'pie',
+    data: {
+      labels: categoryData.labels,
+      datasets: [{
+        data: categoryData.revenue,
+        backgroundColor: CATEGORY_COLORS.slice(0, categoryData.labels.length),
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } },
+        tooltip: inrTooltip
+      }
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,192 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}Admin Security &amp; Access Controls{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+
+  {# Header #}
+  <div style="margin-bottom: 2rem;">
+    <h2 style="font-size: 1.5rem; margin: 0 0 0.5rem;">Admin Security &amp; Access Protection</h2>
+    <p style="color: var(--text-muted); font-size: 0.9375rem; margin: 0;">
+      Harden your administration portal with two-factor authentication, brute-force lockout, and obfuscated URLs.
+    </p>
+  </div>
+
+  {# 1. Two-Factor Authentication (2FA) #}
+  <div class="admin-card" style="margin-bottom: 2rem; padding: 2.25rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 1.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h3 style="font-size: 1.2rem; margin: 0 0 0.25rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span>🛡️</span> Two-Factor Authentication (TOTP)
+        </h3>
+        <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">
+          Requires a 6-digit code from Google Authenticator, Authy, or Apple Passwords on sign-in.
+        </p>
+      </div>
+
+      <div>
+        {% if admin.is_2fa_enabled %}
+          <span style="background: #DCFCE7; color: #166534; font-weight: 700; font-size: 0.8125rem; padding: 0.4rem 0.9rem; border-radius: var(--radius-pill);">
+            ✓ 2FA ACTIVE &amp; ENFORCED
+          </span>
+        {% else %}
+          <span style="background: #FEF3C7; color: #92400E; font-weight: 700; font-size: 0.8125rem; padding: 0.4rem 0.9rem; border-radius: var(--radius-pill);">
+            ⚠️ NOT CONFIGURED
+          </span>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if admin.is_2fa_enabled %}
+      <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: var(--radius-sm); padding: 1.25rem; margin-bottom: 1.5rem;">
+        <div style="color: #166534; font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem;">
+          Your admin account is secured with Two-Factor Authentication.
+        </div>
+        <div style="color: #15803D; font-size: 0.875rem;">
+          Every sign-in to the admin dashboard requires your password plus a rotating 6-digit code from your authenticator device.
+        </div>
+      </div>
+
+      <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: #991B1B;">Disable Two-Factor Authentication</h4>
+      <form method="POST" action="{{ url_for('admin.security') }}" style="max-width: 440px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="disable_2fa">
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label for="password" style="font-size: 0.85rem; font-weight: 600;">Confirm Admin Password to Disable</label>
+          <input type="password" id="password" name="password" required class="form-control" placeholder="Enter your current password">
+        </div>
+
+        <button type="submit" class="btn btn-secondary btn-sm" style="color: #991B1B; border-color: #FCA5A5;">
+          Disable 2FA Protection
+        </button>
+      </form>
+
+    {% else %}
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: flex-start;">
+        <div>
+          <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">Step 1: Add to Your Authenticator App</h4>
+          <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Open Google Authenticator or Authy, tap <strong>Add Account</strong> &rarr; <strong>Enter a setup key</strong>, and paste the code below:
+          </p>
+
+          <div style="background: var(--bg-subtle); border: 1px solid var(--border-light); padding: 1rem; border-radius: var(--radius-sm); font-family: monospace; font-size: 1.15rem; font-weight: 700; letter-spacing: 0.15em; word-break: break-all; margin-bottom: 0.75rem; text-align: center;">
+            {{ setup_secret }}
+          </div>
+
+          <button type="button" class="btn btn-secondary btn-sm" onclick="copySetupKey('{{ setup_secret }}', this)">
+            📋 Copy Setup Key
+          </button>
+        </div>
+
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-light); padding: 1.5rem; border-radius: var(--radius-sm);">
+          <h4 style="font-size: 1rem; margin-bottom: 0.5rem;">Step 2: Confirm 6-Digit Code</h4>
+          <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Enter the 6-digit code currently shown on your phone to confirm setup:
+          </p>
+
+          <form method="POST" action="{{ url_for('admin.security') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="enable_2fa">
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <input type="text" name="code" required maxlength="6" pattern="[0-9]{6}" autocomplete="off" class="form-control" placeholder="123456" style="text-align: center; font-size: 1.5rem; letter-spacing: 0.25em; font-family: monospace; font-weight: 700;">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">
+              Activate 2FA &rarr;
+            </button>
+          </form>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  {# 2. Secret Admin URL / Obfuscation #}
+  <div class="admin-card" style="margin-bottom: 2rem; padding: 2.25rem;">
+    <h3 style="font-size: 1.2rem; margin: 0 0 0.25rem; display: flex; align-items: center; gap: 0.5rem;">
+      <span>🔒</span> Secret Admin Access URL
+    </h3>
+    <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.5rem;">
+      Evade automated bot scans by requiring a secret key parameter on the admin login screen.
+    </p>
+
+    <form method="POST" action="{{ url_for('admin.security') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="update_secret_slug">
+
+      <div class="form-group" style="margin-bottom: 1rem; max-width: 450px;">
+        <label for="admin_secret_slug" style="font-size: 0.875rem; font-weight: 600;">Secret Key (Optional)</label>
+        <input type="text" id="admin_secret_slug" name="admin_secret_slug" value="{{ secret_slug or '' }}" class="form-control" placeholder="e.g. sb-vault-2026">
+        <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
+          Leave empty to allow direct login access at <code>/admin/login</code>.
+        </small>
+      </div>
+
+      {% if secret_slug %}
+      <div style="background: var(--gold-light); border: 1px solid var(--border-light); padding: 0.85rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem; font-size: 0.85rem;">
+        <strong>Your Active Secret Admin URL:</strong><br>
+        <code style="color: var(--gold-dark); font-weight: 700;">{{ request.host_url }}admin/login?key={{ secret_slug }}</code>
+      </div>
+      {% endif %}
+
+      <button type="submit" class="btn btn-secondary btn-sm">
+        Save Secret URL Key
+      </button>
+    </form>
+  </div>
+
+  {# 3. Active Security Policies Summary #}
+  <div class="admin-card" style="padding: 2.25rem;">
+    <h3 style="font-size: 1.2rem; margin: 0 0 1rem;">
+      Active Automated Defense Policies
+    </h3>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; font-size: 0.875rem;">
+      <div style="border-left: 3px solid #2E7D32; padding-left: 1rem;">
+        <strong>Account Lockout Threshold:</strong>
+        <div style="color: var(--text-muted); margin-top: 0.25rem;">
+          Locks out any admin account for 15 minutes after 5 consecutive failed login attempts.
+        </div>
+      </div>
+
+      <div style="border-left: 3px solid #2E7D32; padding-left: 1rem;">
+        <strong>Session Inactivity Timeout:</strong>
+        <div style="color: var(--text-muted); margin-top: 0.25rem;">
+          Auto-terminates admin sessions after 30 minutes of idle inactivity to prevent unauthorized station access.
+        </div>
+      </div>
+
+      <div style="border-left: 3px solid #2E7D32; padding-left: 1rem;">
+        <strong>Customer Data Masking:</strong>
+        <div style="color: var(--text-muted); margin-top: 0.25rem;">
+          Customer mobile numbers and emails in the order dashboard are masked by default with explicit click-to-reveal.
+        </div>
+      </div>
+
+      <div style="border-left: 3px solid #2E7D32; padding-left: 1rem;">
+        <strong>Flask-Limiter IP Throttling:</strong>
+        <div style="color: var(--text-muted); margin-top: 0.25rem;">
+          5 requests/minute and 20 requests/hour IP-level rate-limiting on all authentication endpoints.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function copySetupKey(text, btn) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(function() {
+      const original = btn.textContent;
+      btn.textContent = "✓ Copied to Clipboard!";
+      setTimeout(function() { btn.textContent = original; }, 2000);
+    });
+  } else {
+    prompt("Copy your setup key:", text);
+  }
+}
+</script>
+{% endblock %}

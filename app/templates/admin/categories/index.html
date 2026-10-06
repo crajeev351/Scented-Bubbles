@@ -1,0 +1,142 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}Categories Management{% endblock %}
+
+{% block content %}
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <p style="color: var(--text-muted); margin: 0; font-size: 0.9375rem;">
+      Manage storefront fragrance categories and their display ordering.
+    </p>
+  </div>
+  <a href="{{ url_for('admin.category_create') }}" class="btn btn-primary btn-sm">+ Add New Category</a>
+</div>
+
+{# Filter Tabs #}
+<div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap;">
+  <a href="{{ url_for('admin.category_list', status='all') }}" 
+     class="btn btn-sm {{ 'btn-primary' if status_filter == 'all' else 'btn-secondary' }}" 
+     style="font-size: 0.8125rem; padding: 0.35rem 0.85rem; border-radius: 20px;">
+    All ({{ total_count }})
+  </a>
+  <a href="{{ url_for('admin.category_list', status='active') }}" 
+     class="btn btn-sm {{ 'btn-primary' if status_filter == 'active' else 'btn-secondary' }}" 
+     style="font-size: 0.8125rem; padding: 0.35rem 0.85rem; border-radius: 20px;">
+    Active ({{ active_count }})
+  </a>
+  <a href="{{ url_for('admin.category_list', status='archived') }}" 
+     class="btn btn-sm {{ 'btn-primary' if status_filter == 'archived' else 'btn-secondary' }}" 
+     style="font-size: 0.8125rem; padding: 0.35rem 0.85rem; border-radius: 20px;">
+    Archived ({{ archived_count }})
+  </a>
+</div>
+
+<div class="admin-card" style="padding: 0; overflow: hidden;">
+  <div class="table-responsive">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th style="width: 80px;">Order</th>
+        <th>Category Name</th>
+        <th>Slug</th>
+        <th>Description</th>
+        <th>Products Count</th>
+        <th style="text-align: center; width: 100px; white-space: nowrap;">Status</th>
+        <th style="text-align: right; width: 220px; white-space: nowrap;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cat in categories %}
+      <tr {% if cat.is_deleted %}style="background: rgba(148, 163, 184, 0.06);"{% endif %}>
+        <td><strong>#{{ cat.display_order }}</strong></td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            {% if cat.display_image_url or cat.image_url %}
+              <img src="{{ cat.display_image_url or cat.image_url }}" alt="{{ cat.name }}" style="width: 48px; height: 32px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-light); flex-shrink: 0;">
+            {% else %}
+              <div style="width: 48px; height: 32px; background: var(--bg-subtle); border: 1px dashed var(--border-light); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: var(--text-light); flex-shrink: 0;" title="No background image">No Img</div>
+            {% endif %}
+            <div>
+              <strong style="color: {{ 'var(--text-muted)' if cat.is_deleted else 'var(--text-main)' }}; display: block;">
+                {{ cat.name }}
+              </strong>
+              {% if cat.is_deleted %}
+                <span style="display: inline-block; font-size: 0.6875rem; color: #64748b; background: rgba(100, 116, 139, 0.14); padding: 0.1rem 0.45rem; border-radius: 4px; font-weight: 600;">
+                  Archived
+                </span>
+              {% endif %}
+            </div>
+          </div>
+        </td>
+        <td><code>{{ cat.slug }}</code></td>
+        <td style="color: var(--text-muted); font-size: 0.8125rem; max-width: 300px;">{{ cat.description or '-' }}</td>
+        <td>
+          <strong>{{ cat.products.filter_by(is_deleted=False).count() }}</strong> items
+          {% if cat.products.count() > cat.products.filter_by(is_deleted=False).count() %}
+            <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">({{ cat.products.count() }} in catalog)</span>
+          {% endif %}
+        </td>
+        <td style="text-align: center; white-space: nowrap;">
+          {% if cat.is_deleted %}
+            <span class="status-badge status-archived" style="font-size: 0.7rem; padding: 0.2rem 0.55rem; white-space: nowrap;" title="Archived category. Click Unarchive to restore.">
+              Archived
+            </span>
+          {% else %}
+            <form method="POST" action="{{ url_for('admin.category_toggle', id=cat.id) }}" style="margin: 0;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="status-badge {{ 'status-delivered' if cat.active else 'status-cancelled' }}" style="cursor: pointer; border: none; font-size: 0.7rem; padding: 0.2rem 0.55rem; white-space: nowrap;" title="Click to toggle active state">
+                {{ 'Active' if cat.active else 'Disabled' }}
+              </button>
+            </form>
+          {% endif %}
+        </td>
+        <td style="text-align: right; white-space: nowrap;">
+          <div style="display: inline-flex; justify-content: flex-end; align-items: center; gap: 0.35rem; white-space: nowrap;">
+            <a href="{{ url_for('admin.category_edit', id=cat.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;">Edit</a>
+            
+            {% if cat.is_deleted %}
+              <form id="unarchive-cat-{{ cat.id }}" method="POST" action="{{ url_for('admin.category_unarchive', id=cat.id) }}" style="margin: 0; display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="button" class="btn btn-secondary btn-sm" style="color: #059669; font-weight: 600; padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;" onclick="confirmAction('unarchive-cat-{{ cat.id }}', 'Unarchive and restore category \'{{ cat.name|replace('\'', '\\\'') }}\'?')">
+                  Unarchive
+                </button>
+              </form>
+            {% else %}
+              <form id="archive-cat-{{ cat.id }}" method="POST" action="{{ url_for('admin.category_archive', id=cat.id) }}" style="margin: 0; display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="button" class="btn btn-secondary btn-sm" style="color: #d97706; padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;" onclick="confirmAction('archive-cat-{{ cat.id }}', 'Archive category \'{{ cat.name|replace('\'', '\\\'') }}\'? It will be hidden from storefront.')">
+                  Archive
+                </button>
+              </form>
+            {% endif %}
+
+            {% set prod_total = cat.products.count() %}
+            {% if prod_total > 0 %}
+              <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); opacity: 0.55; padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap; cursor: not-allowed;" title="Cannot delete: {{ prod_total }} product(s) linked to this category" onclick="alert('Cannot delete category \'{{ cat.name|replace('\'', '\\\'') }}\' because {{ prod_total }} product(s) are assigned to it. Please reassign or delete those products first.')">
+                Delete
+              </button>
+            {% else %}
+              <form id="perm-del-cat-{{ cat.id }}" method="POST" action="{{ url_for('admin.category_delete', id=cat.id) }}" style="margin: 0; display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;" onclick="confirmAction('perm-del-cat-{{ cat.id }}', 'Permanently delete category \'{{ cat.name|replace('\'', '\\\'') }}\'? This cannot be undone!')">
+                  Delete
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+          No categories found in this view.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+{% endblock %}

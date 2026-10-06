@@ -1,0 +1,246 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}{{ 'Edit Product: ' ~ product.name if product else 'Add New Fragrance' }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h2 style="font-size: 1.5rem; margin: 0;">{{ 'Edit Product: ' ~ product.name if product else 'Create New Fragrance' }}</h2>
+    <a href="{{ url_for('admin.product_list') }}" class="btn btn-secondary btn-sm">&larr; Back to Catalog</a>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" class="admin-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <h3 style="font-size: 1.15rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
+      1. Basic Information
+    </h3>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="name">Product Name *</label>
+        <input type="text" id="name" name="name" value="{{ product.name if product else '' }}" required class="form-control" placeholder="e.g. Royal Amber Diffuser">
+      </div>
+
+      <div class="form-group">
+        <label for="slug">URL Slug *</label>
+        <input type="text" id="slug" name="slug" value="{{ product.slug if product else '' }}" class="form-control" placeholder="Leave blank to auto-generate from name">
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 1.5rem;">
+      <label style="font-weight: 600; font-size: 0.875rem; margin-bottom: 0.5rem; display: block;">
+        Categories * <small style="font-weight: normal; color: var(--text-muted);">(Check all collections this fragrance belongs to)</small>
+      </label>
+      <div class="category-checkbox-container" style="display: flex; flex-wrap: wrap; gap: 0.65rem; background: var(--bg-subtle, #FAF8F5); padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid var(--border-light, #E8E2D9); min-height: 52px; align-items: center;">
+        {% for cat in categories %}
+          {% set is_checked = False %}
+          {% if product %}
+            {% if (product.categories and cat in product.categories) or product.category_id == cat.id %}
+              {% set is_checked = True %}
+            {% endif %}
+          {% endif %}
+          <label class="category-pill-label" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.85rem; background: {{ 'rgba(197, 160, 89, 0.14)' if is_checked else '#FFFFFF' }}; border: 1.5px solid {{ 'var(--gold-primary, #C5A059)' if is_checked else 'var(--border-light, #E2D9CC)' }}; border-radius: 20px; cursor: pointer; font-size: 0.875rem; font-weight: {{ '600' if is_checked else '500' }}; color: {{ '#2A241E' if is_checked else 'var(--text-main, #333)' }}; transition: all 0.2s ease; user-select: none;">
+            <input type="checkbox" name="category_ids" value="{{ cat.id }}" {{ 'checked' if is_checked else '' }} style="accent-color: var(--gold-primary, #C5A059); cursor: pointer; width: 16px; height: 16px;" onchange="toggleCategoryPill(this)">
+            <span>{{ cat.name }}</span>
+          </label>
+        {% endfor %}
+      </div>
+      <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.35rem; display: block;">
+        Tip: Check both <em>Fine Fragrances</em> and <em>For Him</em> so this product appears in both collections.
+      </small>
+    </div>
+
+    <div class="form-group">
+      <label for="inspired_by" style="font-weight: 600; font-size: 0.875rem;">
+        Inspired By <span style="color: var(--gold-primary); font-weight: 500;">(Original Designer Brand / Perfume)</span>
+      </label>
+      <input type="text" id="inspired_by" name="inspired_by" value="{{ product.inspired_by if product and product.inspired_by else '' }}" class="form-control" placeholder="e.g. Gucci Flora, Baccarat Rouge 540, Tom Ford Oud Wood">
+      <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.35rem; display: block;">
+        State which designer fragrance this clone is inspired by (e.g. &ldquo;Gucci Flora&rdquo;, &ldquo;Dior Sauvage&rdquo;). Customers will see this badge and can search products by this brand.
+      </small>
+    </div>
+
+    <div class="form-group">
+      <label for="short_description">Short Description (Cards &amp; Summaries)</label>
+      <input type="text" id="short_description" name="short_description" value="{{ product.short_description if product else '' }}" class="form-control" placeholder="Brief 1-2 sentence hook">
+    </div>
+
+    <div class="form-group">
+      <label for="full_description">Full Description</label>
+      <textarea id="full_description" name="full_description" rows="4" class="form-control" placeholder="Detailed inspiration, craftsmanship, and mood">{{ product.full_description if product else '' }}</textarea>
+    </div>
+
+    <h3 style="font-size: 1.15rem; margin: 2rem 0 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
+      2. Usage &amp; Visibility Settings
+    </h3>
+
+    <div class="form-group">
+      <label for="usage_instructions">Usage Instructions (Optional)</label>
+      <input type="text" id="usage_instructions" name="usage_instructions" value="{{ product.usage_instructions if product else '' }}" class="form-control" placeholder="e.g. Spritz 2-3 sprays on pulse points or apply to clothing">
+    </div>
+
+    <div style="display: flex; gap: 2rem; margin: 1.5rem 0; padding: 1rem; background: var(--bg-subtle); border-radius: var(--radius-sm);">
+      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+        <input type="checkbox" name="active" value="1" {{ 'checked' if not product or product.active else '' }}>
+        <strong>Active (Visible in Store)</strong>
+      </label>
+
+      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+        <input type="checkbox" name="featured" value="1" {{ 'checked' if product and product.featured else '' }}>
+        <span>Featured on Homepage</span>
+      </label>
+
+      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+        <input type="checkbox" name="bestseller" value="1" {{ 'checked' if product and product.bestseller else '' }}>
+        <span>Bestseller Tag</span>
+      </label>
+    </div>
+
+    <h3 style="font-size: 1.15rem; margin: 2rem 0 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
+      3. Product Images
+    </h3>
+
+    {% if product and product.images %}
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+        {% for img in product.images %}
+          <div style="position: relative; width: 90px; height: 90px; border: 1px solid var(--border-light); border-radius: var(--radius-sm); overflow: hidden;">
+            <img src="{{ img.image_url }}" alt="Product Image" style="width: 100%; height: 100%; object-fit: cover;">
+            {% if img.is_primary %}
+              <span style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: #fff; font-size: 0.65rem; text-align: center; padding: 2px;">Primary</span>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="primary_image">{{ 'Upload Additional Image' if product else 'Upload Primary Image' }}</label>
+        <input type="file" id="primary_image" name="{{ 'additional_image' if product else 'primary_image' }}" accept=".jpg,.jpeg,.png,.webp" class="form-control">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Supports JPG, PNG, WebP (Max 5MB)</small>
+      </div>
+
+      {% if not product %}
+      <div class="form-group">
+        <label for="image_key">Or Static Image Path</label>
+        <input type="text" id="image_key" name="image_key" placeholder="/static/images/placeholder_perfume.webp" class="form-control">
+      </div>
+      {% endif %}
+    </div>
+
+    <h3 style="font-size: 1.15rem; margin: 2rem 0 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
+      4. Size / Volume Variants
+    </h3>
+
+    {% if product %}
+      {# Existing Variants in Edit mode #}
+      <div style="margin-bottom: 1.5rem;">
+        <label style="font-size: 0.8125rem; color: var(--text-muted); display: block; margin-bottom: 0.75rem;">Modify Existing Variants:</label>
+        {% for var in product.variants %}
+        <div style="display: grid; grid-template-columns: 2fr 2fr 1.5fr 1.5fr 1fr 1fr; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; background: var(--bg-subtle); padding: 0.75rem; border-radius: var(--radius-sm);">
+          <div>
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Size Label:</label>
+            <input type="text" name="var_label_{{ var.id }}" value="{{ var.size_label }}" required class="form-control" style="font-size: 0.8125rem; padding: 0.4rem;">
+          </div>
+          <div>
+            <label style="font-size: 0.75rem; color: var(--text-muted);">SKU:</label>
+            <input type="text" name="var_sku_{{ var.id }}" value="{{ var.sku }}" required class="form-control" style="font-size: 0.8125rem; padding: 0.4rem;">
+          </div>
+          <div>
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Price (₹):</label>
+            <input type="number" step="0.01" name="var_price_{{ var.id }}" value="{{ var.price }}" required class="form-control" style="font-size: 0.8125rem; padding: 0.4rem;">
+          </div>
+          <div>
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Sale Price (₹):</label>
+            <input type="number" step="0.01" name="var_discounted_price_{{ var.id }}" value="{{ var.discounted_price or '' }}" class="form-control" style="font-size: 0.8125rem; padding: 0.4rem;">
+          </div>
+          <div>
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Stock:</label>
+            <input type="number" name="var_stock_{{ var.id }}" value="{{ var.stock }}" required class="form-control" style="font-size: 0.8125rem; padding: 0.4rem;">
+          </div>
+          <div style="text-align: center;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Active:</label>
+            <input type="checkbox" name="var_active_{{ var.id }}" value="1" {{ 'checked' if var.active else '' }} style="display: block; margin: 6px auto;">
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      {# Add New Variant Row #}
+      <div style="border-top: 1px dashed var(--border-light); padding-top: 1rem; margin-top: 1rem;">
+        <label style="font-size: 0.8125rem; font-weight: 600; color: var(--gold-dark); display: block; margin-bottom: 0.5rem;">+ Add Another Variant:</label>
+        <div style="display: grid; grid-template-columns: 2fr 2fr 1.5fr 1.5fr 1fr; gap: 0.75rem;">
+          <input type="text" name="new_variant_label" placeholder="e.g. 100ml EDP" class="form-control" style="font-size: 0.8125rem;">
+          <input type="text" name="new_variant_sku" placeholder="SKU (Auto if blank)" class="form-control" style="font-size: 0.8125rem;">
+          <input type="number" step="0.01" name="new_variant_price" placeholder="Price (₹)" class="form-control" style="font-size: 0.8125rem;">
+          <input type="number" step="0.01" name="new_variant_discounted_price" placeholder="Sale Price (₹)" class="form-control" style="font-size: 0.8125rem;">
+          <input type="number" name="new_variant_stock" placeholder="Stock" class="form-control" style="font-size: 0.8125rem;">
+        </div>
+      </div>
+
+    {% else %}
+      {# Creation mode initial variant rows #}
+      <div id="variants-container">
+        <div style="display: grid; grid-template-columns: 2fr 2fr 1.5fr 1.5fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <input type="text" name="variant_label[]" value="50ml EDP" required placeholder="Size label" class="form-control">
+          <input type="text" name="variant_sku[]" placeholder="SKU (e.g. VOR-50ML)" class="form-control">
+          <input type="number" step="0.01" name="variant_price[]" value="1299.00" required placeholder="Price (₹)" class="form-control">
+          <input type="number" step="0.01" name="variant_discounted_price[]" placeholder="Sale Price" class="form-control">
+          <input type="number" name="variant_stock[]" value="25" required placeholder="Stock" class="form-control">
+        </div>
+        <div style="display: grid; grid-template-columns: 2fr 2fr 1.5fr 1.5fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <input type="text" name="variant_label[]" value="100ml EDP" placeholder="Size label" class="form-control">
+          <input type="text" name="variant_sku[]" placeholder="SKU (e.g. VOR-100ML)" class="form-control">
+          <input type="number" step="0.01" name="variant_price[]" value="2199.00" placeholder="Price (₹)" class="form-control">
+          <input type="number" step="0.01" name="variant_discounted_price[]" placeholder="Sale Price" class="form-control">
+          <input type="number" name="variant_stock[]" value="15" placeholder="Stock" class="form-control">
+        </div>
+      </div>
+    {% endif %}
+
+    <div style="margin-top: 2.5rem; display: flex; gap: 1rem;">
+      <button type="submit" class="btn btn-primary" style="padding: 0.85rem 2rem;">
+        {{ 'Save Changes' if product else 'Create Product' }}
+      </button>
+      <a href="{{ url_for('admin.product_list') }}" class="btn btn-secondary" style="padding: 0.85rem 1.5rem;">Cancel</a>
+    </div>
+
+  </form>
+
+</div>
+
+<script>
+  function toggleCategoryPill(checkbox) {
+    const label = checkbox.closest('.category-pill-label');
+    if (!label) return;
+    if (checkbox.checked) {
+      label.style.background = 'rgba(197, 160, 89, 0.14)';
+      label.style.borderColor = 'var(--gold-primary, #C5A059)';
+      label.style.fontWeight = '600';
+      label.style.color = '#2A241E';
+    } else {
+      label.style.background = '#FFFFFF';
+      label.style.borderColor = 'var(--border-light, #E2D9CC)';
+      label.style.fontWeight = '500';
+      label.style.color = 'var(--text-main, #333)';
+    }
+  }
+
+  // Client validation on submit
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form.admin-card');
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        const checked = document.querySelectorAll('input[name="category_ids"]:checked');
+        if (checked.length === 0) {
+          e.preventDefault();
+          alert('Please select at least one Category for this product.');
+          return false;
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

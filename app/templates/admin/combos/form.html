@@ -1,0 +1,319 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}{{ 'Edit Combo: ' ~ combo.name if combo else 'Create New Gift Combo' }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 840px; margin: 0 auto;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <div>
+      <h2 style="font-size: 1.5rem; margin: 0;">{{ 'Edit Combo: ' ~ combo.name if combo else 'Create New Gift Combo' }}</h2>
+      <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0.25rem 0 0;">
+        Bundle multiple fragrances into high-value curated gift sets or discovery multi-packs.
+      </p>
+    </div>
+    <a href="{{ url_for('admin.combo_list') }}" class="btn btn-secondary btn-sm">&larr; Back to Combos</a>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" class="admin-card" style="padding: 2rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <h3 style="font-size: 1.15rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 0.5rem;">
+      <span style="color: var(--gold-primary);">1.</span> Combo Details &amp; Pricing
+    </h3>
+
+    <div class="form-row">
+      <div class="form-group" style="flex: 2;">
+        <label for="name" style="font-weight: 600;">Combo Name *</label>
+        <input type="text" id="name" name="name" value="{{ combo.name if combo else '' }}" required class="form-control" placeholder="e.g. Discovery Trio (Buy Any 3 @ ₹1,099)">
+      </div>
+
+      <div class="form-group" style="flex: 1;">
+        <label for="combo_price" style="font-weight: 600;">Combo Bundle Price (₹) *</label>
+        <input type="number" step="0.01" id="combo_price" name="combo_price" value="{{ combo.combo_price if combo else '1099.00' }}" required class="form-control" oninput="updatePriceCalculations()">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group" style="flex: 2;">
+        <label for="slug" style="font-weight: 600;">URL Slug</label>
+        <input type="text" id="slug" name="slug" value="{{ combo.slug if combo else '' }}" class="form-control" placeholder="Leave empty to auto-slugify">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">e.g. discovery-trio-pack</small>
+      </div>
+
+      <div class="form-group" style="flex: 1;">
+        <label for="display_order" style="font-weight: 600;">Display Priority</label>
+        <input type="number" id="display_order" name="display_order" value="{{ combo.display_order if combo else 0 }}" class="form-control">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Lower numbers appear first</small>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 1.25rem;">
+      <label for="short_description" style="font-weight: 600;">Short Summary (Storefront Cards)</label>
+      <input type="text" id="short_description" name="short_description" value="{{ combo.short_description if combo else '' }}" class="form-control" placeholder="e.g. Select any 3 artisanal Eau de Parfums with complimentary velvet travel pouch.">
+    </div>
+
+    <div class="form-group" style="margin-bottom: 1.25rem;">
+      <label for="full_description" style="font-weight: 600;">Full Description &amp; Offer Details</label>
+      <textarea id="full_description" name="full_description" rows="3" class="form-control" placeholder="Detailed fragrance breakdown, gift packaging, and usage notes...">{{ combo.full_description if combo else '' }}</textarea>
+    </div>
+
+    <div class="form-row" style="margin-bottom: 1.5rem;">
+      <div class="form-group" style="flex: 2;">
+        <label for="image" style="font-weight: 600;">Upload Combo Image</label>
+        <input type="file" id="image" name="image" accept=".jpg,.jpeg,.png,.webp" class="form-control" style="background: #fff;">
+        {% if combo and combo.image_url %}
+          <div style="margin-top: 0.75rem; display: flex; align-items: center; gap: 0.75rem;">
+            <img src="{{ combo.image_url }}" alt="Current image" style="width: 72px; height: 72px; border-radius: var(--radius-sm); object-fit: cover; border: 1px solid var(--border-light);">
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Current active image</span>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="form-group" style="flex: 1; display: flex; align-items: center; padding-top: 1.75rem;">
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+          <input type="checkbox" name="active" value="1" {{ 'checked' if not combo or combo.active else '' }}>
+          <strong style="font-size: 0.95rem;">Active on Storefront</strong>
+        </label>
+      </div>
+    </div>
+
+    {# Section 2: Multiple Component Products #}
+    <div style="margin-top: 2.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+        <h3 style="font-size: 1.15rem; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+          <span style="color: var(--gold-primary);">2.</span> Included Component Fragrances
+        </h3>
+        <span id="items-count-badge" style="background: rgba(197, 160, 89, 0.15); color: #8C6D23; font-weight: 700; font-size: 0.8rem; padding: 0.2rem 0.65rem; border-radius: 9999px;">
+          {{ (combo.items|length) if combo and combo.items else 2 }} Fragrances
+        </span>
+      </div>
+
+      <p style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.45;">
+        Add all products and sizes included in this combo deal (e.g. 2, 3, 4, 5+ products). Customer orders will automatically reserve stock from each component.
+      </p>
+
+      {# Component Items Wrapper #}
+      <div id="combo-items-wrapper">
+        {% if combo and combo.items %}
+          {% for item in combo.items %}
+          <div class="combo-item-row" style="display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; background: var(--bg-subtle, #FAF8F5); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-light);">
+            <span class="item-badge" style="font-weight: 700; font-size: 0.8rem; color: #8C6D23; min-width: 65px;">Item #{{ loop.index }}</span>
+            <select name="variant_id[]" required class="form-control combo-variant-select" style="flex: 2; background: #fff;" onchange="updatePriceCalculations()">
+              <option value="">-- Select Fragrance Product / Size --</option>
+              {% for v in variants %}
+                <option value="{{ v.id }}" data-price="{{ v.effective_price }}" {{ 'selected' if item.product_variant_id == v.id else '' }}>
+                  {{ v.product.name }} — {{ v.size_label }} (Stock: {{ v.stock }}, ₹{{ "%.2f"|format(v.effective_price) }})
+                </option>
+              {% endfor %}
+            </select>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Qty:</span>
+              <input type="number" name="quantity[]" min="1" value="{{ item.quantity }}" required class="form-control combo-qty-input" style="width: 70px; background: #fff;" oninput="updatePriceCalculations()">
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm remove-item-btn" title="Remove this fragrance" style="color: #C62828; padding: 0.4rem 0.65rem; border: 1px solid var(--border-light); font-weight: 700; background: #fff; cursor: pointer;">
+              ✕
+            </button>
+          </div>
+          {% endfor %}
+        {% else %}
+          {# Default rows for new combo #}
+          <div class="combo-item-row" style="display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; background: var(--bg-subtle, #FAF8F5); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-light);">
+            <span class="item-badge" style="font-weight: 700; font-size: 0.8rem; color: #8C6D23; min-width: 65px;">Item #1</span>
+            <select name="variant_id[]" required class="form-control combo-variant-select" style="flex: 2; background: #fff;" onchange="updatePriceCalculations()">
+              <option value="">-- Select Fragrance Product / Size --</option>
+              {% for v in variants %}
+                <option value="{{ v.id }}" data-price="{{ v.effective_price }}">
+                  {{ v.product.name }} — {{ v.size_label }} (Stock: {{ v.stock }}, ₹{{ "%.2f"|format(v.effective_price) }})
+                </option>
+              {% endfor %}
+            </select>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Qty:</span>
+              <input type="number" name="quantity[]" min="1" value="1" required class="form-control combo-qty-input" style="width: 70px; background: #fff;" oninput="updatePriceCalculations()">
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm remove-item-btn" title="Remove this fragrance" style="color: #C62828; padding: 0.4rem 0.65rem; border: 1px solid var(--border-light); font-weight: 700; background: #fff; cursor: pointer;">
+              ✕
+            </button>
+          </div>
+
+          <div class="combo-item-row" style="display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; background: var(--bg-subtle, #FAF8F5); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-light);">
+            <span class="item-badge" style="font-weight: 700; font-size: 0.8rem; color: #8C6D23; min-width: 65px;">Item #2</span>
+            <select name="variant_id[]" required class="form-control combo-variant-select" style="flex: 2; background: #fff;" onchange="updatePriceCalculations()">
+              <option value="">-- Select Fragrance Product / Size --</option>
+              {% for v in variants %}
+                <option value="{{ v.id }}" data-price="{{ v.effective_price }}">
+                  {{ v.product.name }} — {{ v.size_label }} (Stock: {{ v.stock }}, ₹{{ "%.2f"|format(v.effective_price) }})
+                </option>
+              {% endfor %}
+            </select>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Qty:</span>
+              <input type="number" name="quantity[]" min="1" value="1" required class="form-control combo-qty-input" style="width: 70px; background: #fff;" oninput="updatePriceCalculations()">
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm remove-item-btn" title="Remove this fragrance" style="color: #C62828; padding: 0.4rem 0.65rem; border: 1px solid var(--border-light); font-weight: 700; background: #fff; cursor: pointer;">
+              ✕
+            </button>
+          </div>
+        {% endif %}
+      </div>
+
+      {# Add Component Button #}
+      <div style="margin-top: 1rem;">
+        <button type="button" id="add-combo-item-btn" class="btn btn-secondary" style="border: 1.5px dashed var(--gold-primary, #C5A059); color: #8C6D23; background: rgba(197, 160, 89, 0.08); font-weight: 700; padding: 0.65rem 1.25rem; display: inline-flex; align-items: center; gap: 0.5rem; border-radius: 8px; cursor: pointer;">
+          <span style="font-size: 1.1rem; line-height: 1;">+</span> Add Another Fragrance / Product to Combo
+        </button>
+      </div>
+
+      {# Dynamic Live Pricing & Value Summary Box #}
+      <div id="combo-pricing-summary" style="margin-top: 1.5rem; background: rgba(197, 160, 89, 0.12); border: 1px solid var(--gold-primary, #C5A059); border-radius: 8px; padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: #8C6D23; display: block;">Combo Value Summary</span>
+          <div style="display: flex; gap: 1.5rem; margin-top: 0.35rem; flex-wrap: wrap;">
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Individual Items Retail:</span>
+              <strong id="calc-retail-sum" style="font-size: 1.05rem; color: var(--text-main);">₹0.00</strong>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Combo Bundle Price:</span>
+              <strong id="calc-combo-price" style="font-size: 1.05rem; color: #2E7D32;">₹0.00</strong>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Customer Savings:</span>
+              <strong id="calc-savings" style="font-size: 1.05rem; color: #C62828;">₹0.00</strong>
+            </div>
+          </div>
+        </div>
+        <div id="calc-savings-badge" style="font-size: 0.85rem; font-weight: 700; background: #8C6D23; color: #fff; padding: 0.3rem 0.75rem; border-radius: 4px;">
+          Live Value Preview
+        </div>
+      </div>
+
+    </div>
+
+    <div style="margin-top: 2.5rem; display: flex; gap: 1rem;">
+      <button type="submit" class="btn btn-primary" style="padding: 0.85rem 2.25rem; font-weight: 700;">
+        {{ 'Save Changes' if combo else 'Create Combo Pack' }}
+      </button>
+      <a href="{{ url_for('admin.combo_list') }}" class="btn btn-secondary" style="padding: 0.85rem 1.5rem;">Cancel</a>
+    </div>
+
+  </form>
+
+</div>
+
+{# Hidden Template for Dynamic Cloning #}
+<template id="combo-item-template">
+  <div class="combo-item-row" style="display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; background: var(--bg-subtle, #FAF8F5); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-light);">
+    <span class="item-badge" style="font-weight: 700; font-size: 0.8rem; color: #8C6D23; min-width: 65px;">Item #1</span>
+    <select name="variant_id[]" required class="form-control combo-variant-select" style="flex: 2; background: #fff;" onchange="updatePriceCalculations()">
+      <option value="">-- Select Fragrance Product / Size --</option>
+      {% for v in variants %}
+        <option value="{{ v.id }}" data-price="{{ v.effective_price }}">
+          {{ v.product.name }} — {{ v.size_label }} (Stock: {{ v.stock }}, ₹{{ "%.2f"|format(v.effective_price) }})
+        </option>
+      {% endfor %}
+    </select>
+    <div style="display: flex; align-items: center; gap: 0.4rem;">
+      <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Qty:</span>
+      <input type="number" name="quantity[]" min="1" value="1" required class="form-control combo-qty-input" style="width: 70px; background: #fff;" oninput="updatePriceCalculations()">
+    </div>
+    <button type="button" class="btn btn-secondary btn-sm remove-item-btn" title="Remove this fragrance" style="color: #C62828; padding: 0.4rem 0.65rem; border: 1px solid var(--border-light); font-weight: 700; background: #fff; cursor: pointer;">
+      ✕
+    </button>
+  </div>
+</template>
+
+<script>
+function reindexComboItems() {
+  var rows = document.querySelectorAll('#combo-items-wrapper .combo-item-row');
+  var countBadge = document.getElementById('items-count-badge');
+  if (countBadge) {
+    countBadge.textContent = rows.length + (rows.length === 1 ? ' Fragrance' : ' Fragrances');
+  }
+
+  rows.forEach(function(row, idx) {
+    var badge = row.querySelector('.item-badge');
+    if (badge) badge.textContent = 'Item #' + (idx + 1);
+
+    var removeBtn = row.querySelector('.remove-item-btn');
+    if (removeBtn) {
+      removeBtn.style.visibility = (rows.length > 1) ? 'visible' : 'hidden';
+    }
+  });
+
+  updatePriceCalculations();
+}
+
+function addComboItemRow() {
+  var template = document.getElementById('combo-item-template');
+  var clone = template.content.cloneNode(true);
+  document.getElementById('combo-items-wrapper').appendChild(clone);
+  reindexComboItems();
+}
+
+function updatePriceCalculations() {
+  var retailSum = 0;
+  var rows = document.querySelectorAll('#combo-items-wrapper .combo-item-row');
+  
+  rows.forEach(function(row) {
+    var select = row.querySelector('.combo-variant-select');
+    var qtyInput = row.querySelector('.combo-qty-input');
+    if (select && select.value) {
+      var selectedOpt = select.options[select.selectedIndex];
+      var price = parseFloat(selectedOpt.getAttribute('data-price')) || 0;
+      var qty = parseInt(qtyInput.value) || 1;
+      retailSum += (price * qty);
+    }
+  });
+
+  var comboPriceInput = document.getElementById('combo_price');
+  var comboPrice = parseFloat(comboPriceInput.value) || 0;
+  var savings = retailSum > comboPrice ? (retailSum - comboPrice) : 0;
+  var savingsPercent = retailSum > 0 ? Math.round((savings / retailSum) * 100) : 0;
+
+  var calcRetail = document.getElementById('calc-retail-sum');
+  var calcCombo = document.getElementById('calc-combo-price');
+  var calcSavings = document.getElementById('calc-savings');
+  var calcBadge = document.getElementById('calc-savings-badge');
+
+  if (calcRetail) calcRetail.textContent = '₹' + retailSum.toFixed(2);
+  if (calcCombo) calcCombo.textContent = '₹' + comboPrice.toFixed(2);
+  if (calcSavings) calcSavings.textContent = '₹' + savings.toFixed(2);
+  
+  if (calcBadge) {
+    if (savings > 0) {
+      calcBadge.textContent = savingsPercent + '% Customer Savings';
+      calcBadge.style.background = '#2E7D32';
+    } else {
+      calcBadge.textContent = 'Standard Pricing';
+      calcBadge.style.background = '#8C6D23';
+    }
+  }
+}
+
+// Bind add button
+document.getElementById('add-combo-item-btn').addEventListener('click', function(e) {
+  e.preventDefault();
+  addComboItemRow();
+});
+
+// Event delegation for remove button
+document.getElementById('combo-items-wrapper').addEventListener('click', function(e) {
+  if (e.target && e.target.closest('.remove-item-btn')) {
+    e.preventDefault();
+    var rows = document.querySelectorAll('#combo-items-wrapper .combo-item-row');
+    if (rows.length > 1) {
+      var row = e.target.closest('.combo-item-row');
+      row.remove();
+      reindexComboItems();
+    }
+  }
+});
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  reindexComboItems();
+});
+</script>
+{% endblock %}

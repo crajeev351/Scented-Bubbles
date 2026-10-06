@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Complete UPI Payment | Order #{{ order.order_id }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2.5rem; padding-bottom: 5rem;">
+
+  <div style="max-width: 620px; margin: 0 auto; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 2.5rem; box-shadow: var(--shadow-sm);">
+    
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <span class="section-tag">Step 2 of 2: Payment</span>
+      <h1 style="font-size: 1.85rem; margin-bottom: 0.4rem;">Scan &amp; Pay via UPI</h1>
+      <p style="color: var(--text-muted); font-size: 0.9375rem;">
+        Order <strong>#{{ order.order_id }}</strong> &bull; Total to Pay: <strong style="color: var(--gold-dark); font-size: 1.15rem;">{{ order.total_amount | currency }}</strong>
+      </p>
+    </div>
+
+    {# QR Code Box #}
+    <div style="text-align: center; background: var(--bg-subtle); padding: 1.75rem; border-radius: var(--radius-md); margin-bottom: 2rem;">
+      <div style="background: #FFFFFF; display: inline-block; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm);">
+        <img src="{{ upi_qr_url }}" alt="Scan UPI QR Code" style="width: 220px; height: 220px; object-fit: contain;">
+      </div>
+      
+      <div style="margin-top: 1.25rem;">
+        <div style="font-size: 0.8125rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.25rem;">UPI ID (VPA)</div>
+        <div style="display: flex; justify-content: center; align-items: center; gap: 0.5rem;">
+          <code id="upi-id-code" style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); background: #FFFFFF; padding: 0.3rem 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
+            {{ upi_id }}
+          </code>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText('{{ upi_id }}'); alert('UPI ID copied!');">
+            Copy
+          </button>
+        </div>
+      </div>
+      
+      <div style="margin-top: 0.75rem; font-size: 0.8125rem; color: var(--text-muted);">
+        Compatible with Google Pay, PhonePe, Paytm, BHIM, and all UPI mobile banking apps.
+      </div>
+    </div>
+
+    {# Payment Steps #}
+    <div style="margin-bottom: 2rem; font-size: 0.875rem; color: var(--text-muted); line-height: 1.6;">
+      <strong style="color: var(--text-main); display: block; margin-bottom: 0.4rem;">Instructions:</strong>
+      <ol style="padding-left: 1.25rem;">
+        <li>Open your preferred UPI app and scan the QR code above or pay to <strong>{{ upi_id }}</strong>.</li>
+        <li>Ensure the transfer amount is <strong>exactly {{ order.total_amount | currency }}</strong>.</li>
+        <li>Once transferred, copy the <strong>12-digit UTR / UPI Ref ID / Transaction ID</strong> from your banking app.</li>
+        <li>Enter the reference below to link your payment to order #{{ order.order_id }}.</li>
+      </ol>
+    </div>
+
+    {# UTR Submission Form #}
+    <form method="POST" action="{{ url_for('orders.upi_pay', order_id=order.order_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="form-group">
+        <label for="utr">Bank Reference / UTR Number *</label>
+        <input type="text" id="utr" name="utr" required placeholder="e.g. 328491823901 (12 digits)" class="form-control" style="font-size: 1.05rem; letter-spacing: 0.05em; font-weight: 600;">
+        <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+          You will find this in your bank or UPI transaction confirmation screen.
+        </small>
+      </div>
+
+      <div style="margin: 1.5rem 0; font-size: 0.875rem;">
+        <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer;">
+          <input type="checkbox" required style="margin-top: 0.25rem;">
+          <span>I have completed the payment of <strong>{{ order.total_amount | currency }}</strong> and verified the UTR number.</span>
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" style="padding: 1rem; font-size: 1.05rem;">
+        Submit Reference &amp; Confirm Order &rarr;
+      </button>
+
+      <div style="text-align: center; margin-top: 1rem;">
+        <a href="{{ url_for('orders.order_success', order_id=order.order_id) }}" style="font-size: 0.8125rem; color: var(--text-muted); text-decoration: underline;">
+          I'll enter the reference later
+        </a>
+      </div>
+    </form>
+
+  </div>
+
+</div>
+{% endblock %}
