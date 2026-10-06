@@ -9,6 +9,7 @@ from decimal import Decimal
 from sqlalchemy import create_engine, text, inspect
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BASE_DIR))
 SQLITE_DB = BASE_DIR / "scented_bubbles.db"
 
 # Strict dependency order for relational data migration
@@ -41,7 +42,9 @@ def run_migration(target_db_url: str):
         sys.exit(1)
 
     if target_db_url.startswith("postgres://"):
-        target_db_url = target_db_url.replace("postgres://", "postgresql://", 1)
+        target_db_url = target_db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+    elif target_db_url.startswith("postgresql://") and not target_db_url.startswith("postgresql+"):
+        target_db_url = target_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
     print("=" * 65)
     print("SCENTED BUBBLES -> SUPABASE DATA MIGRATION")
@@ -72,12 +75,20 @@ def run_migration(target_db_url: str):
     from app import create_app
     from app.extensions import db
     app = create_app("production")
-    app.config["SQLALCHEMY_DATABASE_URI"] = target_db_url
     with app.app_context():
-        db.create_all()
-        print("[+] Target schema verified and initialized.")
+        db.metadata.create_all(bind=dest_engine)
+        print("[+] Target schema verified and initialized on Supabase.")
 
-    # 4. Migrate tables in relational order
+    # 4. Clean tables in reverse dependency order to avoid foreign key blocks
+    with dest_engine.connect() as dest_conn:
+        for table in reversed(TABLES_IN_ORDER):
+            try:
+                dest_conn.execute(text(f'TRUNCATE TABLE "{table}" CASCADE'))
+                dest_conn.commit()
+            except Exception:
+                dest_conn.rollback()
+
+    # 5. Migrate tables in relational order
     total_migrated = 0
     with dest_engine.connect() as dest_conn:
         for table in TABLES_IN_ORDER:
@@ -92,30 +103,40 @@ def run_migration(target_db_url: str):
                 print(f"  * {table:25s}: 0 records (empty)")
                 continue
 
-            # Clear any placeholder data in destination table before inserting
-            dest_conn.execute(text(f'DELETE FROM "{table}"'))
+            target_table = db.metadata.tables.get(table)
+            bool_cols = set()
+            if target_table is not None:
+                from sqlalchemy import Boolean
+                for col in target_table.columns:
+                    if isinstance(col.type, Boolean):
+                        bool_cols.add(col.name)
 
-            # Insert batch
+            batch = []
+            for r in rows:
+                d = dict(r)
+                for b_col in bool_cols:
+                    if b_col in d and d[b_col] is not None:
+                        d[b_col] = bool(d[b_col])
+                batch.append(d)
+
             first_row = dict(rows[0])
             columns = list(first_row.keys())
             col_list_str = ", ".join([f'"{c}"' for c in columns])
             param_list_str = ", ".join([f":{c}" for c in columns])
-
             insert_sql = text(f'INSERT INTO "{table}" ({col_list_str}) VALUES ({param_list_str})')
 
-            batch = [dict(r) for r in rows]
             dest_conn.execute(insert_sql, batch)
             dest_conn.commit()
 
             # Advance PostgreSQL sequence for tables with primary key 'id'
-            try:
-                dest_conn.execute(text(
-                    f"SELECT setval(pg_get_serial_sequence('\"{table}\"', 'id'), COALESCE(MAX(id), 1)) FROM \"{table}\""
-                ))
-                dest_conn.commit()
-            except Exception:
-                # Table might not have a serial 'id' column (e.g. junction tables)
-                pass
+            if "id" in columns:
+                try:
+                    dest_conn.execute(text(
+                        f"SELECT setval(pg_get_serial_sequence('\"{table}\"', 'id'), COALESCE(MAX(id), 1)) FROM \"{table}\""
+                    ))
+                    dest_conn.commit()
+                except Exception:
+                    dest_conn.rollback()
 
             count = len(batch)
             total_migrated += count

@@ -17,7 +17,9 @@ class Config:
     # Defaults to SQLite for local zero-config runs; normalizes Supabase / PostgreSQL URLs if provided.
     _raw_db_url = os.environ.get("DATABASE_URL", f"sqlite:///{BASE_DIR / 'scented_bubbles.db'}")
     if _raw_db_url.startswith("postgres://"):
-        _raw_db_url = _raw_db_url.replace("postgres://", "postgresql://", 1)
+        _raw_db_url = _raw_db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+    elif _raw_db_url.startswith("postgresql://") and not _raw_db_url.startswith("postgresql+"):
+        _raw_db_url = _raw_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
     SQLALCHEMY_DATABASE_URI = _raw_db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
