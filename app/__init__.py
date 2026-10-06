@@ -216,11 +216,9 @@ def create_app(config_name=None, config_override=None):
         return response
 
     @app.errorhandler(500)
-    @app.errorhandler(Exception)
-    def handle_error(e):
+    def handle_500(e):
         import traceback
-        err_msg = f"Error: {e}\n\nTraceback:\n{traceback.format_exc()}"
-        app.logger.error(err_msg)
-        return f"<pre style='white-space: pre-wrap; font-family: monospace; padding: 20px; background: #FFF5F5; color: #C53030; font-size: 14px;'>{err_msg}</pre>", 500
+        app.logger.error(f"500 Internal Error: {e}\n{traceback.format_exc()}")
+        return render_template("errors/500.html"), 500
 
     return app
