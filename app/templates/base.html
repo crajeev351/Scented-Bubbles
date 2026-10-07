@@ -33,82 +33,84 @@
     <span>Free Express Delivery on orders over ₹{{ store_settings.get('free_delivery_threshold', '999') }} | Pay with UPI or Cash on Delivery</span>
   </div>
 
-  {# Main Header #}
-  <header class="site-header">
-    <div class="container header-inner">
-      {# Mobile Menu Toggle (Hamburger) #}
-      <button type="button" class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Open navigation menu" aria-controls="mobile-drawer" aria-expanded="false">
-        <span class="hamburger-bar"></span>
-        <span class="hamburger-bar"></span>
-        <span class="hamburger-bar"></span>
-      </button>
+  {# Main Header Wrapper #}
+  <div class="header-wrapper" id="header-wrapper">
+    <header class="site-header" id="site-header">
+      <div class="container header-inner">
+        {# Mobile Menu Toggle (Hamburger) #}
+        <button type="button" class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Open navigation menu" aria-controls="mobile-drawer" aria-expanded="false">
+          <span class="hamburger-bar"></span>
+          <span class="hamburger-bar"></span>
+          <span class="hamburger-bar"></span>
+        </button>
 
-      {# Brand Logo & Wordmark #}
-      <a href="{{ url_for('main.index') }}" class="brand-logo" title="{{ brand_name }}">
-        {# Inline SVG Bubble Icon #}
-        <svg class="bubble-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="9"/>
-          <path d="M9 9a3 3 0 0 1 3-3"/>
-          <circle cx="16" cy="8" r="1.5" fill="currentColor"/>
-          <circle cx="7" cy="15" r="1" fill="currentColor"/>
-        </svg>
-        <span>{{ brand_name }}</span>
-      </a>
-
-      {# Navigation Links (Desktop) #}
-      <nav class="nav-links">
-        <a href="{{ url_for('main.index') }}" class="{{ 'active' if request.endpoint == 'main.index' else '' }}">Home</a>
-        <a href="{{ url_for('products.product_list') }}" class="{{ 'active' if request.endpoint == 'products.product_list' and not request.args.get('category') else '' }}">All Fragrances</a>
-        {% for cat in nav_categories %}
-          <a href="{{ url_for('products.category_detail', slug=cat.slug) }}">{{ cat.name }}</a>
-        {% endfor %}
-        <a href="{{ url_for('products.combo_list') }}" class="{{ 'active' if request.endpoint == 'products.combo_list' else '' }}">Combos</a>
-        <a href="{{ url_for('orders.track_order') }}">Track Order</a>
-      </nav>
-
-      {# Header Actions: Search, Cart #}
-      <div class="header-actions">
-        <div class="search-box">
-          {# Inline SVG Search Icon #}
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        {# Brand Logo & Wordmark #}
+        <a href="{{ url_for('main.index') }}" class="brand-logo" title="{{ brand_name }}">
+          {# Inline SVG Bubble Icon #}
+          <svg class="bubble-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M9 9a3 3 0 0 1 3-3"/>
+            <circle cx="16" cy="8" r="1.5" fill="currentColor"/>
+            <circle cx="7" cy="15" r="1" fill="currentColor"/>
           </svg>
-          <input type="text" id="site-search-input" placeholder="Search fragrances..." autocomplete="off">
-          <div id="search-results-dropdown" class="live-search-dropdown"></div>
+          <span>{{ brand_name }}</span>
+        </a>
+
+        {# Navigation Links (Desktop) #}
+        <nav class="nav-links">
+          <a href="{{ url_for('main.index') }}" class="{{ 'active' if request.endpoint == 'main.index' else '' }}">Home</a>
+          <a href="{{ url_for('products.product_list') }}" class="{{ 'active' if request.endpoint == 'products.product_list' and not request.args.get('category') else '' }}">All Fragrances</a>
+          {% for cat in nav_categories %}
+            <a href="{{ url_for('products.category_detail', slug=cat.slug) }}">{{ cat.name }}</a>
+          {% endfor %}
+          <a href="{{ url_for('products.combo_list') }}" class="{{ 'active' if request.endpoint == 'products.combo_list' else '' }}">Combos</a>
+          <a href="{{ url_for('orders.track_order') }}">Track Order</a>
+        </nav>
+
+        {# Header Actions: Search, Cart #}
+        <div class="header-actions">
+          <div class="search-box">
+            {# Inline SVG Search Icon #}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="site-search-input" placeholder="Search fragrances..." autocomplete="off">
+            <div id="search-results-dropdown" class="live-search-dropdown"></div>
+          </div>
+
+          {# Customer Account Button #}
+          {% if current_user %}
+          <a href="{{ url_for('account.orders') }}" class="header-account-btn" title="My Account ({{ current_user.name or current_user.phone }})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Account</span>
+          </a>
+          {% else %}
+          <a href="{{ url_for('account.login') }}" class="header-account-btn" title="Sign In or Track Orders">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Sign In</span>
+          </a>
+          {% endif %}
+
+          {# Shopping Bag Icon with Live Badge #}
+          <a href="{{ url_for('cart.view_cart') }}" class="cart-icon-btn" aria-label="Shopping Bag">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <path d="M16 10a4 4 0 0 1-8 0"></path>
+            </svg>
+            <span class="cart-badge" style="display: none;">0</span>
+          </a>
         </div>
-
-        {# Customer Account Button #}
-        {% if current_user %}
-        <a href="{{ url_for('account.orders') }}" class="header-account-btn" title="My Account ({{ current_user.name or current_user.phone }})">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-          <span>Account</span>
-        </a>
-        {% else %}
-        <a href="{{ url_for('account.login') }}" class="header-account-btn" title="Sign In or Track Orders">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-          <span>Sign In</span>
-        </a>
-        {% endif %}
-
-        {# Shopping Bag Icon with Live Badge #}
-        <a href="{{ url_for('cart.view_cart') }}" class="cart-icon-btn" aria-label="Shopping Bag">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <path d="M16 10a4 4 0 0 1-8 0"></path>
-          </svg>
-          <span class="cart-badge" style="display: none;">0</span>
-        </a>
       </div>
-    </div>
-  </header>
+    </header>
+  </div>
 
   {# Mobile Navigation Side Panel Overlay #}
   <div class="mobile-drawer-overlay" id="mobile-drawer-overlay" aria-hidden="true"></div>

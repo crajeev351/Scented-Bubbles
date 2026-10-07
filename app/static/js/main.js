@@ -113,6 +113,80 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Escape') closeMobileDrawer();
   });
 
+  // 3. Floating Smart Header (Hide on scroll down, reveal on scroll up for mobile, iPad, & all screens)
+  const siteHeader = document.getElementById('site-header') || document.querySelector('.site-header');
+  const headerWrapper = document.getElementById('header-wrapper');
+  if (siteHeader) {
+    let lastScrollY = Math.max(0, window.pageYOffset || document.documentElement.scrollTop);
+    let ticking = false;
+    const SCROLL_THRESHOLD = 8; // min delta px to avoid micro-jitter
+    const TOP_OFFSET = 60; // offset before hide/reveal activates
+
+    function updateHeaderOnScroll() {
+      const currentScrollY = Math.max(0, window.pageYOffset || document.documentElement.scrollTop);
+      const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+
+      // Guard: do not hide header if mobile drawer is open, search is focused, or search dropdown is open
+      const isDrawerOpen = document.body.classList.contains('drawer-open') || 
+                           (mobileDrawer && mobileDrawer.classList.contains('active'));
+      const isSearchFocused = searchInput && document.activeElement === searchInput;
+      const isSearchOpen = searchDropdown && searchDropdown.style.display === 'block';
+
+      if (isDrawerOpen || isSearchFocused || isSearchOpen) {
+        lastScrollY = currentScrollY;
+        ticking = false;
+        return;
+      }
+
+      // Near top of page: restore default non-floating flow
+      if (currentScrollY <= 15) {
+        siteHeader.classList.remove('header-hidden');
+        siteHeader.classList.remove('header-floating');
+        if (headerWrapper) headerWrapper.style.minHeight = '';
+        lastScrollY = currentScrollY;
+        ticking = false;
+        return;
+      }
+
+      // Avoid edge bouncing at page bottom
+      if (currentScrollY >= maxScrollY - 20) {
+        lastScrollY = currentScrollY;
+        ticking = false;
+        return;
+      }
+
+      const delta = currentScrollY - lastScrollY;
+
+      // Lock wrapper height once scrolled to prevent page layout jump
+      if (headerWrapper && (!headerWrapper.style.minHeight || headerWrapper.style.minHeight === '0px')) {
+        headerWrapper.style.minHeight = siteHeader.offsetHeight + 'px';
+      }
+
+      // Check threshold to avoid micro-scroll jitter
+      if (Math.abs(delta) >= SCROLL_THRESHOLD) {
+        if (delta > 0 && currentScrollY > TOP_OFFSET) {
+          // Scrolling DOWN -> smoothly hide header
+          siteHeader.classList.add('header-hidden');
+          siteHeader.classList.remove('header-floating');
+        } else if (delta < 0) {
+          // Scrolling UP -> smoothly reveal floating header
+          siteHeader.classList.remove('header-hidden');
+          siteHeader.classList.add('header-floating');
+        }
+        lastScrollY = currentScrollY;
+      }
+
+      ticking = false;
+    }
+
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        window.requestAnimationFrame(updateHeaderOnScroll);
+        ticking = true;
+      }
+    }, { passive: true });
+  }
+
   // Gallery thumbnail selection and carousel
   window.selectProductImage = function(thumbEl, imageUrl, imageSrcset) {
     const mainImg = document.getElementById('main-product-img');

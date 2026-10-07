@@ -127,13 +127,49 @@ img {
 }
 
 /* ================= Header & Navigation ================= */
+/* ================= Header Wrapper & Floating Dynamics ================= */
+.header-wrapper {
+  position: relative;
+  width: 100%;
+}
+
 .site-header {
   background: rgba(250, 248, 245, 0.95);
   backdrop-filter: blur(8px);
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  -webkit-backdrop-filter: blur(8px);
+  width: 100%;
+  position: relative;
+  z-index: 900;
   border-bottom: 1px solid var(--border-light);
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.3s ease,
+              border-color 0.3s ease;
+  will-change: transform;
+}
+
+.site-header.header-hidden {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  transform: translateY(-115%) !important;
+  pointer-events: none;
+}
+
+.site-header.header-floating {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  transform: translateY(0) !important;
+  background: rgba(250, 248, 245, 0.98) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  box-shadow: 0 4px 22px rgba(36, 34, 32, 0.12) !important;
+  border-bottom: 1px solid rgba(197, 160, 89, 0.28) !important;
 }
 
 .header-inner {
@@ -1758,7 +1794,7 @@ body.drawer-open {
 
 /* ================= Responsive Breakpoints ================= */
 html, body {
-  overflow-x: hidden;
+  overflow-x: clip;
   width: 100%;
 }
 
@@ -1781,6 +1817,10 @@ html, body {
     flex-wrap: nowrap;
     padding: 0.85rem 0;
     gap: 0.75rem;
+  }
+
+  .site-header.header-floating .header-inner {
+    padding: 0.65rem 0;
   }
 
   /* Menu Bar on Top Left for less space */
@@ -2096,6 +2136,10 @@ html, body {
     flex-wrap: wrap;
     padding: 0.65rem 0;
     gap: 0.5rem;
+  }
+
+  .site-header.header-floating .header-inner {
+    padding: 0.5rem 0 0.55rem;
   }
 
   .header-actions {
