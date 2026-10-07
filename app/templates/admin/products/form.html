@@ -81,7 +81,7 @@
       <input type="text" id="usage_instructions" name="usage_instructions" value="{{ product.usage_instructions if product else '' }}" class="form-control" placeholder="e.g. Spritz 2-3 sprays on pulse points or apply to clothing">
     </div>
 
-    <div style="display: flex; gap: 2rem; margin: 1.5rem 0; padding: 1rem; background: var(--bg-subtle); border-radius: var(--radius-sm);">
+    <div style="display: flex; gap: 1.5rem; margin: 1.5rem 0; padding: 1rem; background: var(--bg-subtle); border-radius: var(--radius-sm); flex-wrap: wrap;">
       <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
         <input type="checkbox" name="active" value="1" {{ 'checked' if not product or product.active else '' }}>
         <strong>Active (Visible in Store)</strong>
@@ -139,7 +139,7 @@
       <div style="margin-bottom: 1.5rem;">
         <label style="font-size: 0.8125rem; color: var(--text-muted); display: block; margin-bottom: 0.75rem;">Modify Existing Variants:</label>
         {% for var in product.variants %}
-        <div style="display: grid; grid-template-columns: 2fr 2fr 1.5fr 1.5fr 1fr 1fr; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; background: var(--bg-subtle); padding: 0.75rem; border-radius: var(--radius-sm);">
+        <div class="admin-variant-row">
           <div>
             <label style="font-size: 0.75rem; color: var(--text-muted);">Size Label:</label>
             <input type="text" name="var_label_{{ var.id }}" value="{{ var.size_label }}" required class="form-control" style="font-size: 0.8125rem; padding: 0.4rem;">
@@ -171,7 +171,7 @@
       {# Add New Variant Row #}
       <div style="border-top: 1px dashed var(--border-light); padding-top: 1rem; margin-top: 1rem;">
         <label style="font-size: 0.8125rem; font-weight: 600; color: var(--gold-dark); display: block; margin-bottom: 0.5rem;">+ Add Another Variant:</label>
-        <div style="display: grid; grid-template-columns: 2fr 2fr 1.5fr 1.5fr 1fr; gap: 0.75rem;">
+        <div class="admin-new-variant-row">
           <input type="text" name="new_variant_label" placeholder="e.g. 100ml EDP" class="form-control" style="font-size: 0.8125rem;">
           <input type="text" name="new_variant_sku" placeholder="SKU (Auto if blank)" class="form-control" style="font-size: 0.8125rem;">
           <input type="number" step="0.01" name="new_variant_price" placeholder="Price (₹)" class="form-control" style="font-size: 0.8125rem;">
@@ -183,14 +183,14 @@
     {% else %}
       {# Creation mode initial variant rows #}
       <div id="variants-container">
-        <div style="display: grid; grid-template-columns: 2fr 2fr 1.5fr 1.5fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+        <div class="admin-new-variant-row">
           <input type="text" name="variant_label[]" value="50ml EDP" required placeholder="Size label" class="form-control">
           <input type="text" name="variant_sku[]" placeholder="SKU (e.g. VOR-50ML)" class="form-control">
           <input type="number" step="0.01" name="variant_price[]" value="1299.00" required placeholder="Price (₹)" class="form-control">
           <input type="number" step="0.01" name="variant_discounted_price[]" placeholder="Sale Price" class="form-control">
           <input type="number" name="variant_stock[]" value="25" required placeholder="Stock" class="form-control">
         </div>
-        <div style="display: grid; grid-template-columns: 2fr 2fr 1.5fr 1.5fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+        <div class="admin-new-variant-row">
           <input type="text" name="variant_label[]" value="100ml EDP" placeholder="Size label" class="form-control">
           <input type="text" name="variant_sku[]" placeholder="SKU (e.g. VOR-100ML)" class="form-control">
           <input type="number" step="0.01" name="variant_price[]" value="2199.00" placeholder="Price (₹)" class="form-control">

@@ -4,9 +4,9 @@
 
 {% block content %}
 
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-  <form method="GET" action="{{ url_for('admin.customer_list') }}" style="display: flex; gap: 0.5rem;">
-    <input type="text" name="q" value="{{ search_query }}" placeholder="Search by mobile or name..." class="form-control" style="width: 250px; font-size: 0.875rem;">
+<div class="admin-header-row" style="margin-bottom: 2rem;">
+  <form method="GET" action="{{ url_for('admin.customer_list') }}" style="display: flex; gap: 0.5rem; width: 100%; max-width: 360px;">
+    <input type="text" name="q" value="{{ search_query }}" placeholder="Search by mobile or name..." class="form-control" style="flex: 1; font-size: 0.875rem;">
     <button type="submit" class="btn btn-secondary btn-sm">Search</button>
   </form>
 </div>

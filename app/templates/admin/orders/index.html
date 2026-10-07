@@ -6,7 +6,7 @@
 
 {# Search & Filter Controls #}
 <div class="admin-card" style="padding: 1.25rem 1.5rem; margin-bottom: 2rem;">
-  <form method="GET" action="{{ url_for('admin.order_list') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end;">
+  <form method="GET" action="{{ url_for('admin.order_list') }}" class="admin-filter-bar">
     
     <div style="flex: 2; min-width: 200px;">
       <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Search Order ID, Phone, Customer:</label>
@@ -15,7 +15,7 @@
 
     <div>
       <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Order Status:</label>
-      <select name="order_status" class="form-control" style="font-size: 0.875rem; width: auto;">
+      <select name="order_status" class="form-control" style="font-size: 0.875rem;">
         <option value="">All Statuses</option>
         {% for st in order_statuses %}
           <option value="{{ st }}" {{ 'selected' if selected_order_status == st else '' }}>{{ st }}</option>
@@ -25,7 +25,7 @@
 
     <div>
       <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Payment Status:</label>
-      <select name="payment_status" class="form-control" style="font-size: 0.875rem; width: auto;">
+      <select name="payment_status" class="form-control" style="font-size: 0.875rem;">
         <option value="">All Payments</option>
         {% for pst in payment_statuses %}
           <option value="{{ pst }}" {{ 'selected' if selected_payment_status == pst else '' }}>{{ pst }}</option>
@@ -35,18 +35,18 @@
 
     <div>
       <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Start Date:</label>
-      <input type="date" name="start_date" value="{{ start_date }}" class="form-control" style="font-size: 0.875rem; width: auto;">
+      <input type="date" name="start_date" value="{{ start_date }}" class="form-control" style="font-size: 0.875rem;">
     </div>
 
     <div>
       <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">End Date:</label>
-      <input type="date" name="end_date" value="{{ end_date }}" class="form-control" style="font-size: 0.875rem; width: auto;">
+      <input type="date" name="end_date" value="{{ end_date }}" class="form-control" style="font-size: 0.875rem;">
     </div>
 
-    <div>
+    <div style="display: flex; gap: 0.4rem; align-items: flex-end;">
       <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.6rem 1.25rem;">Apply Filters</button>
       {% if search_query or selected_order_status or selected_payment_status or start_date or end_date %}
-        <a href="{{ url_for('admin.order_list') }}" class="btn btn-secondary btn-sm" style="margin-left: 0.4rem;">Reset</a>
+        <a href="{{ url_for('admin.order_list') }}" class="btn btn-secondary btn-sm" style="padding: 0.6rem 1rem;">Reset</a>
       {% endif %}
     </div>
 
@@ -54,7 +54,7 @@
 </div>
 
 {# Orders Table #}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+<div class="admin-header-row" style="margin-bottom: 0.75rem;">
   <span style="font-size: 0.84rem; color: var(--text-muted);">
     Total Orders: <strong>{{ pagination.total if pagination else orders|length }}</strong>
   </span>

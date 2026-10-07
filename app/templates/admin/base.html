@@ -13,6 +13,7 @@
       display: flex;
       min-height: 100vh;
       background: #F4EFEB;
+      position: relative;
     }
     .admin-sidebar {
       width: 250px;
@@ -22,7 +23,7 @@
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
-      transition: margin-left 0.25s ease;
+      transition: margin-left 0.25s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
       position: relative;
       z-index: 100;
     }
@@ -34,12 +35,53 @@
       border-bottom: 1px solid #2B2825;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 0.6rem;
     }
+    .admin-sidebar-close-btn {
+      display: none;
+      width: 32px;
+      height: 32px;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 50%;
+      color: #FAF8F5;
+      cursor: pointer;
+      font-size: 1.1rem;
+      line-height: 1;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .admin-sidebar-close-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: #FFFFFF;
+    }
+    .admin-sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(18, 16, 14, 0.65);
+      backdrop-filter: blur(3px);
+      z-index: 1040;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .admin-sidebar-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    body.admin-drawer-open {
+      overflow: hidden !important;
+    }
+
     .admin-nav-list {
       list-style: none;
       padding: 1rem 0;
       flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .admin-nav-item a {
       display: flex;
@@ -62,6 +104,7 @@
       display: flex;
       flex-direction: column;
       min-width: 0;
+      width: 100%;
       overflow-x: hidden;
     }
     .admin-topbar {
@@ -78,22 +121,6 @@
       flex: 1;
       min-width: 0;
     }
-    @media (max-width: 1200px) {
-      .admin-topbar {
-        padding: 0.75rem 1.25rem;
-      }
-      .admin-body {
-        padding: 1.25rem 1.25rem;
-      }
-    }
-    @media (max-width: 768px) {
-      .admin-topbar {
-        padding: 0.65rem 0.85rem;
-      }
-      .admin-body {
-        padding: 1rem 0.75rem;
-      }
-    }
     .admin-card {
       background: #FFFFFF;
       border: 1px solid var(--border-light);
@@ -106,6 +133,7 @@
       width: 100%;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
+      display: block;
     }
     .table-responsive::-webkit-scrollbar {
       height: 6px;
@@ -146,6 +174,97 @@
     .admin-table tr:hover td {
       background: #FAF8F5;
     }
+
+    /* Global Responsive Admin Layout Components */
+    .admin-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    .admin-quick-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.5rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .admin-quick-btn-group {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .admin-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .admin-filter-bar {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .admin-two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      align-items: flex-start;
+    }
+    .order-detail-layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 2rem;
+      align-items: start;
+    }
+    .order-two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      font-size: 0.875rem;
+    }
+    .order-dispatch-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 0.75rem;
+      align-items: end;
+    }
+    .admin-variant-row {
+      display: grid;
+      grid-template-columns: 2fr 2fr 1.5fr 1.5fr 1fr 1fr;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      background: var(--bg-subtle);
+      padding: 0.75rem;
+      border-radius: var(--radius-sm);
+    }
+    .admin-new-variant-row {
+      display: grid;
+      grid-template-columns: 2fr 2fr 1.5fr 1.5fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .combo-item-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      background: var(--bg-subtle, #FAF8F5);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-light);
+      flex-wrap: wrap;
+    }
+
     /* Hide number input spinners on quick edit fields */
     .quick-edit-input::-webkit-outer-spin-button,
     .quick-edit-input::-webkit-inner-spin-button {
@@ -183,6 +302,194 @@
       padding: 0.15rem 0.45rem;
       border-radius: var(--radius-pill);
     }
+
+    /* Tablet & Medium Breakpoint (<= 1100px) */
+    @media (max-width: 1100px) {
+      .admin-metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+      }
+    }
+
+    /* Mobile & Tablet Off-Canvas Drawer Breakpoint (<= 992px) */
+    @media (max-width: 992px) {
+      .admin-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 280px;
+        max-width: 82vw;
+        z-index: 1050;
+        transform: translateX(-100%);
+        box-shadow: 4px 0 28px rgba(0, 0, 0, 0.35);
+        margin-left: 0 !important;
+      }
+      .admin-sidebar.show-mobile {
+        transform: translateX(0);
+      }
+      .admin-sidebar-close-btn {
+        display: flex;
+      }
+      .admin-topbar {
+        padding: 0.75rem 1.25rem;
+      }
+      .admin-body {
+        padding: 1.25rem 1.25rem;
+      }
+      .admin-flash-container {
+        padding: 0.75rem 1.25rem 0 !important;
+      }
+      .order-detail-layout {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+      .admin-variant-row,
+      .admin-new-variant-row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+      }
+    }
+
+    /* Mobile Phones Breakpoint (<= 768px) */
+    @media (max-width: 768px) {
+      .admin-topbar {
+        padding: 0.65rem 0.85rem;
+      }
+      .admin-topbar-title {
+        max-width: 180px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .admin-body {
+        padding: 1rem 0.75rem;
+      }
+      .admin-flash-container {
+        padding: 0.5rem 0.75rem 0 !important;
+      }
+      .admin-user-info span {
+        display: none;
+      }
+      .admin-card {
+        padding: 1.15rem 1rem;
+        margin-bottom: 1.25rem;
+      }
+      .admin-table {
+        min-width: 580px;
+      }
+      .admin-table th, .admin-table td {
+        padding: 0.55rem 0.65rem;
+        font-size: 0.8rem;
+      }
+      .admin-quick-actions {
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .admin-quick-btn-group {
+        flex-direction: column;
+      }
+      .admin-quick-btn-group .btn {
+        width: 100%;
+        justify-content: center;
+      }
+      .admin-quick-actions form {
+        width: 100%;
+      }
+      .admin-quick-actions form button {
+        width: 100%;
+        justify-content: center;
+      }
+      .admin-filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+      }
+      .admin-filter-bar > div,
+      .admin-filter-bar .form-control,
+      .admin-filter-bar select,
+      .admin-filter-bar input {
+        width: 100% !important;
+        min-width: 100% !important;
+      }
+      .admin-filter-bar .btn {
+        width: 100%;
+        margin-left: 0 !important;
+        justify-content: center;
+      }
+      .admin-two-col {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+      }
+      .order-dispatch-grid {
+        grid-template-columns: 1fr;
+        gap: 0.65rem;
+      }
+      .order-dispatch-grid .btn {
+        width: 100%;
+      }
+      .order-two-col {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+      .combo-item-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.6rem;
+      }
+      .combo-item-row .combo-variant-select {
+        width: 100% !important;
+      }
+      .combo-item-row .remove-item-btn {
+        align-self: flex-end;
+      }
+      .form-row {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 1rem !important;
+      }
+      .form-row > * {
+        width: 100% !important;
+        min-width: 100% !important;
+      }
+    }
+
+    /* Compact Mobile Phones (<= 540px) */
+    @media (max-width: 540px) {
+      .admin-metrics-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+      }
+      .admin-topbar-title {
+        max-width: 140px;
+      }
+      .admin-header-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .admin-header-row .btn {
+        width: 100%;
+        justify-content: center;
+      }
+      .admin-variant-row,
+      .admin-new-variant-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+      }
+    }
+
+    /* Smallest Mobile Phones (<= 380px) */
+    @media (max-width: 380px) {
+      .admin-body {
+        padding: 0.75rem 0.5rem;
+      }
+      .admin-card {
+        padding: 0.85rem 0.65rem;
+      }
+    }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
@@ -190,16 +497,24 @@
 
   <div class="admin-layout">
     
+    {# Mobile & Tablet Off-Canvas Overlay #}
+    <div class="admin-sidebar-overlay" id="adminSidebarOverlay"></div>
+
     {# Admin Sidebar #}
-    <aside class="admin-sidebar">
+    <aside class="admin-sidebar" id="adminSidebar">
       <div class="admin-sidebar-header">
-        <svg style="width: 24px; height: 24px; color: var(--gold-primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="9"/>
-          <path d="M9 9a3 3 0 0 1 3-3"/>
-          <circle cx="16" cy="8" r="1.5" fill="currentColor"/>
-          <circle cx="7" cy="15" r="1" fill="currentColor"/>
-        </svg>
-        <span style="font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700;">{{ brand_name }}</span>
+        <div style="display: flex; align-items: center; gap: 0.6rem; flex: 1;">
+          <svg style="width: 24px; height: 24px; color: var(--gold-primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M9 9a3 3 0 0 1 3-3"/>
+            <circle cx="16" cy="8" r="1.5" fill="currentColor"/>
+            <circle cx="7" cy="15" r="1" fill="currentColor"/>
+          </svg>
+          <span style="font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700;">{{ brand_name }}</span>
+        </div>
+        <button type="button" class="admin-sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close Sidebar">
+          &times;
+        </button>
       </div>
 
       <ul class="admin-nav-list">
@@ -285,26 +600,26 @@
       {# Topbar #}
       <header class="admin-topbar">
         <div style="display: flex; align-items: center; gap: 0.85rem;">
-          <button id="sidebarToggle" type="button" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.6rem; font-size: 1.1rem; line-height: 1; border: 1px solid var(--border-light); background: #FAF8F5; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Toggle Sidebar">
+          <button id="sidebarToggle" type="button" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.65rem; font-size: 1.2rem; line-height: 1; border: 1px solid var(--border-light); background: #FAF8F5; cursor: pointer; display: flex; align-items: center; justify-content: center; min-width: 38px; min-height: 38px;" title="Toggle Sidebar">
             ☰
           </button>
           <div>
-            <span style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.05em;">Admin Portal</span>
-            <h2 style="font-size: 1.25rem; font-family: var(--font-sans); font-weight: 700; margin: 0;">
+            <span style="font-size: 0.72rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.05em;">Admin Portal</span>
+            <h2 class="admin-topbar-title" style="font-size: 1.2rem; font-family: var(--font-sans); font-weight: 700; margin: 0;">
               {% block page_title %}Dashboard{% endblock %}
             </h2>
           </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <span style="font-size: 0.875rem; color: var(--text-muted);">
+        <div class="admin-user-info" style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-size: 0.84rem; color: var(--text-muted);">
             Administrator: <strong>{{ session.get('admin_username', 'Admin') }}</strong>
           </span>
-          <a href="{{ url_for('admin.logout') }}" class="btn btn-secondary btn-sm">Sign Out</a>
+          <a href="{{ url_for('admin.logout') }}" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; white-space: nowrap;">Sign Out</a>
         </div>
       </header>
 
       {# Flash Messages #}
-      <div style="padding: 1rem 2rem 0;">
+      <div class="admin-flash-container" style="padding: 1rem 2rem 0;">
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
@@ -331,19 +646,65 @@
         document.getElementById(formId).submit();
       }
     }
-    // Sidebar toggle persistence
+    // Responsive Sidebar Toggle & Mobile Off-Canvas Drawer
     (function() {
-      const sidebar = document.querySelector('.admin-sidebar');
+      const sidebar = document.getElementById('adminSidebar');
       const toggleBtn = document.getElementById('sidebarToggle');
+      const closeBtn = document.getElementById('sidebarCloseBtn');
+      const overlay = document.getElementById('adminSidebarOverlay');
+
+      function openMobileSidebar() {
+        if (sidebar) sidebar.classList.add('show-mobile');
+        if (overlay) overlay.classList.add('active');
+        document.body.classList.add('admin-drawer-open');
+      }
+
+      function closeMobileSidebar() {
+        if (sidebar) sidebar.classList.remove('show-mobile');
+        if (overlay) overlay.classList.remove('active');
+        document.body.classList.remove('admin-drawer-open');
+      }
+
       if (toggleBtn && sidebar) {
-        if (localStorage.getItem('sb_admin_sidebar_collapsed') === 'true') {
+        if (window.innerWidth > 992 && localStorage.getItem('sb_admin_sidebar_collapsed') === 'true') {
           sidebar.classList.add('collapsed');
         }
-        toggleBtn.addEventListener('click', function() {
-          sidebar.classList.toggle('collapsed');
-          localStorage.setItem('sb_admin_sidebar_collapsed', sidebar.classList.contains('collapsed'));
+        toggleBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          if (window.innerWidth <= 992) {
+            if (sidebar.classList.contains('show-mobile')) {
+              closeMobileSidebar();
+            } else {
+              openMobileSidebar();
+            }
+          } else {
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sb_admin_sidebar_collapsed', sidebar.classList.contains('collapsed'));
+          }
         });
       }
+
+      if (closeBtn) {
+        closeBtn.addEventListener('click', closeMobileSidebar);
+      }
+      if (overlay) {
+        overlay.addEventListener('click', closeMobileSidebar);
+      }
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && window.innerWidth <= 992) {
+          closeMobileSidebar();
+        }
+      });
+
+      // Auto close drawer when nav item clicked on mobile
+      document.querySelectorAll('.admin-nav-item a').forEach(function(link) {
+        link.addEventListener('click', function() {
+          if (window.innerWidth <= 992) {
+            closeMobileSidebar();
+          }
+        });
+      });
     })();
 
     // Global Customer Sensitive Data Reveal / Mask Toggle

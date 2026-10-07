@@ -5,13 +5,13 @@
 {% block content %}
 
 {# 1. Top Metrics Cards #}
-<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2.5rem;">
+<div class="admin-metrics-grid">
   
   <div class="admin-card" style="margin-bottom: 0;">
     <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.4rem;">
       Today's Orders
     </span>
-    <h3 style="font-size: 2rem; color: var(--text-main); margin-bottom: 0.2rem;">{{ today_orders }}</h3>
+    <h3 style="font-size: 1.85rem; color: var(--text-main); margin-bottom: 0.2rem;">{{ today_orders }}</h3>
     <span style="font-size: 0.8125rem; color: var(--gold-dark); font-weight: 600;">₹{{ '{:,.2f}'.format(today_revenue) }} revenue</span>
   </div>
 
@@ -19,7 +19,7 @@
     <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.4rem;">
       Month to Date Revenue
     </span>
-    <h3 style="font-size: 2rem; color: var(--text-main); margin-bottom: 0.2rem;">₹{{ '{:,.2f}'.format(month_revenue) }}</h3>
+    <h3 style="font-size: 1.85rem; color: var(--text-main); margin-bottom: 0.2rem;">₹{{ '{:,.2f}'.format(month_revenue) }}</h3>
     <span style="font-size: 0.8125rem; color: var(--text-muted);">Paid orders this month</span>
   </div>
 
@@ -27,13 +27,13 @@
     <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.4rem;">
       Action Required
     </span>
-    <div style="display: flex; gap: 1.5rem; align-items: baseline; margin-top: 0.2rem;">
+    <div style="display: flex; gap: 1.25rem; align-items: baseline; margin-top: 0.2rem; flex-wrap: wrap;">
       <div>
-        <h3 style="font-size: 1.8rem; color: #E65100; margin-bottom: 0;">{{ pending_orders }}</h3>
+        <h3 style="font-size: 1.7rem; color: #E65100; margin-bottom: 0;">{{ pending_orders }}</h3>
         <span style="font-size: 0.75rem; color: var(--text-muted);">Pending Orders</span>
       </div>
       <div>
-        <h3 style="font-size: 1.8rem; color: #0277BD; margin-bottom: 0;">{{ pending_payments }}</h3>
+        <h3 style="font-size: 1.7rem; color: #0277BD; margin-bottom: 0;">{{ pending_payments }}</h3>
         <span style="font-size: 0.75rem; color: var(--text-muted);">Verify UPI</span>
       </div>
     </div>
@@ -43,13 +43,13 @@
     <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.4rem;">
       Catalog Inventory
     </span>
-    <div style="display: flex; gap: 1.5rem; align-items: baseline; margin-top: 0.2rem;">
+    <div style="display: flex; gap: 1.25rem; align-items: baseline; margin-top: 0.2rem; flex-wrap: wrap;">
       <div>
-        <h3 style="font-size: 1.8rem; color: var(--text-main); margin-bottom: 0;">{{ total_products }}</h3>
+        <h3 style="font-size: 1.7rem; color: var(--text-main); margin-bottom: 0;">{{ total_products }}</h3>
         <span style="font-size: 0.75rem; color: var(--text-muted);">Active Products</span>
       </div>
       <div>
-        <h3 style="font-size: 1.8rem; color: {{ '#C62828' if low_stock > 0 else 'var(--color-success)' }}; margin-bottom: 0;">{{ low_stock }}</h3>
+        <h3 style="font-size: 1.7rem; color: {{ '#C62828' if low_stock > 0 else 'var(--color-success)' }}; margin-bottom: 0;">{{ low_stock }}</h3>
         <span style="font-size: 0.75rem; color: var(--text-muted);">Low Stock Items</span>
       </div>
     </div>
@@ -58,8 +58,8 @@
 </div>
 
 {# 2. Quick Action Bar #}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; background: #FFFFFF; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem 1.5rem;">
-  <div style="display: flex; gap: 0.75rem;">
+<div class="admin-quick-actions">
+  <div class="admin-quick-btn-group">
     <a href="{{ url_for('admin.product_create') }}" class="btn btn-primary btn-sm">+ Add New Fragrance</a>
     <a href="{{ url_for('admin.combo_create') }}" class="btn btn-secondary btn-sm">+ Create Gift Combo</a>
     <a href="{{ url_for('admin.banner_create') }}" class="btn btn-secondary btn-sm">+ Add Hero Banner</a>

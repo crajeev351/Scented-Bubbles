@@ -32,14 +32,14 @@
     </a>
   </div>
 
-  <form method="GET" action="{{ url_for('admin.inventory') }}" style="display: flex; gap: 0.75rem; align-items: center;">
+  <form method="GET" action="{{ url_for('admin.inventory') }}" style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
     <input type="hidden" name="filter" value="{{ filter_type }}">
     <div style="display: flex; align-items: center; gap: 0.5rem;">
       <label style="font-size: 0.8125rem; font-weight: 600; color: var(--text-muted); white-space: nowrap;">Low Threshold:</label>
       <input type="number" name="threshold" value="{{ threshold }}" min="1" max="100" class="form-control" style="width: 70px; padding: 0.35rem 0.5rem; text-align: center;">
     </div>
-    <div style="display: flex; align-items: center; gap: 0.5rem;">
-      <input type="text" name="q" value="{{ search_query }}" placeholder="Search SKU or name..." class="form-control" style="width: 180px; padding: 0.35rem 0.6rem;">
+    <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 150px;">
+      <input type="text" name="q" value="{{ search_query }}" placeholder="Search SKU or name..." class="form-control" style="width: 100%; padding: 0.35rem 0.6rem;">
     </div>
     <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
   </form>
