@@ -1202,6 +1202,14 @@ def banner_create():
             except ValueError as ve:
                 flash(str(ve), "error")
 
+        img_mobile_file = request.files.get("image_mobile")
+        image_mobile_key = None
+        if img_mobile_file and img_mobile_file.filename:
+            try:
+                image_mobile_key = handle_uploaded_file(img_mobile_file, prefix="banner_mob", fit_dimensions=(800, 800))
+            except ValueError as ve:
+                flash(str(ve), "error")
+
         banner = Banner(
             title=title,
             subtitle=subtitle,
@@ -1214,6 +1222,7 @@ def banner_create():
             overlay_opacity=overlay_opacity,
             link_url=link_url,
             image_key=image_key,
+            image_mobile_key=image_mobile_key,
             display_order=display_order,
             active=active,
         )
@@ -1302,10 +1311,23 @@ def banner_edit(id):
         banner.display_order = display_order
         banner.active = active
 
+        # Desktop banner image upload
         img_file = request.files.get("image")
         if img_file and img_file.filename:
             try:
                 banner.image_key = handle_uploaded_file(img_file, prefix="banner", fit_dimensions=(1920, 600))
+            except ValueError as ve:
+                flash(str(ve), "error")
+
+        # Option to remove mobile-specific image (revert to desktop auto-fit)
+        if request.form.get("remove_mobile_image") == "1":
+            banner.image_mobile_key = None
+
+        # Mobile banner image upload
+        img_mobile_file = request.files.get("image_mobile")
+        if img_mobile_file and img_mobile_file.filename:
+            try:
+                banner.image_mobile_key = handle_uploaded_file(img_mobile_file, prefix="banner_mob", fit_dimensions=(800, 800))
             except ValueError as ve:
                 flash(str(ve), "error")
 

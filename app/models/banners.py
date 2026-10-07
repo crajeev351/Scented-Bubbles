@@ -22,8 +22,28 @@ class Banner(db.Model):
     secondary_button_text = db.Column(db.String(80), nullable=True)  # Optional second button label
     secondary_button_link = db.Column(db.String(255), nullable=True)
     target_type = db.Column(db.String(30), nullable=True, default="custom")  # 'product', 'combo', 'category', 'custom'
-    target_id = db.Column(db.Integer, nullable=True)  # Target product/combo/category ID
     overlay_opacity = db.Column(db.Integer, default=55, nullable=True)  # Darkness %: 20-90
+    image_mobile_key = db.Column(db.String(255), nullable=True)  # Optional mobile-specific background image (800x800 or 750x900)
+
+    @property
+    def image_mobile_url(self) -> str:
+        """Returns dedicated mobile banner URL (max 800px) or falls back to desktop image_url."""
+        if self.image_mobile_key:
+            from app.services.image_service import get_image_url
+            return get_image_url(self.image_mobile_key, size="large")
+        return self.image_url
+
+    @property
+    def thumbnail_mobile_url(self) -> str:
+        """Returns thumbnail for mobile banner in admin."""
+        if self.image_mobile_key:
+            from app.services.image_service import get_image_url
+            return get_image_url(self.image_mobile_key, size="thumb")
+        return ""
+
+    @property
+    def has_mobile_image(self) -> bool:
+        return bool(self.image_mobile_key)
 
     @property
     def display_button_text(self) -> str:

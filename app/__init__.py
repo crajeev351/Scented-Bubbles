@@ -42,6 +42,7 @@ def create_app(config_name=None, config_override=None):
                     ("target_type", "VARCHAR(30)"),
                     ("target_id", "INTEGER"),
                     ("overlay_opacity", "INTEGER DEFAULT 55"),
+                    ("image_mobile_key", "VARCHAR(255)"),
                 ]
                 with db.engine.connect() as conn:
                     for cname, ctype in new_cols:

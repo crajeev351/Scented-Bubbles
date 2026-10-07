@@ -2186,6 +2186,9 @@ html, body {
     flex-direction: column;
     justify-content: center;
     align-items: flex-start;
+    background-image: linear-gradient(180deg, rgba(14, 13, 11, 0.30) 0%, rgba(14, 13, 11, 0.65) 50%, rgba(14, 13, 11, 0.94) 100%), var(--hero-bg-mobile, var(--hero-bg-desktop)) !important;
+    background-size: cover !important;
+    background-position: center center !important;
   }
 
   .hero-slide::after {

@@ -21,7 +21,7 @@
       {% set op_start = (op * 1.15)|round(2) if (op * 1.15) <= 0.98 else 0.98 %}
       {% set op_mid = (op * 0.85)|round(2) %}
       {% set op_end = (op * 0.50)|round(2) %}
-      <div class="hero-slide {% if loop.first %}active{% endif %}" data-slide-index="{{ loop.index0 }}" style="background-image: linear-gradient(90deg, rgba(14, 13, 11, {{ op_start }}) 0%, rgba(14, 13, 11, {{ op_mid }}) 55%, rgba(14, 13, 11, {{ op_end }}) 100%), url('{{ hero.image_url }}');">
+      <div class="hero-slide {% if loop.first %}active{% endif %}" data-slide-index="{{ loop.index0 }}" style="--hero-bg-desktop: url('{{ hero.image_url }}'); --hero-bg-mobile: url('{{ hero.image_mobile_url }}'); --hero-op-start: {{ op_start }}; --hero-op-mid: {{ op_mid }}; --hero-op-end: {{ op_end }}; background-image: linear-gradient(90deg, rgba(14, 13, 11, {{ op_start }}) 0%, rgba(14, 13, 11, {{ op_mid }}) 55%, rgba(14, 13, 11, {{ op_end }}) 100%), url('{{ hero.image_url }}');">
         <div class="hero-content">
           {% if hero.tagline %}
             <span class="hero-tagline"><span class="hero-badge">{{ hero.tagline }}</span></span>

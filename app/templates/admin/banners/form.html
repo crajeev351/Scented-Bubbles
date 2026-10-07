@@ -149,26 +149,92 @@
         <span style="color: var(--gold-primary);">🖼️</span> Background Image & Dark Luxury Overlay
       </h3>
 
-      {# Dimension Guidance Box #}
-      <div style="background: rgba(197, 160, 89, 0.12); border: 1.5px dashed var(--gold-primary, #C5A059); border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 1.25rem;">
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
-          <div style="display: flex; align-items: center; gap: 0.5rem; color: #8C6D23; font-weight: 700; font-size: 0.875rem;">
-            <span>📐 Recommended Dimensions:</span>
-            <span style="background: #8C6D23; color: #fff; padding: 0.15rem 0.55rem; border-radius: 4px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.02em;">
-              1920 × 600 px (or 1200 × 500 px, ~16:5 ratio)
-            </span>
-          </div>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">Format: JPG, PNG, WebP &bull; Max: 5 MB</span>
+      {# Dimension Guidance Box with Both Desktop & Mobile Dimensions #}
+      <div style="background: rgba(197, 160, 89, 0.10); border: 1.5px dashed var(--gold-primary, #C5A059); border-radius: 10px; padding: 1.15rem 1.25rem; margin-bottom: 1.5rem;">
+        <div style="font-weight: 700; color: #8C6D23; font-size: 0.95rem; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+          <span style="display: flex; align-items: center; gap: 0.4rem;">
+            <span>📐</span> Recommended Banner Dimensions for Client
+          </span>
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">Format: JPG, PNG, WebP &bull; Max: 5 MB</span>
         </div>
-        <p style="margin: 0.5rem 0 0; font-size: 0.8125rem; color: var(--text-muted); line-height: 1.45;">
-          • <strong>Auto-Fit Protection:</strong> If an image of any other dimension or ratio (e.g. square, portrait, or tall) is uploaded, our auto-fit engine will automatically center-crop and fit it to the banner without stretching or distortion.<br>
-          • <strong>Darkened Overlay:</strong> A subtle luxury dark vignette is automatically layered over the image so your headline, offer badge, and buttons stand out crisply with 100% contrast.
-        </p>
+
+        {# Grid showing both Desktop and Mobile dimensions side-by-side #}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.85rem; margin-bottom: 0.85rem;">
+          {# Dimension 1: Desktop / Tablet #}
+          <div style="background: #ffffff; border: 1px solid rgba(197, 160, 89, 0.35); border-radius: 8px; padding: 0.85rem 1rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
+              <strong style="font-size: 0.85rem; color: var(--text-main);">🖥️ Desktop & Tablet View</strong>
+              <span style="background: #8C6D23; color: #fff; padding: 0.15rem 0.55rem; border-radius: 4px; font-size: 0.78rem; font-weight: 700;">
+                1920 × 600 px
+              </span>
+            </div>
+            <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+              Widescreen aspect ratio (~16:5 or 1200 × 500 px). Displayed on laptops, desktop monitors, and iPad landscape.
+            </p>
+          </div>
+
+          {# Dimension 2: Mobile View #}
+          <div style="background: #ffffff; border: 1px solid rgba(197, 160, 89, 0.35); border-radius: 8px; padding: 0.85rem 1rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
+              <strong style="font-size: 0.85rem; color: var(--text-main);">📱 Mobile Smartphone View</strong>
+              <span style="background: #2E7D32; color: #fff; padding: 0.15rem 0.55rem; border-radius: 4px; font-size: 0.78rem; font-weight: 700;">
+                800 × 800 px (or 750 × 900 px)
+              </span>
+            </div>
+            <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+              Square (1:1) or tall portrait (~5:6). Tailored for iPhone & Android vertical screens where hero height is ~400px.
+            </p>
+          </div>
+        </div>
+
+        <div style="font-size: 0.8125rem; color: var(--text-muted); line-height: 1.5; border-top: 1px solid rgba(197, 160, 89, 0.2); padding-top: 0.65rem;">
+          • <strong>Why upload a mobile banner?</strong> Phones have narrow vertical viewports. Wide desktop banners get cropped on the left & right sides. An 800 × 800 px mobile image ensures your perfume bottles and models remain centered and razor-sharp.<br>
+          • <strong>Auto-Fit Protection:</strong> If no separate mobile image is uploaded, our engine automatically center-crops the desktop image for phones.
+        </div>
       </div>
 
-      <div class="form-group" style="margin-bottom: 1.25rem;">
-        <label for="image" style="font-weight: 600;">Upload Hero Background Image</label>
-        <input type="file" id="image" name="image" accept=".jpg,.jpeg,.png,.webp" class="form-control" style="background: #fff;">
+      {# 1. Desktop Background Image #}
+      <div class="form-group" style="margin-bottom: 1.5rem; background: var(--bg-surface); padding: 1rem 1.25rem; border-radius: 8px; border: 1px solid var(--border-light);">
+        <label for="image" style="font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+          <span>Upload Desktop & Tablet Hero Image (Required for new banners)</span>
+          <span style="font-size: 0.75rem; color: #8C6D23; font-weight: 600;">Recommended: 1920 × 600 px</span>
+        </label>
+        <input type="file" id="image" name="image" accept=".jpg,.jpeg,.png,.webp" class="form-control" style="background: #fff; margin-top: 0.35rem;">
+        
+        {% if banner and banner.image_url %}
+          <div style="margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px solid var(--border-light); display: flex; align-items: center; gap: 1rem;">
+            <img src="{{ banner.image_url }}" alt="Current Desktop Banner" style="max-height: 90px; width: auto; max-width: 220px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
+            <div style="font-size: 0.78rem; color: var(--text-muted);">
+              <strong style="color: var(--text-main);">Active Desktop / Tablet Banner</strong><br>
+              Shown on monitors, laptops, and tablets.
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      {# 2. Mobile Smartphone Background Image (Optional) #}
+      <div class="form-group" style="margin-bottom: 1.5rem; background: var(--bg-surface); padding: 1rem 1.25rem; border-radius: 8px; border: 1px solid var(--border-light);">
+        <label for="image_mobile" style="font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+          <span>Upload Mobile Hero Image (Optional &ndash; Recommended for best mobile fit)</span>
+          <span style="font-size: 0.75rem; color: #2E7D32; font-weight: 700;">Recommended: 800 × 800 px (or 750 × 900 px)</span>
+        </label>
+        <input type="file" id="image_mobile" name="image_mobile" accept=".jpg,.jpeg,.png,.webp" class="form-control" style="background: #fff; margin-top: 0.35rem;">
+        <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 4px;">
+          Displayed only on mobile smartphone screens (&le; 680px). If left empty, the desktop image will be automatically fitted.
+        </small>
+
+        {% if banner and banner.has_mobile_image %}
+          <div style="margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px solid var(--border-light); display: flex; align-items: center; gap: 1rem;">
+            <img src="{{ banner.image_mobile_url }}" alt="Current Mobile Banner" style="max-height: 90px; width: 90px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
+            <div style="font-size: 0.78rem; color: var(--text-muted);">
+              <strong style="color: var(--text-main); color: #2E7D32;">Active Mobile-Specific Banner</strong><br>
+              Tailored for smartphone viewports.<br>
+              <label style="display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.35rem; cursor: pointer; color: #C62828; font-weight: 600;">
+                <input type="checkbox" name="remove_mobile_image" value="1"> Remove mobile image (revert to desktop auto-fit)
+              </label>
+            </div>
+          </div>
+        {% endif %}
       </div>
 
       {# Darkness overlay control #}
@@ -186,13 +252,6 @@
           <span>Deep Luxury Dark (85%)</span>
         </div>
       </div>
-
-      {% if banner and banner.image_url %}
-        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-light);">
-          <span style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.5rem; color: var(--text-main);">Current Banner Preview</span>
-          <img src="{{ banner.image_url }}" alt="Current Banner" style="max-height: 140px; width: auto; max-width: 100%; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border-light); box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-        </div>
-      {% endif %}
     </div>
 
     <hr style="border: none; border-top: 1px solid var(--border-light); margin: 2rem 0;">
