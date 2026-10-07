@@ -15,6 +15,22 @@ def _get_date_col(date_basis: str = "placed"):
     return Order.updated_at if date_basis == "activity" else Order.created_at
 
 
+def _format_month(col):
+    """Database-agnostic month string (%Y-%m / YYYY-MM)."""
+    bind = db.session.get_bind()
+    if bind and bind.dialect.name.startswith("postgres"):
+        return func.to_char(col, "YYYY-MM")
+    return func.strftime("%Y-%m", col)
+
+
+def _format_hour(col):
+    """Database-agnostic hour string (%H / HH24)."""
+    bind = db.session.get_bind()
+    if bind and bind.dialect.name.startswith("postgres"):
+        return func.to_char(col, "HH24")
+    return func.strftime("%H", col)
+
+
 def get_summary_kpis(
     start_date: Optional[datetime.date] = None,
     end_date: Optional[datetime.date] = None,
@@ -125,8 +141,7 @@ def get_daily_revenue_trend(
 
 def get_monthly_revenue_trend() -> Dict[str, Any]:
     """2. Monthly revenue trend for Chart.js."""
-    # strftime('%Y-%m') works across SQLite and MySQL
-    month_col = func.strftime("%Y-%m", Order.created_at)
+    month_col = _format_month(Order.created_at)
 
     rows = db.session.query(
         month_col.label("month"),
@@ -255,7 +270,7 @@ def get_sales_by_category(start_date: Optional[datetime.date] = None, end_date: 
 
 def get_orders_by_hour(start_date: Optional[datetime.date] = None, end_date: Optional[datetime.date] = None) -> Dict[str, Any]:
     """7. Hourly peak purchasing distribution (00 to 23)."""
-    hour_col = func.strftime("%H", Order.created_at)
+    hour_col = _format_hour(Order.created_at)
     query = db.session.query(
         hour_col.label("hour"),
         func.count(Order.id).label("count")

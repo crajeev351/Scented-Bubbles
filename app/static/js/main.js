@@ -66,13 +66,76 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 2. Mobile Menu Toggle
+  // 2. Mobile Side Panel Navigation Drawer
   const mobileToggleBtn = document.getElementById('mobile-menu-toggle');
-  const mobileNav = document.getElementById('mobile-nav-menu');
-  if (mobileToggleBtn && mobileNav) {
-    mobileToggleBtn.addEventListener('click', () => {
-      const isOpen = mobileNav.style.display === 'flex';
-      mobileNav.style.display = isOpen ? 'none' : 'flex';
+  const mobileDrawer = document.getElementById('mobile-drawer');
+  const drawerOverlay = document.getElementById('mobile-drawer-overlay');
+  const drawerCloseBtn = document.getElementById('mobile-drawer-close');
+
+  function openMobileDrawer() {
+    if (mobileDrawer && drawerOverlay) {
+      mobileDrawer.classList.add('active');
+      drawerOverlay.classList.add('active');
+      mobileDrawer.setAttribute('aria-hidden', 'false');
+      drawerOverlay.setAttribute('aria-hidden', 'false');
+      if (mobileToggleBtn) mobileToggleBtn.setAttribute('aria-expanded', 'true');
+      document.body.classList.add('drawer-open');
+    }
+  }
+
+  function closeMobileDrawer() {
+    if (mobileDrawer && drawerOverlay) {
+      mobileDrawer.classList.remove('active');
+      drawerOverlay.classList.remove('active');
+      mobileDrawer.setAttribute('aria-hidden', 'true');
+      drawerOverlay.setAttribute('aria-hidden', 'true');
+      if (mobileToggleBtn) mobileToggleBtn.setAttribute('aria-expanded', 'false');
+      document.body.classList.remove('drawer-open');
+    }
+  }
+
+  if (mobileToggleBtn) {
+    mobileToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openMobileDrawer();
+    });
+  }
+
+  if (drawerCloseBtn) {
+    drawerCloseBtn.addEventListener('click', closeMobileDrawer);
+  }
+
+  if (drawerOverlay) {
+    drawerOverlay.addEventListener('click', closeMobileDrawer);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMobileDrawer();
+  });
+
+  // Gallery thumbnail selection and carousel
+  window.selectProductImage = function(thumbEl, imageUrl, imageSrcset) {
+    const mainImg = document.getElementById('main-product-img');
+    if (mainImg) {
+      mainImg.src = imageUrl;
+      if (imageSrcset) mainImg.srcset = imageSrcset;
+    }
+    const thumbs = document.querySelectorAll('.gallery-thumb-item');
+    thumbs.forEach(t => t.classList.remove('active'));
+    if (thumbEl) thumbEl.classList.add('active');
+  };
+
+  const thumbPrevBtn = document.getElementById('gallery-prev-btn');
+  const thumbNextBtn = document.getElementById('gallery-next-btn');
+  const thumbsContainer = document.getElementById('gallery-thumbs-container');
+  if (thumbPrevBtn && thumbsContainer) {
+    thumbPrevBtn.addEventListener('click', () => {
+      thumbsContainer.scrollBy({ left: -80, behavior: 'smooth' });
+    });
+  }
+  if (thumbNextBtn && thumbsContainer) {
+    thumbNextBtn.addEventListener('click', () => {
+      thumbsContainer.scrollBy({ left: 80, behavior: 'smooth' });
     });
   }
 
