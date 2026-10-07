@@ -3,47 +3,54 @@
 {% block title %}Contact Fragrance Concierge | {{ brand_name }}{% endblock %}
 
 {% block content %}
-<div class="container" style="padding-top: 3rem; padding-bottom: 5rem;">
+<div class="container contact-page-container">
 
-  <div style="max-width: 760px; margin: 0 auto; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 3rem 2.5rem; box-shadow: var(--shadow-sm);">
+  <div class="contact-main-card">
     
-    <div style="text-align: center; margin-bottom: 2.5rem;">
+    <div class="contact-header">
       <span class="section-tag">Direct Assistance</span>
-      <h1 style="font-size: 2.2rem; margin: 0.4rem 0;">Contact {{ brand_name }}</h1>
-      <p style="color: var(--text-muted); font-size: 0.95rem;">
+      <h1 class="contact-title">Contact {{ brand_name }}</h1>
+      <p class="contact-subtitle">
         Have questions regarding scent recommendations, bulk orders, or custom wedding gifts? We are at your service.
       </p>
     </div>
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 3rem;">
-      <div style="background: var(--bg-subtle); padding: 1.5rem; border-radius: var(--radius-md);">
-        <h4 style="margin-bottom: 0.75rem; color: var(--gold-dark);">💬 Instant WhatsApp Concierge</h4>
-        <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">
+    <div class="contact-cards-grid">
+      <div class="contact-method-card whatsapp-card">
+        <div class="contact-card-icon">💬</div>
+        <h4 class="contact-card-title">Instant WhatsApp Concierge</h4>
+        <p class="contact-card-desc">
           Chat directly with our fragrance specialists for orders, tracking, and scent guidance.
         </p>
         <a href="https://wa.me/{{ store_settings.get('support_whatsapp', '919876543210') }}?text=Hello%20{{ brand_name }}!%20I%20would%20like%20assistance." 
            target="_blank" 
            rel="noopener noreferrer" 
-           class="btn btn-sm btn-dark">
+           class="btn btn-dark contact-action-btn">
           Open WhatsApp Chat &rarr;
         </a>
       </div>
 
-      <div style="background: var(--bg-subtle); padding: 1.5rem; border-radius: var(--radius-md);">
-        <h4 style="margin-bottom: 0.75rem; color: var(--gold-dark);">✉️ Customer Care Email</h4>
-        <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">
+      <div class="contact-method-card email-card">
+        <div class="contact-card-icon">✉️</div>
+        <h4 class="contact-card-title">Customer Care Email</h4>
+        <p class="contact-card-desc">
           Reach out for corporate gifting, order queries, or wholesale distribution.
         </p>
-        <a href="mailto:{{ store_settings.get('support_email', 'care@scentedbubbles.com') }}" class="btn btn-sm btn-secondary">
+        <a href="mailto:{{ store_settings.get('support_email', 'care@scentedbubbles.com') }}" class="btn btn-secondary contact-action-btn contact-email-btn">
           {{ store_settings.get('support_email', 'care@scentedbubbles.com') }}
         </a>
       </div>
     </div>
 
-    <div style="border-top: 1px solid var(--border-light); padding-top: 2rem; font-size: 0.875rem; color: var(--text-muted); line-height: 1.7;">
-      <strong>Fulfillment Studio Address:</strong><br>
-      {{ store_settings.get('store_address', 'Plot 42, Fragrance Avenue, Jubilee Hills, Hyderabad - 500033') }}<br>
-      <strong>Business Hours:</strong> Monday – Saturday, 10:00 AM – 7:00 PM IST
+    <div class="contact-footer-info">
+      <div class="contact-info-block">
+        <strong>📍 Fulfillment Studio Address:</strong>
+        <p>{{ store_settings.get('store_address', 'Plot 42, Fragrance Avenue, Jubilee Hills, Hyderabad - 500033') }}</p>
+      </div>
+      <div class="contact-info-block" style="margin-top: 0.85rem;">
+        <strong>🕒 Business Hours:</strong>
+        <p>Monday – Saturday, 10:00 AM – 7:00 PM IST</p>
+      </div>
     </div>
 
   </div>

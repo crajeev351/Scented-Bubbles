@@ -289,12 +289,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const SLIDE_DURATION = 5000; // 5 seconds per slide
 
     function showSlide(index) {
+      const targetIndex = (index + slides.length) % slides.length;
+      if (targetIndex === currentIndex) return;
+
       slides[currentIndex].classList.remove('active');
       if (dots[currentIndex]) {
         dots[currentIndex].classList.remove('active');
       }
 
-      currentIndex = (index + slides.length) % slides.length;
+      currentIndex = targetIndex;
 
       slides[currentIndex].classList.add('active');
       if (dots[currentIndex]) {
@@ -363,18 +366,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Mobile Touch Swipe
+    // Mobile Touch Swipe with angle detection to distinguish horizontal swipe from vertical scroll
     let startX = 0;
+    let startY = 0;
     slider.addEventListener('touchstart', (e) => {
       startX = e.changedTouches[0].screenX;
+      startY = e.changedTouches[0].screenY;
       stopTimer();
     }, { passive: true });
 
     slider.addEventListener('touchend', (e) => {
       const endX = e.changedTouches[0].screenX;
-      const diff = startX - endX;
-      if (Math.abs(diff) > 40) {
-        if (diff > 0) {
+      const endY = e.changedTouches[0].screenY;
+      const diffX = startX - endX;
+      const diffY = startY - endY;
+      if (Math.abs(diffX) > 35 && Math.abs(diffX) > Math.abs(diffY)) {
+        if (diffX > 0) {
           nextSlide();
         } else {
           prevSlide();
