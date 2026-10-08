@@ -15,7 +15,7 @@
   <meta property="og:description" content="{% block og_description %}{{ store_settings.get('tagline', 'Elegance in Every Mist & Breath') }}{% endblock %}">
   <meta property="og:site_name" content="{{ brand_name }}">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="{{ request.url }}">
+  <meta property="og:url" content="{{ request.base_url }}">
   <meta property="og:image" content="{% block og_image %}{{ url_for('static', filename='images/banner_hero_1.webp', _external=True) }}{% endblock %}">
 
   {# Preconnect & Fast Font Loading #}

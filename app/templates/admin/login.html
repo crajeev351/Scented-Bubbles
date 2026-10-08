@@ -21,7 +21,7 @@
       </span>
     </div>
 
-    <form method="POST" action="{{ url_for('admin.login', next=request.args.get('next')) }}">
+    <form method="POST" action="{{ url_for('admin.login', next=next_url) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
       <div class="form-group">

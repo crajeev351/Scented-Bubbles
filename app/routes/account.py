@@ -16,6 +16,7 @@ from app.models.users import User
 from app.models.customers import Customer
 from app.models.orders import Order
 from app.models.settings import Setting
+from app.utils.security import get_safe_redirect_url
 
 account_bp = Blueprint("account", __name__, url_prefix="/account")
 
@@ -28,7 +29,8 @@ def customer_required(f):
             if request.is_json:
                 return jsonify({"error": "Unauthorized", "login_url": url_for("account.login")}), 401
             flash("Please sign in or create an account to view your dashboard.", "info")
-            return redirect(url_for("account.login", next=request.url))
+            safe_next = get_safe_redirect_url(request.path, default_url="/account/orders")
+            return redirect(url_for("account.login", next=safe_next))
         
         user = db.session.get(User, session["user_id"])
         if not user or not user.is_active:
@@ -52,11 +54,12 @@ def get_current_user():
 @account_bp.route("/register", methods=["GET", "POST"])
 def register():
     """Customer registration route with automatic customer and historical order linking."""
-    next_url = request.args.get("next") or request.form.get("next") or ""
+    raw_next = request.args.get("next") or request.form.get("next") or ""
+    next_url = get_safe_redirect_url(raw_next, default_url=url_for("account.orders"))
+    clean_next = next_url if raw_next else ""
+
     if session.get("user_id"):
-        if next_url and next_url.startswith("/"):
-            return redirect(next_url)
-        return redirect(url_for("account.orders"))
+        return redirect(next_url)
 
     brand_name = Setting.get_value("company_name", "Scented Bubbles")
 
@@ -94,6 +97,7 @@ def register():
                 phone=phone,
                 email=email,
                 brand_name=brand_name,
+                next_url=clean_next,
             )
 
         # Create new User
@@ -126,28 +130,30 @@ def register():
 
         db.session.commit()
 
-        # Set session
+        # Rotate session to prevent session fixation
+        session.clear()
         session["user_id"] = new_user.id
         session["user_name"] = new_user.name or new_user.phone
         session.permanent = True
 
         flash(f"Welcome to {brand_name}, {new_user.name}! Your account has been created.", "success")
-        if next_url and next_url.startswith("/"):
-            return redirect(next_url)
-        return redirect(url_for("account.orders"))
+        return redirect(next_url)
 
-    return render_template("account/register.html", brand_name=brand_name, next_url=next_url)
+    return render_template("account/register.html", brand_name=brand_name, next_url=clean_next)
 
 
 @account_bp.route("/login", methods=["GET", "POST"])
-@limiter.limit("15 per minute")
+@limiter.limit("15 per minute", methods=["POST"])
 def login():
     """Customer login route accepting either phone number or email."""
+    raw_next = request.args.get("next") or request.form.get("next") or ""
+    next_url = get_safe_redirect_url(raw_next, default_url=url_for("account.orders"))
+    clean_next = next_url if raw_next else ""
+
     if session.get("user_id"):
-        return redirect(url_for("account.orders"))
+        return redirect(next_url)
 
     brand_name = Setting.get_value("company_name", "Scented Bubbles")
-    next_url = request.args.get("next", "")
 
     if request.method == "POST":
         identifier = request.form.get("identifier", "").strip()
@@ -155,7 +161,7 @@ def login():
 
         if not identifier or not password:
             flash("Please enter your registered phone number or email and password.", "error")
-            return render_template("account/login.html", identifier=identifier, brand_name=brand_name, next_url=next_url)
+            return render_template("account/login.html", identifier=identifier, brand_name=brand_name, next_url=clean_next)
 
         # Find user by phone or email
         user = None
@@ -170,27 +176,26 @@ def login():
         if user and user.check_password(password):
             if not user.is_active:
                 flash("Your account has been deactivated. Please contact customer support.", "error")
-                return render_template("account/login.html", identifier=identifier, brand_name=brand_name, next_url=next_url)
+                return render_template("account/login.html", identifier=identifier, brand_name=brand_name, next_url=clean_next)
 
+            # Rotate session to prevent session fixation
+            session.clear()
             session["user_id"] = user.id
             session["user_name"] = user.name or user.phone or user.email
             session.permanent = True
 
             flash(f"Welcome back, {session['user_name']}!", "success")
-            if next_url and next_url.startswith("/"):
-                return redirect(next_url)
-            return redirect(url_for("account.orders"))
+            return redirect(next_url)
         else:
             flash("Invalid phone/email or password. Please check your credentials.", "error")
 
-    return render_template("account/login.html", brand_name=brand_name, next_url=next_url)
+    return render_template("account/login.html", brand_name=brand_name, next_url=clean_next)
 
 
 @account_bp.route("/logout")
 def logout():
     """Customer sign out."""
-    session.pop("user_id", None)
-    session.pop("user_name", None)
+    session.clear()
     flash("You have been signed out successfully.", "info")
     return redirect(url_for("main.index"))
 

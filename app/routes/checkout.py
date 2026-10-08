@@ -148,7 +148,8 @@ def checkout():
             order_notes=notes,
         )
 
-        # Invalidate session idempotency token to prepare for next action
+        # Store recent order ID in session to authorize access to payment/success screens
+        session["recent_order_id"] = order.order_id
         session.pop("checkout_idempotency_token", None)
 
         # Determine target redirect

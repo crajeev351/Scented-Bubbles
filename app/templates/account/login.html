@@ -13,7 +13,7 @@
       <p style="color: var(--text-muted); font-size: 0.875rem;">Sign in to track orders, manage delivery addresses, and enjoy faster checkout.</p>
     </div>
 
-    <form method="POST" action="{{ url_for('account.login', next=next_url) }}">
+    <form method="POST" action="{{ url_for('account.login', next=next_url) if next_url else url_for('account.login') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
       <div class="form-group" style="margin-bottom: 1.25rem;">
@@ -34,7 +34,7 @@
 
       <div style="margin-top: 1.75rem; padding-top: 1.5rem; border-top: 1px solid var(--border-light); text-align: center; font-size: 0.875rem; color: var(--text-muted);">
         Don't have an account yet? 
-        <a href="{{ url_for('account.register', next=next_url) }}" style="color: var(--gold-dark); font-weight: 600; text-decoration: none;">
+        <a href="{{ url_for('account.register', next=next_url) if next_url else url_for('account.register') }}" style="color: var(--gold-dark); font-weight: 600; text-decoration: none;">
           Create One Here
         </a>
       </div>

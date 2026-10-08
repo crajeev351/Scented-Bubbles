@@ -23,6 +23,10 @@ def create_app(config_name=None, config_override=None):
     csrf.init_app(app)
     limiter.init_app(app)
 
+    # Reverse proxy support (Render / Cloudflare / Nginx) for accurate client IPs and SSL detection
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
     # Ensure upload directory exists
     upload_path = Path(app.config.get("UPLOAD_FOLDER", "app/static/uploads"))
     upload_path.mkdir(parents=True, exist_ok=True)
@@ -189,27 +193,57 @@ def create_app(config_name=None, config_override=None):
         """Converts UTC datetime to IST and formats cleanly."""
         return format_ist(dt, fmt)
 
-    # Asset Versioning Helper with Auto Cache-Busting
+    # Asset Versioning Helper with Auto Cache-Busting (Content-hash based, no epoch timestamps)
+    import hashlib
+
     @app.template_global("asset_url")
     def asset_url_global(filename):
-        """Appends asset version query string based on file mtime to enforce instant cache busting on update."""
+        """Appends asset version query string based on file content/mtime hash to enforce instant cache busting on update without exposing server timestamps."""
         try:
             full_path = os.path.join(app.static_folder, filename.lstrip('/'))
-            v = int(os.path.getmtime(full_path))
+            mtime = os.path.getmtime(full_path)
+            v = hashlib.sha256(str(mtime).encode()).hexdigest()[:8]
         except Exception:
-            v = "2026.2"
+            v = "2026sb"
         return f"/static/{filename.lstrip('/')}?v={v}"
 
-    # Performance Hardening: Cache-Control Headers
+    # Performance & Security Hardening: Security Headers & Cache-Control
     @app.after_request
-    def apply_caching_headers(response):
+    def apply_security_and_caching_headers(response):
         from flask import request
+
+        # 1. Base Security Headers
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+
+        # HSTS (Strict-Transport-Security): Enable on HTTPS or production environments
+        is_https = request.is_secure or request.headers.get("X-Forwarded-Proto", "").lower() == "https" or os.environ.get("RENDER") == "true"
+        if is_https:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
+        # Content-Security-Policy (CSP): Strict yet fully functional for all store features
+        csp = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com data:; "
+            "img-src 'self' data: blob: https:; "
+            "connect-src 'self' https:; "
+            "frame-ancestors 'self'; "
+            "base-uri 'self'; "
+            "form-action 'self';"
+        )
+        response.headers["Content-Security-Policy"] = csp
+
+        # 2. Cache-Control Directives
         # Static assets: 1 year cache
         if request.path.startswith("/static/"):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-        # Admin, cart, checkout, tracking, account: strictly never cache
-        elif request.path.startswith(("/admin", "/cart", "/checkout", "/track-order", "/account")):
-            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        # Admin, cart, checkout, tracking, account, orders: strictly never cache to protect sensitive customer data
+        elif request.path.startswith(("/admin", "/cart", "/checkout", "/track-order", "/account", "/orders")):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
             response.headers["Pragma"] = "no-cache"
         # Public catalog pages: short edge revalidation
         elif response.status_code == 200 and request.method == "GET":

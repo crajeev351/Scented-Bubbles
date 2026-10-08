@@ -32,7 +32,15 @@ def test_guest_full_checkout_flow(client, sample_catalog):
     assert summary_data["is_valid"] is True
     assert summary_data["subtotal"] == "1299.00"
 
-    # 4. Guest completes checkout via POST /checkout
+    # 4. Authenticate customer and complete checkout via POST /checkout
+    client.post("/account/register", data={
+        "name": "Ananya Roy",
+        "phone": "9876543299",
+        "email": "ananya@example.com",
+        "password": "CustomerSecurePass123",
+        "confirm_password": "CustomerSecurePass123",
+    }, follow_redirects=True)
+
     checkout_payload = {
         "name": "Ananya Roy",
         "phone": "9876543299",

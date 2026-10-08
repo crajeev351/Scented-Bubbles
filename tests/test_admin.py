@@ -266,7 +266,17 @@ def test_admin_manual_checklist_flow(client, app, sample_catalog):
         assert v1_updated.price == Decimal("1150.00")
         assert v1_updated.discounted_price == Decimal("999.00")
 
-    # 4. Place order on storefront
+    # 4. Place order on storefront (with authenticated customer session)
+    from app.models.users import User
+    with app.app_context():
+        cust = User(name="Sonia Sharma", phone="9876543210", is_active=True)
+        cust.set_password("SoniaPass123!")
+        db.session.add(cust)
+        db.session.commit()
+        cust_uid = cust.id
+    with client.session_transaction() as sess:
+        sess["user_id"] = cust_uid
+
     cart_json = json.dumps([{"variant_id": v1_id, "qty": 3}])
     checkout_res = client.post("/checkout", data={
         "cart_data": cart_json,

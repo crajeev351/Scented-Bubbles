@@ -22,6 +22,7 @@ class Banner(db.Model):
     secondary_button_text = db.Column(db.String(80), nullable=True)  # Optional second button label
     secondary_button_link = db.Column(db.String(255), nullable=True)
     target_type = db.Column(db.String(30), nullable=True, default="custom")  # 'product', 'combo', 'category', 'custom'
+    target_id = db.Column(db.Integer, nullable=True)  # ID of linked product/combo/category
     overlay_opacity = db.Column(db.Integer, default=55, nullable=True)  # Darkness %: 20-90
     image_mobile_key = db.Column(db.String(255), nullable=True)  # Optional mobile-specific background image (800x800 or 750x900)
 

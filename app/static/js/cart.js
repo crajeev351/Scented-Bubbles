@@ -1,8 +1,5 @@
 /**
- * SCENTED BUBBLES - CLIENT-SIDE CART MANAGER
- * Architecture Rule: Cart is stored in localStorage as [{variant_id, qty}] ONLY.
- * No prices or discounts are stored in browser storage.
- * Pricing, stocks, and totals are fetched strictly from POST /cart/summary.
+ * Scented Bubbles Shopping Cart Module
  */
 
 const ScentedCart = (function() {

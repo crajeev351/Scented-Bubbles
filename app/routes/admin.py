@@ -48,6 +48,9 @@ from app.services.whatsapp_service import build_admin_whatsapp_link
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 
+from app.utils.security import get_safe_redirect_url
+
+
 def admin_required(f):
     """Decorator ensuring request has an authenticated admin session and enforces inactivity timeout."""
     @wraps(f)
@@ -56,13 +59,16 @@ def admin_required(f):
             if request.is_json:
                 return jsonify({"error": "Unauthorized"}), 401
             flash("Please sign in to access the admin portal.", "error")
-            return redirect(url_for("admin.login", next=request.url))
+            safe_next = get_safe_redirect_url(request.path, default_url="/admin")
+            return redirect(url_for("admin.login", next=safe_next))
 
         # Enforce 30-minute admin inactivity timeout
         now_ts = datetime.datetime.now(datetime.timezone.utc).timestamp()
         last_activity = session.get("admin_last_activity")
         if last_activity and (now_ts - last_activity > 1800):
-            session.clear()
+            session.pop("admin_id", None)
+            session.pop("admin_username", None)
+            session.pop("admin_last_activity", None)
             if request.is_json:
                 return jsonify({"error": "Admin session expired due to inactivity"}), 401
             flash("Your admin session has expired due to 30 minutes of inactivity. Please sign in again.", "warning")
@@ -115,7 +121,7 @@ def handle_uploaded_file(file_storage, prefix="img", fit_dimensions=None) -> str
 # ==============================================================================
 
 @admin_bp.route("/login", methods=["GET", "POST"])
-@limiter.limit("5 per minute; 20 per hour")
+@limiter.limit("5 per minute; 60 per hour", methods=["POST"])
 def login():
     """Rate-limited admin authentication page with lockout policy and 2FA verification."""
     if session.get("admin_id"):
@@ -131,6 +137,8 @@ def login():
             return redirect(url_for("main.index"))
 
     brand_name = Setting.get_value("company_name", "Scented Bubbles")
+    raw_next = request.args.get("next") or request.form.get("next") or ""
+    next_url = get_safe_redirect_url(raw_next, default_url=url_for("admin.dashboard"))
 
     if request.method == "POST":
         username = request.form.get("username", "").strip()
@@ -142,7 +150,7 @@ def login():
             if admin.is_locked():
                 mins = admin.minutes_until_unlocked()
                 flash(f"This account is temporarily locked due to 5 failed login attempts. Please try again in {mins} minute{'s' if mins > 1 else ''}.", "error")
-                return render_template("admin/login.html", brand_name=brand_name)
+                return render_template("admin/login.html", brand_name=brand_name, next_url=next_url)
 
             if admin.check_password(password):
                 admin.record_successful_login()
@@ -151,17 +159,20 @@ def login():
                 # If 2FA enabled, redirect to 2FA verification step
                 if admin.is_2fa_enabled and admin.totp_secret:
                     session["admin_2fa_pending_id"] = admin.id
-                    session["admin_next_url"] = request.args.get("next")
+                    session["admin_next_url"] = next_url
                     return redirect(url_for("admin.verify_2fa"))
 
+                secret_verified = session.get("admin_secret_verified")
                 session.clear()
                 session["admin_id"] = admin.id
                 session["admin_username"] = admin.username
                 session["admin_last_activity"] = datetime.datetime.now(datetime.timezone.utc).timestamp()
                 session.permanent = True
+                if secret_verified:
+                    session["admin_secret_verified"] = True
+
                 flash("Welcome back to your administration dashboard!", "success")
-                next_url = request.args.get("next")
-                return redirect(next_url or url_for("admin.dashboard"))
+                return redirect(next_url)
             else:
                 admin.record_failed_attempt(max_attempts=5, lockout_minutes=15)
                 db.session.commit()
@@ -173,11 +184,11 @@ def login():
         else:
             flash("Invalid credentials or account is disabled.", "error")
 
-    return render_template("admin/login.html", brand_name=brand_name)
+    return render_template("admin/login.html", brand_name=brand_name, next_url=next_url)
 
 
 @admin_bp.route("/login/verify-2fa", methods=["GET", "POST"])
-@limiter.limit("10 per minute")
+@limiter.limit("10 per minute", methods=["POST"])
 def verify_2fa():
     """Validates 6-digit TOTP code during two-factor authentication."""
     pending_id = session.get("admin_2fa_pending_id")
@@ -195,14 +206,19 @@ def verify_2fa():
         code = request.form.get("totp_code", "").strip()
         from app.services.totp_service import verify_totp
         if verify_totp(admin.totp_secret, code):
+            secret_verified = session.get("admin_secret_verified")
+            next_target = session.pop("admin_next_url", None)
             session.clear()
             session["admin_id"] = admin.id
             session["admin_username"] = admin.username
             session["admin_last_activity"] = datetime.datetime.now(datetime.timezone.utc).timestamp()
             session.permanent = True
+            if secret_verified:
+                session["admin_secret_verified"] = True
+
             flash("Two-factor authentication verified. Welcome back!", "success")
-            next_url = session.pop("admin_next_url", None)
-            return redirect(next_url or url_for("admin.dashboard"))
+            safe_next = get_safe_redirect_url(next_target, default_url=url_for("admin.dashboard"))
+            return redirect(safe_next)
         else:
             flash("Invalid 6-digit authentication code. Please check your authenticator app and try again.", "error")
 
