@@ -31,6 +31,17 @@
   <a href="{{ url_for('admin.product_create') }}" class="btn btn-primary btn-sm">+ Add New Product</a>
 </div>
 
+{# Quick Size Guide Banner for Product Card Images #}
+<div style="background: rgba(197, 160, 89, 0.10); border: 1.5px dashed var(--gold-primary, #C5A059); border-radius: 8px; padding: 0.85rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+  <div>
+    <strong style="color: #8C6D23; font-size: 0.88rem;">📐 Recommended Product Image Dimensions (Updated):</strong>
+    <span style="font-size: 0.82rem; color: var(--text-muted); margin-left: 0.5rem;">
+      <strong style="color: #8C6D23;">800 × 800 px</strong> (Square 1:1 Aspect Ratio) &bull; Transparent PNG or clean background
+    </span>
+  </div>
+  <span style="font-size: 0.75rem; color: var(--text-light);">Matches the updated compact square storefront card grid</span>
+</div>
+
 {# Products List #}
 <div class="admin-card" style="padding: 0; overflow: hidden;">
   {% if products %}

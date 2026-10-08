@@ -153,7 +153,7 @@
       <div style="background: rgba(197, 160, 89, 0.10); border: 1.5px dashed var(--gold-primary, #C5A059); border-radius: 10px; padding: 1.15rem 1.25rem; margin-bottom: 1.5rem;">
         <div style="font-weight: 700; color: #8C6D23; font-size: 0.95rem; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
           <span style="display: flex; align-items: center; gap: 0.4rem;">
-            <span>📐</span> Recommended Banner Dimensions for Client
+            <span>📐</span> Recommended Banner Dimensions for Client (Updated)
           </span>
           <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">Format: JPG, PNG, WebP &bull; Max: 5 MB</span>
         </div>
@@ -165,11 +165,11 @@
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
               <strong style="font-size: 0.85rem; color: var(--text-main);">🖥️ Desktop & Tablet View</strong>
               <span style="background: #8C6D23; color: #fff; padding: 0.15rem 0.55rem; border-radius: 4px; font-size: 0.78rem; font-weight: 700;">
-                1920 × 600 px
+                1920 × 500 px (or 1600 × 420 px)
               </span>
             </div>
             <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
-              Widescreen aspect ratio (~16:5 or 1200 × 500 px). Displayed on laptops, desktop monitors, and iPad landscape.
+              Sleek ultra-widescreen ratio (~16:4 / ~4:1). Perfectly matched to the new compact desktop hero banner height (~370px). Keeps bottles and text crisp with zero vertical bloat.
             </p>
           </div>
 
@@ -178,11 +178,11 @@
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
               <strong style="font-size: 0.85rem; color: var(--text-main);">📱 Mobile Smartphone View</strong>
               <span style="background: #2E7D32; color: #fff; padding: 0.15rem 0.55rem; border-radius: 4px; font-size: 0.78rem; font-weight: 700;">
-                800 × 800 px (or 750 × 900 px)
+                800 × 800 px (or 750 × 850 px)
               </span>
             </div>
             <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
-              Square (1:1) or tall portrait (~5:6). Tailored for iPhone & Android vertical screens where hero height is ~400px.
+              Square (1:1) or vertical (~5:6) ratio tailored for smartphone viewports where hero height is ~370px.
             </p>
           </div>
         </div>
@@ -195,9 +195,9 @@
 
       {# 1. Desktop Background Image #}
       <div class="form-group" style="margin-bottom: 1.5rem; background: var(--bg-surface); padding: 1rem 1.25rem; border-radius: 8px; border: 1px solid var(--border-light);">
-        <label for="image" style="font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+        <label for="image" style="font-weight: 600; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem;">
           <span>Upload Desktop & Tablet Hero Image (Required for new banners)</span>
-          <span style="font-size: 0.75rem; color: #8C6D23; font-weight: 600;">Recommended: 1920 × 600 px</span>
+          <span style="font-size: 0.75rem; color: #8C6D23; font-weight: 700;">Recommended: 1920 × 500 px (or 1600 × 420 px)</span>
         </label>
         <input type="file" id="image" name="image" accept=".jpg,.jpeg,.png,.webp" class="form-control" style="background: #fff; margin-top: 0.35rem;">
         
@@ -214,9 +214,9 @@
 
       {# 2. Mobile Smartphone Background Image (Optional) #}
       <div class="form-group" style="margin-bottom: 1.5rem; background: var(--bg-surface); padding: 1rem 1.25rem; border-radius: 8px; border: 1px solid var(--border-light);">
-        <label for="image_mobile" style="font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+        <label for="image_mobile" style="font-weight: 600; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem;">
           <span>Upload Mobile Hero Image (Optional &ndash; Recommended for best mobile fit)</span>
-          <span style="font-size: 0.75rem; color: #2E7D32; font-weight: 700;">Recommended: 800 × 800 px (or 750 × 900 px)</span>
+          <span style="font-size: 0.75rem; color: #2E7D32; font-weight: 700;">Recommended: 800 × 800 px (or 750 × 850 px)</span>
         </label>
         <input type="file" id="image_mobile" name="image_mobile" accept=".jpg,.jpeg,.png,.webp" class="form-control" style="background: #fff; margin-top: 0.35rem;">
         <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 4px;">

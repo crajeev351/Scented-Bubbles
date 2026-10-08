@@ -36,33 +36,56 @@ def validate_checkout_payload(data: dict) -> tuple[bool, str]:
     if email and not re.match(r"^[^@]+@[^@]+\.[^@]+$", email):
         return False, "Please enter a valid email address."
 
-    payment_method = str(data.get("payment_method", "")).upper()
-    cod_allowed = Setting.get_value("cod_enabled", "true").lower() in ("true", "1", "yes")
-    
-    if payment_method not in ("MANUAL_UPI", "COD"):
+    payment_method = str(data.get("payment_method", "MANUAL_UPI")).upper()
+    if payment_method == "COD":
+        return False, "Cash on Delivery is no longer available. Please pay securely via UPI."
+    if payment_method != "MANUAL_UPI":
         return False, "Please select a valid payment method."
-    if payment_method == "COD" and not cod_allowed:
-        return False, "Cash on Delivery is currently unavailable."
 
     return True, ""
 
 
 @checkout_bp.route("/checkout", methods=["GET", "POST"])
 def checkout():
-    """Checkout page with server validation, CSRF, and one-time idempotency token."""
+    """Checkout page with login requirement, server validation, CSRF, and one-time idempotency token."""
+    # Enforce customer sign-in or sign-up before proceeding to checkout
+    user_id = session.get("user_id")
+    if not user_id:
+        if request.is_json:
+            return jsonify({
+                "success": False,
+                "error": "Please sign in or create an account to proceed to checkout.",
+                "login_required": True,
+                "redirect_url": url_for("account.login", next=url_for("checkout.checkout")),
+            }), 401
+        flash("Please sign in or create an account to proceed to checkout.", "info")
+        return redirect(url_for("account.login", next=url_for("checkout.checkout")))
+
+    from app.models.users import User
+    from app.models.customers import Customer
+    from app.extensions import db
+    current_user = db.session.get(User, user_id)
+    if not current_user or not current_user.is_active:
+        session.pop("user_id", None)
+        flash("Your account session has expired. Please sign in again to proceed.", "warning")
+        return redirect(url_for("account.login", next=url_for("checkout.checkout")))
+
+    customer_profile = Customer.query.filter_by(phone=current_user.phone).first() if current_user.phone else None
+
     if request.method == "GET":
         # Generate new idempotency token for this checkout session
         idempotency_token = str(uuid.uuid4())
         session["checkout_idempotency_token"] = idempotency_token
         
-        cod_enabled = Setting.get_value("cod_enabled", "true").lower() in ("true", "1", "yes")
         free_delivery_threshold = Setting.get_value("free_delivery_threshold", "999.00")
         delivery_charge = Setting.get_value("delivery_charge", "50.00")
 
         return render_template(
             "checkout/index.html",
             idempotency_token=idempotency_token,
-            cod_enabled=cod_enabled,
+            cod_enabled=False,
+            current_user=current_user,
+            customer_profile=customer_profile,
             free_delivery_threshold=free_delivery_threshold,
             delivery_charge=delivery_charge,
         )

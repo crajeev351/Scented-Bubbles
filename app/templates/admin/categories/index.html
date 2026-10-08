@@ -13,6 +13,17 @@
   <a href="{{ url_for('admin.category_create') }}" class="btn btn-primary btn-sm">+ Add New Category</a>
 </div>
 
+{# Quick Size Guide Banner for Category Cards #}
+<div style="background: rgba(197, 160, 89, 0.10); border: 1.5px dashed var(--gold-primary, #C5A059); border-radius: 8px; padding: 0.85rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+  <div>
+    <strong style="color: #8C6D23; font-size: 0.88rem;">📐 Recommended Category Card Dimensions (Updated):</strong>
+    <span style="font-size: 0.82rem; color: var(--text-muted); margin-left: 0.5rem;">
+      <strong style="color: #8C6D23;">900 × 300 px</strong> (or 1200 × 400 px, ~3:1 Wide Aspect Ratio)
+    </span>
+  </div>
+  <span style="font-size: 0.75rem; color: var(--text-light);">Tailored for the new 2×2 homepage grid (2 on left, 2 on right)</span>
+</div>
+
 {# Filter Tabs #}
 <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap;">
   <a href="{{ url_for('admin.category_list', status='all') }}" 

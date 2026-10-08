@@ -52,7 +52,10 @@ def get_current_user():
 @account_bp.route("/register", methods=["GET", "POST"])
 def register():
     """Customer registration route with automatic customer and historical order linking."""
+    next_url = request.args.get("next") or request.form.get("next") or ""
     if session.get("user_id"):
+        if next_url and next_url.startswith("/"):
+            return redirect(next_url)
         return redirect(url_for("account.orders"))
 
     brand_name = Setting.get_value("company_name", "Scented Bubbles")
@@ -129,10 +132,11 @@ def register():
         session.permanent = True
 
         flash(f"Welcome to {brand_name}, {new_user.name}! Your account has been created.", "success")
-        next_url = request.args.get("next")
-        return redirect(next_url or url_for("account.orders"))
+        if next_url and next_url.startswith("/"):
+            return redirect(next_url)
+        return redirect(url_for("account.orders"))
 
-    return render_template("account/register.html", brand_name=brand_name)
+    return render_template("account/register.html", brand_name=brand_name, next_url=next_url)
 
 
 @account_bp.route("/login", methods=["GET", "POST"])

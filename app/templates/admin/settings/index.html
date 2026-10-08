@@ -63,7 +63,7 @@
     </div>
 
     <h3 style="font-size: 1.15rem; margin: 2.5rem 0 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
-      2. Payment Settings (Manual UPI &amp; COD)
+      2. Payment Settings (Prepaid UPI &amp; Online Checkout)
     </h3>
 
     <div class="form-row">
@@ -74,11 +74,12 @@
       </div>
 
       <div class="form-group">
-        <label for="cod_enabled">Cash on Delivery (COD) Option</label>
+        <label for="cod_enabled">Cash on Delivery (COD) Checkout Option</label>
         <select id="cod_enabled" name="cod_enabled" class="form-control">
-          <option value="true" {{ 'selected' if settings.get('cod_enabled', 'true')|lower in ['true', '1', 'yes'] else '' }}>Enabled (Allow customers to choose COD)</option>
-          <option value="false" {{ 'selected' if settings.get('cod_enabled', 'true')|lower not in ['true', '1', 'yes'] else '' }}>Disabled (Prepaid UPI only)</option>
+          <option value="false" {{ 'selected' if settings.get('cod_enabled', 'false')|lower not in ['true', '1', 'yes'] else '' }}>Disabled (Recommended &ndash; Prepaid UPI only)</option>
+          <option value="true" {{ 'selected' if settings.get('cod_enabled', 'false')|lower in ['true', '1', 'yes'] else '' }}>Enabled (Allow customers to choose COD)</option>
         </select>
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Keep Disabled for strictly prepaid orders.</small>
       </div>
     </div>
 

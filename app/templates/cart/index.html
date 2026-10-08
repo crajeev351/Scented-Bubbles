@@ -72,13 +72,33 @@
         </div>
 
         <div id="checkout-action-wrap">
-          <a href="{{ url_for('checkout.checkout') }}" id="checkout-proceed-btn" class="btn btn-primary btn-block" style="padding: 0.9rem;">
-            Proceed to Checkout &rarr;
-          </a>
+          {% if current_user %}
+            <a href="{{ url_for('checkout.checkout') }}" id="checkout-proceed-btn" class="btn btn-primary btn-block" style="padding: 0.9rem;">
+              Proceed to Checkout &rarr;
+            </a>
+          {% else %}
+            <div style="background: rgba(197, 160, 89, 0.12); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.9rem 1rem; margin-bottom: 0.85rem; text-align: center;">
+              <strong style="display: block; font-size: 0.84rem; color: var(--text-main); margin-bottom: 0.25rem;">Sign In or Sign Up to Checkout</strong>
+              <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.65rem; line-height: 1.4;">
+                Please sign in or create an account to proceed with your delivery details and order tracking.
+              </p>
+              <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                <a href="{{ url_for('account.login', next=url_for('checkout.checkout')) }}" class="btn btn-primary btn-sm" style="flex: 1; padding: 0.45rem 0.75rem; font-size: 0.8rem; text-align: center;">
+                  Sign In
+                </a>
+                <a href="{{ url_for('account.register', next=url_for('checkout.checkout')) }}" class="btn btn-secondary btn-sm" style="flex: 1; padding: 0.45rem 0.75rem; font-size: 0.8rem; text-align: center;">
+                  Sign Up
+                </a>
+              </div>
+            </div>
+            <a href="{{ url_for('account.login', next=url_for('checkout.checkout')) }}" id="checkout-proceed-btn" class="btn btn-primary btn-block" style="padding: 0.9rem;">
+              Sign In to Proceed &rarr;
+            </a>
+          {% endif %}
         </div>
 
         <div style="margin-top: 1.5rem; font-size: 0.75rem; color: var(--text-light); text-align: center; line-height: 1.5;">
-          <span>🔒 100% Secure Checkout &bull; UPI &amp; COD Supported</span>
+          <span>🔒 100% Secure Checkout &bull; Instant UPI &amp; QR Payment</span>
         </div>
       </div>
     </div>
