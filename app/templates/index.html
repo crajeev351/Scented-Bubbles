@@ -78,7 +78,7 @@
 
   {# 2. Shop By Category #}
   {% if categories %}
-  <section style="margin-bottom: 4rem;">
+  <section style="margin-bottom: 2.75rem;">
     <div class="section-header">
       <span class="section-tag">Collections</span>
       <h2 class="section-title">Shop by Category</h2>
@@ -89,14 +89,14 @@
       {% set bg_img = cat.display_image_url or cat.image_url %}
       <a href="{{ url_for('products.category_detail', slug=cat.slug) }}" 
          class="category-card {{ 'has-bg-image' if bg_img else '' }}" 
-         style="{% if bg_img %}background-image: linear-gradient(180deg, rgba(20, 18, 16, 0.22) 0%, rgba(20, 18, 16, 0.82) 100%), url('{{ bg_img }}');{% else %}background: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(244,239,235,0.95) 100%);{% endif %}">
+         style="{% if bg_img %}background-image: url('{{ bg_img }}');{% else %}background: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(244,239,235,0.95) 100%);{% endif %}">
         <div class="category-card-inner">
           <span class="category-card-tag">Curated Range</span>
           <h3 class="category-card-title">{{ cat.name }}</h3>
           {% if cat.description %}
             <p class="category-card-desc">{{ cat.description }}</p>
           {% endif %}
-          <span class="btn {{ 'btn-primary' if bg_img else 'btn-secondary' }} btn-sm category-card-btn">Explore Range &rarr;</span>
+          <span class="category-card-btn">Explore Range &rarr;</span>
         </div>
       </a>
       {% endfor %}
@@ -106,7 +106,7 @@
 
   {# 3. Featured Products #}
   {% if featured_products %}
-  <section style="margin-bottom: 4rem;">
+  <section style="margin-bottom: 2.75rem;">
     <div class="section-header">
       <span class="section-tag">Artisanal Blends</span>
       <h2 class="section-title">Featured Creations</h2>
@@ -175,7 +175,7 @@
 
   {# 4. Curated Combos #}
   {% if combos %}
-  <section style="margin-bottom: 4rem;">
+  <section style="margin-bottom: 2.75rem;">
     <div class="section-header">
       <span class="section-tag">Value Sets</span>
       <h2 class="section-title">Curated Gift Combos</h2>
@@ -192,21 +192,25 @@
         </a>
         <div class="combo-body">
           {% if combo.savings > 0 %}
-            <span class="combo-savings-tag">Save {{ combo.savings | currency }} vs Individual</span>
+            <span class="combo-savings-tag">Save {{ combo.savings | currency }}</span>
           {% endif %}
-          <h3 class="card-title" style="margin-bottom: 0.5rem;"><a href="{{ url_for('products.combo_detail', slug=combo.slug) }}">{{ combo.name }}</a></h3>
-          <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem; flex: 1;">{{ combo.short_description }}</p>
+          <h3 class="combo-title"><a href="{{ url_for('products.combo_detail', slug=combo.slug) }}">{{ combo.name }}</a></h3>
+          {% if combo.short_description %}
+            <p class="combo-desc">{{ combo.short_description }}</p>
+          {% endif %}
           
-          <div class="card-pricing" style="margin-bottom: 1rem;">
+          <div class="card-pricing">
             <span class="price-current">{{ combo.combo_price | currency }}</span>
             {% if combo.original_price > combo.combo_price %}
               <span class="price-original">{{ combo.original_price | currency }}</span>
             {% endif %}
           </div>
           
-          <a href="{{ url_for('products.combo_detail', slug=combo.slug) }}" class="btn btn-secondary btn-sm btn-block">
-            View Combo Set &rarr;
-          </a>
+          <div style="margin-top: 0.55rem;">
+            <a href="{{ url_for('products.combo_detail', slug=combo.slug) }}" class="btn btn-secondary btn-sm btn-block">
+              View Combo Set &rarr;
+            </a>
+          </div>
         </div>
       </div>
       {% endfor %}
@@ -216,7 +220,7 @@
 
   {# 5. Best Sellers #}
   {% if bestsellers %}
-  <section style="margin-bottom: 4rem;">
+  <section style="margin-bottom: 2.75rem;">
     <div class="section-header">
       <span class="section-tag">Customer Favorites</span>
       <h2 class="section-title">Most Loved Scents</h2>
