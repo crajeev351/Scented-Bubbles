@@ -127,6 +127,17 @@ def robots():
     return Response(content, mimetype="text/plain")
 
 
+@main_bp.route("/ping")
+@main_bp.route("/healthz")
+def ping():
+    """Ultra-lightweight keep-alive endpoint for UptimeRobot / uptime monitors.
+    Returns 200 OK immediately with zero database queries, zero session parsing, and near-zero CPU/memory footprint.
+    """
+    resp = Response("pong", mimetype="text/plain", status=200)
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return resp
+
+
 @main_bp.route("/api/health")
 def health_check():
     """System health check endpoint for monitoring, uptime, and database connectivity."""

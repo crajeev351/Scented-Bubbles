@@ -18,15 +18,47 @@
   <meta property="og:url" content="{{ request.url }}">
   <meta property="og:image" content="{% block og_image %}{{ url_for('static', filename='images/banner_hero_1.webp', _external=True) }}{% endblock %}">
 
+  {# Preconnect & Fast Font Loading #}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+
   {# Custom CSS Design System (Zero external frameworks) with asset versioning #}
   <link rel="stylesheet" href="{{ asset_url('css/style.css') }}">
   
+  {# W3C Speculation Rules: Instant native background prefetching for lightning page navigation #}
+  <script type="speculationrules">
+  {
+    "prefetch": [
+      {
+        "source": "list",
+        "urls": ["/products", "/combos", "/orders/track", "/about", "/contact"],
+        "eagerness": "moderate"
+      },
+      {
+        "where": {
+          "and": [
+            { "href_matches": "/*" },
+            { "not": { "href_matches": "/admin/*" } },
+            { "not": { "href_matches": "/checkout/*" } },
+            { "not": { "href_matches": "/account/*" } }
+          ]
+        },
+        "eagerness": "conservative"
+      }
+    ]
+  }
+  </script>
+
   {# Scripts loaded with defer per performance rules #}
   <script src="{{ asset_url('js/cart.js') }}" defer></script>
   <script src="{{ asset_url('js/main.js') }}" defer></script>
   {% block extra_head %}{% endblock %}
 </head>
 <body>
+
+  {# Instant Page Navigation Progress Bar #}
+  <div id="page-nav-loader" class="page-nav-loader" aria-hidden="true"></div>
 
   {# Top Announcement Strip #}
   <div class="announcement-bar">

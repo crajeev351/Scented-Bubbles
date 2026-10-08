@@ -467,5 +467,109 @@ document.addEventListener('DOMContentLoaded', () => {
     // Start auto-rotation (strictly 5 seconds)
     startTimer();
   })();
+
+  // =========================================================================
+  // 6. Instant Intent Prefetching & Silky Navigation Progress
+  // Pre-caches pages on link hover/touch so clicks load instantly (0ms latency)
+  // =========================================================================
+  (function initInstantNavigation() {
+    const navLoader = document.getElementById('page-nav-loader');
+    const prefetchedUrls = new Set();
+    const isSaveData = navigator.connection && (navigator.connection.saveData || /2g/.test(navigator.connection.effectiveType));
+
+    if (isSaveData) return;
+
+    function canPrefetch(url) {
+      if (!url) return false;
+      try {
+        const parsed = new URL(url, window.location.href);
+        if (parsed.origin !== window.location.origin) return false;
+        if (parsed.pathname === window.location.pathname && parsed.search === window.location.search) return false;
+        const path = parsed.pathname;
+        if (
+          path.startsWith('/admin') ||
+          path.startsWith('/checkout') ||
+          path.startsWith('/account/logout') ||
+          path.startsWith('/cart/add') ||
+          path.startsWith('/cart/remove') ||
+          path.startsWith('/api') ||
+          path.endsWith('.pdf') ||
+          path.endsWith('.zip')
+        ) return false;
+
+        return !prefetchedUrls.has(parsed.href);
+      } catch {
+        return false;
+      }
+    }
+
+    function prefetchUrl(url) {
+      try {
+        const fullUrl = new URL(url, window.location.href).href;
+        if (prefetchedUrls.has(fullUrl)) return;
+        prefetchedUrls.add(fullUrl);
+
+        const link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.href = fullUrl;
+        link.as = 'document';
+        document.head.appendChild(link);
+      } catch {}
+    }
+
+    let hoverTimer = null;
+    document.addEventListener('mouseover', (e) => {
+      const anchor = e.target.closest('a[href]');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!canPrefetch(href)) return;
+
+      clearTimeout(hoverTimer);
+      hoverTimer = setTimeout(() => {
+        prefetchUrl(href);
+      }, 65);
+    }, { passive: true });
+
+    document.addEventListener('mouseout', (e) => {
+      if (e.target.closest('a[href]')) {
+        clearTimeout(hoverTimer);
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchstart', (e) => {
+      const anchor = e.target.closest('a[href]');
+      if (anchor) {
+        const href = anchor.getAttribute('href');
+        if (canPrefetch(href)) prefetchUrl(href);
+      }
+    }, { passive: true });
+
+    document.addEventListener('click', (e) => {
+      const anchor = e.target.closest('a[href]');
+      if (!anchor || anchor.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey || e.defaultPrevented) return;
+      const href = anchor.getAttribute('href');
+      if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+
+      try {
+        const parsed = new URL(href, window.location.href);
+        if (parsed.origin === window.location.origin && parsed.pathname !== window.location.pathname) {
+          if (navLoader) {
+            navLoader.classList.remove('finishing');
+            navLoader.classList.add('loading');
+          }
+        }
+      } catch {}
+    });
+
+    window.addEventListener('pageshow', () => {
+      if (navLoader && navLoader.classList.contains('loading')) {
+        navLoader.classList.remove('loading');
+        navLoader.classList.add('finishing');
+        setTimeout(() => {
+          navLoader.classList.remove('finishing');
+        }, 300);
+      }
+    });
+  })();
 });
 

@@ -3,7 +3,28 @@
    Palette: Warm Ivory, Champagne Gold, Soft Rose Mist, Refined Charcoal
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+/* High-Speed Native Cross-Document View Transitions */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root) {
+  animation: 140ms cubic-bezier(0.16, 1, 0.3, 1) both fade-out;
+}
+
+::view-transition-new(root) {
+  animation: 200ms cubic-bezier(0.16, 1, 0.3, 1) both fade-in;
+}
+
+@keyframes fade-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.998); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: scale(1.002); }
+  to { opacity: 1; transform: scale(1); }
+}
 
 :root {
   --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
@@ -68,6 +89,39 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* ================= Instant Page Navigation Progress Bar ================= */
+.page-nav-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2.5px;
+  width: 0%;
+  background: linear-gradient(90deg, var(--gold-primary), #E5C378, var(--gold-dark));
+  z-index: 99999;
+  pointer-events: none;
+  opacity: 0;
+  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  box-shadow: 0 0 10px rgba(197, 160, 89, 0.7);
+}
+
+.page-nav-loader.loading {
+  opacity: 1;
+  width: 65%;
+}
+
+.page-nav-loader.finishing {
+  opacity: 1;
+  width: 100%;
+}
+
+/* 60 FPS Hardware Acceleration & Below-the-fold Virtualization */
+.category-grid,
+.features-grid,
+.footer-grid {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 350px;
 }
 
 /* ================= Typography ================= */
