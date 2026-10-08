@@ -33,17 +33,20 @@ class LocalStorage(StorageBackend):
         self.upload_dir.mkdir(parents=True, exist_ok=True)
 
     def save(self, file_data: bytes, key: str, content_type: str = "image/webp") -> str:
-        clean_key = key.lstrip("/")
-        dest = self.upload_dir / clean_key
+        from app.utils.security import validate_canonical_storage_path
+        dest = validate_canonical_storage_path(self.upload_dir, key)
         dest.parent.mkdir(parents=True, exist_ok=True)
         with open(dest, "wb") as f:
             f.write(file_data)
-        return clean_key
+        return key.lstrip("/\\")
 
     def delete(self, key: str) -> bool:
-        clean_key = key.lstrip("/")
-        target = self.upload_dir / clean_key
-        if target.exists():
+        from app.utils.security import validate_canonical_storage_path
+        try:
+            target = validate_canonical_storage_path(self.upload_dir, key)
+        except ValueError:
+            return False
+        if target.exists() and target.is_file():
             target.unlink()
             return True
         return False

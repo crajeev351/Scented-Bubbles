@@ -54,24 +54,25 @@
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem;">
           
           <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border: 1.5px solid var(--border-light); border-radius: 8px; cursor: pointer; background: #fff;" id="label-target-product">
-            <input type="radio" name="target_type" value="product" {{ 'checked' if banner and banner.target_type == 'product' else '' }} onchange="toggleTargetFields()">
+            <input type="radio" name="target_type" value="product" {{ 'checked' if banner and banner.target_type == 'product' else '' }}>
             <span style="font-weight: 600; font-size: 0.875rem;">🎯 Specific Product</span>
           </label>
 
           <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border: 1.5px solid var(--border-light); border-radius: 8px; cursor: pointer; background: #fff;" id="label-target-combo">
-            <input type="radio" name="target_type" value="combo" {{ 'checked' if banner and banner.target_type == 'combo' else '' }} onchange="toggleTargetFields()">
+            <input type="radio" name="target_type" value="combo" {{ 'checked' if banner and banner.target_type == 'combo' else '' }}>
             <span style="font-weight: 600; font-size: 0.875rem;">🎁 Specific Combo</span>
           </label>
 
           <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border: 1.5px solid var(--border-light); border-radius: 8px; cursor: pointer; background: #fff;" id="label-target-category">
-            <input type="radio" name="target_type" value="category" {{ 'checked' if banner and banner.target_type == 'category' else '' }} onchange="toggleTargetFields()">
+            <input type="radio" name="target_type" value="category" {{ 'checked' if banner and banner.target_type == 'category' else '' }}>
             <span style="font-weight: 600; font-size: 0.875rem;">📂 Category Range</span>
           </label>
 
           <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border: 1.5px solid var(--border-light); border-radius: 8px; cursor: pointer; background: #fff;" id="label-target-custom">
-            <input type="radio" name="target_type" value="custom" {{ 'checked' if not banner or not banner.target_type or banner.target_type == 'custom' else '' }} onchange="toggleTargetFields()">
+            <input type="radio" name="target_type" value="custom" {{ 'checked' if not banner or not banner.target_type or banner.target_type == 'custom' else '' }}>
             <span style="font-weight: 600; font-size: 0.875rem;">🔗 Custom URL</span>
           </label>
+
         </div>
       </div>
 
@@ -283,33 +284,5 @@
 
 </div>
 
-<script>
-function toggleTargetFields() {
-  var selected = document.querySelector('input[name="target_type"]:checked');
-  var val = selected ? selected.value : 'custom';
-  
-  var pGroup = document.getElementById('target-product-group');
-  var cGroup = document.getElementById('target-combo-group');
-  var catGroup = document.getElementById('target-category-group');
-  var customGroup = document.getElementById('target-custom-group');
-
-  if (pGroup) pGroup.style.display = (val === 'product') ? 'block' : 'none';
-  if (cGroup) cGroup.style.display = (val === 'combo') ? 'block' : 'none';
-  if (catGroup) catGroup.style.display = (val === 'category') ? 'block' : 'none';
-  if (customGroup) customGroup.style.display = (val === 'custom') ? 'block' : 'none';
-}
-
-// Show/hide secondary link input based on secondary button text
-document.getElementById('secondary_button_text').addEventListener('input', function() {
-  var secGroup = document.getElementById('secondary-link-group');
-  if (secGroup) {
-    secGroup.style.display = this.value.trim().length > 0 ? 'block' : 'none';
-  }
-});
-
-// Run on page load
-document.addEventListener('DOMContentLoaded', function() {
-  toggleTargetFields();
-});
-</script>
 {% endblock %}
+

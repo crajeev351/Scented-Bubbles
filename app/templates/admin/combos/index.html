@@ -69,9 +69,10 @@
             <a href="{{ url_for('admin.combo_edit', id=c.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;">Edit</a>
             <form id="del-combo-{{ c.id }}" method="POST" action="{{ url_for('admin.combo_delete', id=c.id) }}" style="margin: 0; display: inline;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;" onclick="confirmAction('del-combo-{{ c.id }}', 'Archive combo set {{ c.name }}?')">
+              <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;" data-confirm="del-combo-{{ c.id }}" data-confirm-prompt="Archive combo set {{ c.name }}?">
                 Archive
               </button>
+
             </form>
           </div>
         </td>

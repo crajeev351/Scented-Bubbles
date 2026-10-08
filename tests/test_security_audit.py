@@ -160,3 +160,104 @@ def test_admin_login_get_requests_not_locked_out_by_rate_limiter(client):
     for _ in range(12):
         res = client.get("/admin/login")
         assert res.status_code == 200
+
+
+def test_admin_path_traversal_and_redirect_hardening(client, tmp_path):
+    """Path traversal payloads via query parameters are rejected safely and canonical storage paths enforced."""
+    from app.utils.security import get_safe_redirect_url, validate_canonical_storage_path
+
+    traversal_payloads = [
+        "/../../../../etc/passwd",
+        "/..\\..\\..\\..\\windows\\system32\\cmd.exe",
+        "%2e%2e%2f%2e%2e%2fetc%2fpasswd",
+        "%2e%2e/%2e%2e/etc/passwd",
+        "..%2f..%2fsecret.txt",
+        "/admin/../../etc/shadow",
+        "/etc/passwd",
+        "/proc/self/environ",
+    ]
+
+    for payload in traversal_payloads:
+        # 1. Test get_safe_redirect_url rejects all traversals and returns default
+        safe_url = get_safe_redirect_url(payload, default="/admin/")
+        assert safe_url == "/admin/"
+        assert ".." not in safe_url
+        assert "passwd" not in safe_url
+
+        # 2. Test request to /admin/ with traversal query parameter
+        res = client.get(f"/admin/?next={payload}")
+        # Unauthenticated request redirects to /admin/login
+        assert res.status_code == 302
+        loc = res.headers.get("Location", "")
+        assert "passwd" not in loc
+        assert ".." not in loc
+
+        # 3. Test request to /admin/login with traversal next parameter
+        res_login = client.get(f"/admin/login?next={payload}")
+        assert res_login.status_code == 200
+        assert b"passwd" not in res_login.data
+        assert b"/etc/" not in res_login.data
+
+    # Test storage path traversal prevention
+    base_dir = tmp_path / "uploads"
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    with pytest.raises(ValueError):
+        validate_canonical_storage_path(base_dir, "../../secret.env")
+
+    with pytest.raises(ValueError):
+        validate_canonical_storage_path(base_dir, "..\\..\\windows\\win.ini")
+
+    with pytest.raises(ValueError):
+        validate_canonical_storage_path(base_dir, "/absolute/path/outside")
+
+    # Valid relative filename inside base_dir should succeed
+    valid_file = validate_canonical_storage_path(base_dir, "images/product1.jpg")
+    assert valid_file.name == "product1.jpg"
+    assert str(valid_file).startswith(str(base_dir.resolve()))
+
+
+def test_admin_csp_directives_hardened(client):
+    """Verifies that /admin/ CSP removes unsafe-inline from script/style and restricts img-src and connect-src."""
+    res = client.get("/admin/login")
+    assert res.status_code == 200
+
+    csp = res.headers.get("Content-Security-Policy", "")
+    assert csp, "Content-Security-Policy header must be present on /admin routes"
+
+    # Directives check
+    parts = {item.split()[0]: item for item in csp.split(";") if item.strip()}
+
+    # 1. img-src: Must NOT contain wildcard 'https:'
+    assert "img-src" in parts
+    img_directive = parts["img-src"]
+    assert "https:" not in img_directive.split()[1:], "img-src must not contain wildcard https:"
+    assert "'self'" in img_directive
+    assert "https://*.supabase.co" in img_directive
+    assert "https://res.cloudinary.com" in img_directive
+
+    # 2. connect-src: Must NOT contain wildcard 'https:' and strictly be 'self'
+    assert "connect-src" in parts
+    connect_directive = parts["connect-src"]
+    assert "https:" not in connect_directive.split()[1:], "connect-src must not contain wildcard https:"
+    assert "'self'" in connect_directive
+
+    # 3. script-src: Must NOT contain 'unsafe-inline' and must use nonce
+    assert "script-src" in parts
+    script_directive = parts["script-src"]
+    assert "'unsafe-inline'" not in script_directive, "admin script-src must not contain 'unsafe-inline'"
+    assert "'nonce-" in script_directive, "admin script-src must use cryptographic nonce"
+    assert "https://cdn.jsdelivr.net" in script_directive
+
+    # 4. style-src: Must NOT contain 'unsafe-inline' and must use nonce
+    assert "style-src" in parts
+    style_directive = parts["style-src"]
+    assert "'unsafe-inline'" not in style_directive, "admin style-src must not contain 'unsafe-inline'"
+    assert "'nonce-" in style_directive, "admin style-src must use cryptographic nonce"
+    assert "https://fonts.googleapis.com" in style_directive
+
+    # 5. Non-admin routes preserve standard public CSP without breakage
+    res_pub = client.get("/")
+    pub_csp = res_pub.headers.get("Content-Security-Policy", "")
+    assert "'unsafe-inline'" in pub_csp
+

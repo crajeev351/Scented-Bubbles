@@ -42,7 +42,8 @@
             {% endif %}
           {% endif %}
           <label class="category-pill-label" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.85rem; background: {{ 'rgba(197, 160, 89, 0.14)' if is_checked else '#FFFFFF' }}; border: 1.5px solid {{ 'var(--gold-primary, #C5A059)' if is_checked else 'var(--border-light, #E2D9CC)' }}; border-radius: 20px; cursor: pointer; font-size: 0.875rem; font-weight: {{ '600' if is_checked else '500' }}; color: {{ '#2A241E' if is_checked else 'var(--text-main, #333)' }}; transition: all 0.2s ease; user-select: none;">
-            <input type="checkbox" name="category_ids" value="{{ cat.id }}" {{ 'checked' if is_checked else '' }} style="accent-color: var(--gold-primary, #C5A059); cursor: pointer; width: 16px; height: 16px;" onchange="toggleCategoryPill(this)">
+            <input type="checkbox" name="category_ids" value="{{ cat.id }}" {{ 'checked' if is_checked else '' }} style="accent-color: var(--gold-primary, #C5A059); cursor: pointer; width: 16px; height: 16px;">
+
             <span>{{ cat.name }}</span>
           </label>
         {% endfor %}
@@ -229,36 +230,5 @@
 
 </div>
 
-<script>
-  function toggleCategoryPill(checkbox) {
-    const label = checkbox.closest('.category-pill-label');
-    if (!label) return;
-    if (checkbox.checked) {
-      label.style.background = 'rgba(197, 160, 89, 0.14)';
-      label.style.borderColor = 'var(--gold-primary, #C5A059)';
-      label.style.fontWeight = '600';
-      label.style.color = '#2A241E';
-    } else {
-      label.style.background = '#FFFFFF';
-      label.style.borderColor = 'var(--border-light, #E2D9CC)';
-      label.style.fontWeight = '500';
-      label.style.color = 'var(--text-main, #333)';
-    }
-  }
-
-  // Client validation on submit
-  document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form.admin-card');
-    if (form) {
-      form.addEventListener('submit', function(e) {
-        const checked = document.querySelectorAll('input[name="category_ids"]:checked');
-        if (checked.length === 0) {
-          e.preventDefault();
-          alert('Please select at least one Category for this product.');
-          return false;
-        }
-      });
-    }
-  });
-</script>
 {% endblock %}
+

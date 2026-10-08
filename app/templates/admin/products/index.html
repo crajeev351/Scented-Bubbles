@@ -9,18 +9,19 @@
   <form method="GET" action="{{ url_for('admin.product_list') }}" class="admin-filter-bar">
     <input type="text" name="q" value="{{ search_query }}" placeholder="Search by name, note..." class="form-control" style="font-size: 0.875rem;">
     
-    <select name="category_id" onchange="this.form.submit()" class="form-control" style="font-size: 0.875rem;">
+    <select name="category_id" data-auto-submit="true" class="form-control" style="font-size: 0.875rem;">
       <option value="">All Categories</option>
       {% for cat in categories %}
         <option value="{{ cat.id }}" {{ 'selected' if selected_category_id == cat.id else '' }}>{{ cat.name }}</option>
       {% endfor %}
     </select>
 
-    <select name="status" onchange="this.form.submit()" class="form-control" style="font-size: 0.875rem;">
+    <select name="status" data-auto-submit="true" class="form-control" style="font-size: 0.875rem;">
       <option value="">All Statuses</option>
       <option value="active" {{ 'selected' if status_filter == 'active' else '' }}>Active</option>
       <option value="inactive" {{ 'selected' if status_filter == 'inactive' else '' }}>Inactive</option>
     </select>
+
 
     <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
     {% if search_query or selected_category_id or status_filter %}
@@ -136,9 +137,10 @@
             <a href="{{ url_for('admin.product_edit', id=p.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;">Edit</a>
             <form id="del-prod-{{ p.id }}" method="POST" action="{{ url_for('admin.product_delete', id=p.id) }}" style="margin: 0; display: inline;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;" onclick="confirmAction('del-prod-{{ p.id }}', 'Archive product {{ p.name }}? It will be removed from customer view.')">
+              <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;" data-confirm="del-prod-{{ p.id }}" data-confirm-prompt="Archive product {{ p.name }}? It will be removed from customer view.">
                 Archive
               </button>
+
             </form>
           </div>
         </td>

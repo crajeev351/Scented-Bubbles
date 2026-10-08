@@ -33,9 +33,10 @@
             <strong id="cust-phone-{{ c.id }}" data-full="{{ c.phone }}" data-masked="{{ c.phone | mask_phone }}">
               {{ c.phone | mask_phone }}
             </strong>
-            <button type="button" class="reveal-btn" onclick="toggleReveal('cust-phone-{{ c.id }}', this)" title="Click to reveal/hide">
+            <button type="button" class="reveal-btn" data-toggle-reveal="cust-phone-{{ c.id }}" title="Click to reveal/hide">
               👁 Reveal
             </button>
+
           </span>
         </td>
         <td><strong style="color: var(--text-main);">{{ c.name }}</strong></td>
@@ -45,9 +46,10 @@
             <span id="cust-email-{{ c.id }}" data-full="{{ c.email }}" data-masked="{{ c.email | mask_email }}" style="color: var(--text-muted);">
               {{ c.email | mask_email }}
             </span>
-            <button type="button" class="reveal-btn" onclick="toggleReveal('cust-email-{{ c.id }}', this)" title="Click to reveal/hide">
+            <button type="button" class="reveal-btn" data-toggle-reveal="cust-email-{{ c.id }}" title="Click to reveal/hide">
               👁
             </button>
+
           </span>
           {% else %}
             <span style="color: var(--text-light);">-</span>

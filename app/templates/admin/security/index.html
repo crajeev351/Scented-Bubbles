@@ -75,9 +75,10 @@
             {{ setup_secret }}
           </div>
 
-          <button type="button" class="btn btn-secondary btn-sm" onclick="copySetupKey('{{ setup_secret }}', this)">
+          <button type="button" class="btn btn-secondary btn-sm" data-copy-key="{{ setup_secret }}">
             📋 Copy Setup Key
           </button>
+
         </div>
 
         <div style="background: var(--bg-surface); border: 1px solid var(--border-light); padding: 1.5rem; border-radius: var(--radius-sm);">
@@ -176,17 +177,5 @@
 
 </div>
 
-<script>
-function copySetupKey(text, btn) {
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(text).then(function() {
-      const original = btn.textContent;
-      btn.textContent = "✓ Copied to Clipboard!";
-      setTimeout(function() { btn.textContent = original; }, 2000);
-    });
-  } else {
-    prompt("Copy your setup key:", text);
-  }
-}
-</script>
 {% endblock %}
+

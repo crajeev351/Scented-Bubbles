@@ -1,6 +1,7 @@
 import os
+import secrets
 from pathlib import Path
-from flask import Flask, render_template
+from flask import Flask, render_template, g
 from app.config import config_by_name
 from app.extensions import db, migrate, csrf, limiter
 from app.services.cache_service import cache
@@ -196,6 +197,14 @@ def create_app(config_name=None, config_override=None):
     # Asset Versioning Helper with Auto Cache-Busting (Content-hash based, no epoch timestamps)
     import hashlib
 
+    @app.before_request
+    def generate_csp_nonce():
+        g.csp_nonce = secrets.token_urlsafe(16)
+
+    @app.context_processor
+    def inject_csp_nonce():
+        return {"csp_nonce": getattr(g, "csp_nonce", "")}
+
     @app.template_global("asset_url")
     def asset_url_global(filename):
         """Appends asset version query string based on file content/mtime hash to enforce instant cache busting on update without exposing server timestamps."""
@@ -206,6 +215,7 @@ def create_app(config_name=None, config_override=None):
         except Exception:
             v = "2026sb"
         return f"/static/{filename.lstrip('/')}?v={v}"
+
 
     # Performance & Security Hardening: Security Headers & Cache-Control
     @app.after_request
@@ -223,19 +233,38 @@ def create_app(config_name=None, config_override=None):
         if is_https:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
-        # Content-Security-Policy (CSP): Strict yet fully functional for all store features
-        csp = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-            "font-src 'self' https://fonts.gstatic.com data:; "
-            "img-src 'self' data: blob: https:; "
-            "connect-src 'self' https:; "
-            "frame-ancestors 'self'; "
-            "base-uri 'self'; "
-            "form-action 'self';"
-        )
-        response.headers["Content-Security-Policy"] = csp
+        # Content-Security-Policy (CSP): Strict yet fully functional
+        if request.path.startswith("/admin"):
+            nonce = getattr(g, "csp_nonce", "")
+            nonce_part = f" 'nonce-{nonce}'" if nonce else ""
+            csp = (
+                "default-src 'self'; "
+                f"script-src 'self'{nonce_part} https://cdn.jsdelivr.net; "
+                f"style-src 'self'{nonce_part} https://fonts.googleapis.com; "
+                "style-src-attr 'unsafe-inline'; "
+                "font-src 'self' https://fonts.gstatic.com data:; "
+                "img-src 'self' data: blob: https://*.supabase.co https://res.cloudinary.com; "
+                "connect-src 'self'; "
+                "frame-ancestors 'self'; "
+                "base-uri 'self'; "
+                "form-action 'self';"
+            )
+            response.headers["Content-Security-Policy"] = csp
+        else:
+            # Public catalog CSP remains unchanged as strictly instructed
+            csp = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "font-src 'self' https://fonts.gstatic.com data:; "
+                "img-src 'self' data: blob: https:; "
+                "connect-src 'self' https:; "
+                "frame-ancestors 'self'; "
+                "base-uri 'self'; "
+                "form-action 'self';"
+            )
+            response.headers["Content-Security-Policy"] = csp
+
 
         # 2. Cache-Control Directives
         # Static assets: 1 year cache

@@ -81,9 +81,10 @@
             <a href="{{ url_for('admin.banner_edit', id=b.id) }}" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;">Edit</a>
             <form id="del-banner-{{ b.id }}" method="POST" action="{{ url_for('admin.banner_delete', id=b.id) }}" style="margin: 0; display: inline;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;" onclick="confirmAction('del-banner-{{ b.id }}', 'Remove banner {{ b.title }}?')">
+              <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); padding: 0.25rem 0.6rem; font-size: 0.75rem; white-space: nowrap;" data-confirm="del-banner-{{ b.id }}" data-confirm-prompt="Remove banner {{ b.title }}?">
                 Remove
               </button>
+
             </form>
           </div>
         </td>

@@ -81,9 +81,10 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="reason" value="Cancelled by admin from order detail page">
                 <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); padding: 0.5rem 1rem;" 
-                        onclick="confirmAction('cancel-order-form', 'Cancel Order #{{ order.order_id }}? All reserved stock will immediately be restored to the catalog.')">
+                        data-confirm="cancel-order-form" data-confirm-prompt="Cancel Order #{{ order.order_id }}? All reserved stock will immediately be restored to the catalog.">
                   Cancel Order (Restore Stock)
                 </button>
+
               </form>
             {% endif %}
           {% else %}
@@ -96,9 +97,10 @@
             <form id="delete-order-form" method="POST" action="{{ url_for('admin.order_delete', order_id=order.order_id) }}" style="margin: 0; margin-left: auto;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); border-color: #FCA5A5; padding: 0.5rem 1rem;" 
-                      onclick="confirmAction('delete-order-form', 'Permanently delete Order #{{ order.order_id }}? This will permanently purge the order and line items to free server database storage.')">
+                      data-confirm="delete-order-form" data-confirm-prompt="Permanently delete Order #{{ order.order_id }}? This will permanently purge the order and line items to free server database storage.">
                 🗑️ Permanently Delete Order (Purge Data)
               </button>
+
             </form>
           {% endif %}
         </div>
@@ -166,7 +168,8 @@
               <span id="detail-phone" data-full="{{ order.shipping_phone }}" data-masked="{{ order.shipping_phone | mask_phone }}">
                 {{ order.shipping_phone | mask_phone }}
               </span>
-              <button type="button" class="reveal-btn" onclick="toggleReveal('detail-phone', this)">👁 Reveal</button>
+              <button type="button" class="reveal-btn" data-toggle-reveal="detail-phone">👁 Reveal</button>
+
             </span>
           </div>
           {% if order.customer and order.customer.email %}
@@ -175,7 +178,8 @@
                 <span id="detail-email" data-full="{{ order.customer.email }}" data-masked="{{ order.customer.email | mask_email }}">
                   {{ order.customer.email | mask_email }}
                 </span>
-                <button type="button" class="reveal-btn" onclick="toggleReveal('detail-email', this)">👁</button>
+                <button type="button" class="reveal-btn" data-toggle-reveal="detail-email">👁</button>
+
               </span>
             </div>
           {% endif %}
@@ -310,9 +314,10 @@
           <form id="reject-pay-form" method="POST" action="{{ url_for('admin.order_reject_payment', order_id=order.order_id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="button" class="btn btn-secondary btn-block" style="color: var(--color-danger);"
-                    onclick="confirmAction('reject-pay-form', 'Reject payment for order #{{ order.order_id }}? The order will be cancelled and reserved stock returned to catalog.')">
+                    data-confirm="reject-pay-form" data-confirm-prompt="Reject payment for order #{{ order.order_id }}? The order will be cancelled and reserved stock returned to catalog.">
               ✗ Reject Payment (Restores Stock)
             </button>
+
           </form>
         </div>
       {% elif order.payment_status == 'PAID' %}

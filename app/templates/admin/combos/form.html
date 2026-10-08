@@ -99,7 +99,7 @@
           {% for item in combo.items %}
           <div class="combo-item-row" style="display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; background: var(--bg-subtle, #FAF8F5); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-light);">
             <span class="item-badge" style="font-weight: 700; font-size: 0.8rem; color: #8C6D23; min-width: 65px;">Item #{{ loop.index }}</span>
-            <select name="variant_id[]" required class="form-control combo-variant-select" style="flex: 2; background: #fff;" onchange="updatePriceCalculations()">
+            <select name="variant_id[]" required class="form-control combo-variant-select" style="flex: 2; background: #fff;">
               <option value="">-- Select Fragrance Product / Size --</option>
               {% for v in variants %}
                 <option value="{{ v.id }}" data-price="{{ v.effective_price }}" {{ 'selected' if item.product_variant_id == v.id else '' }}>
@@ -109,8 +109,9 @@
             </select>
             <div style="display: flex; align-items: center; gap: 0.4rem;">
               <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Qty:</span>
-              <input type="number" name="quantity[]" min="1" value="{{ item.quantity }}" required class="form-control combo-qty-input" style="width: 70px; background: #fff;" oninput="updatePriceCalculations()">
+              <input type="number" name="quantity[]" min="1" value="{{ item.quantity }}" required class="form-control combo-qty-input" style="width: 70px; background: #fff;">
             </div>
+
             <button type="button" class="btn btn-secondary btn-sm remove-item-btn" title="Remove this fragrance" style="color: #C62828; padding: 0.4rem 0.65rem; border: 1px solid var(--border-light); font-weight: 700; background: #fff; cursor: pointer;">
               ✕
             </button>
@@ -120,7 +121,7 @@
           {# Default rows for new combo #}
           <div class="combo-item-row" style="display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; background: var(--bg-subtle, #FAF8F5); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-light);">
             <span class="item-badge" style="font-weight: 700; font-size: 0.8rem; color: #8C6D23; min-width: 65px;">Item #1</span>
-            <select name="variant_id[]" required class="form-control combo-variant-select" style="flex: 2; background: #fff;" onchange="updatePriceCalculations()">
+            <select name="variant_id[]" required class="form-control combo-variant-select" style="flex: 2; background: #fff;">
               <option value="">-- Select Fragrance Product / Size --</option>
               {% for v in variants %}
                 <option value="{{ v.id }}" data-price="{{ v.effective_price }}">
@@ -130,8 +131,9 @@
             </select>
             <div style="display: flex; align-items: center; gap: 0.4rem;">
               <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Qty:</span>
-              <input type="number" name="quantity[]" min="1" value="1" required class="form-control combo-qty-input" style="width: 70px; background: #fff;" oninput="updatePriceCalculations()">
+              <input type="number" name="quantity[]" min="1" value="1" required class="form-control combo-qty-input" style="width: 70px; background: #fff;">
             </div>
+
             <button type="button" class="btn btn-secondary btn-sm remove-item-btn" title="Remove this fragrance" style="color: #C62828; padding: 0.4rem 0.65rem; border: 1px solid var(--border-light); font-weight: 700; background: #fff; cursor: pointer;">
               ✕
             </button>
@@ -139,7 +141,7 @@
 
           <div class="combo-item-row" style="display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; background: var(--bg-subtle, #FAF8F5); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-light);">
             <span class="item-badge" style="font-weight: 700; font-size: 0.8rem; color: #8C6D23; min-width: 65px;">Item #2</span>
-            <select name="variant_id[]" required class="form-control combo-variant-select" style="flex: 2; background: #fff;" onchange="updatePriceCalculations()">
+            <select name="variant_id[]" required class="form-control combo-variant-select" style="flex: 2; background: #fff;">
               <option value="">-- Select Fragrance Product / Size --</option>
               {% for v in variants %}
                 <option value="{{ v.id }}" data-price="{{ v.effective_price }}">
@@ -149,8 +151,9 @@
             </select>
             <div style="display: flex; align-items: center; gap: 0.4rem;">
               <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Qty:</span>
-              <input type="number" name="quantity[]" min="1" value="1" required class="form-control combo-qty-input" style="width: 70px; background: #fff;" oninput="updatePriceCalculations()">
+              <input type="number" name="quantity[]" min="1" value="1" required class="form-control combo-qty-input" style="width: 70px; background: #fff;">
             </div>
+
             <button type="button" class="btn btn-secondary btn-sm remove-item-btn" title="Remove this fragrance" style="color: #C62828; padding: 0.4rem 0.65rem; border: 1px solid var(--border-light); font-weight: 700; background: #fff; cursor: pointer;">
               ✕
             </button>
@@ -206,7 +209,7 @@
 <template id="combo-item-template">
   <div class="combo-item-row" style="display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; background: var(--bg-subtle, #FAF8F5); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-light);">
     <span class="item-badge" style="font-weight: 700; font-size: 0.8rem; color: #8C6D23; min-width: 65px;">Item #1</span>
-    <select name="variant_id[]" required class="form-control combo-variant-select" style="flex: 2; background: #fff;" onchange="updatePriceCalculations()">
+    <select name="variant_id[]" required class="form-control combo-variant-select" style="flex: 2; background: #fff;">
       <option value="">-- Select Fragrance Product / Size --</option>
       {% for v in variants %}
         <option value="{{ v.id }}" data-price="{{ v.effective_price }}">
@@ -216,104 +219,14 @@
     </select>
     <div style="display: flex; align-items: center; gap: 0.4rem;">
       <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Qty:</span>
-      <input type="number" name="quantity[]" min="1" value="1" required class="form-control combo-qty-input" style="width: 70px; background: #fff;" oninput="updatePriceCalculations()">
+      <input type="number" name="quantity[]" min="1" value="1" required class="form-control combo-qty-input" style="width: 70px; background: #fff;">
     </div>
+
     <button type="button" class="btn btn-secondary btn-sm remove-item-btn" title="Remove this fragrance" style="color: #C62828; padding: 0.4rem 0.65rem; border: 1px solid var(--border-light); font-weight: 700; background: #fff; cursor: pointer;">
       ✕
     </button>
   </div>
 </template>
 
-<script>
-function reindexComboItems() {
-  var rows = document.querySelectorAll('#combo-items-wrapper .combo-item-row');
-  var countBadge = document.getElementById('items-count-badge');
-  if (countBadge) {
-    countBadge.textContent = rows.length + (rows.length === 1 ? ' Fragrance' : ' Fragrances');
-  }
-
-  rows.forEach(function(row, idx) {
-    var badge = row.querySelector('.item-badge');
-    if (badge) badge.textContent = 'Item #' + (idx + 1);
-
-    var removeBtn = row.querySelector('.remove-item-btn');
-    if (removeBtn) {
-      removeBtn.style.visibility = (rows.length > 1) ? 'visible' : 'hidden';
-    }
-  });
-
-  updatePriceCalculations();
-}
-
-function addComboItemRow() {
-  var template = document.getElementById('combo-item-template');
-  var clone = template.content.cloneNode(true);
-  document.getElementById('combo-items-wrapper').appendChild(clone);
-  reindexComboItems();
-}
-
-function updatePriceCalculations() {
-  var retailSum = 0;
-  var rows = document.querySelectorAll('#combo-items-wrapper .combo-item-row');
-  
-  rows.forEach(function(row) {
-    var select = row.querySelector('.combo-variant-select');
-    var qtyInput = row.querySelector('.combo-qty-input');
-    if (select && select.value) {
-      var selectedOpt = select.options[select.selectedIndex];
-      var price = parseFloat(selectedOpt.getAttribute('data-price')) || 0;
-      var qty = parseInt(qtyInput.value) || 1;
-      retailSum += (price * qty);
-    }
-  });
-
-  var comboPriceInput = document.getElementById('combo_price');
-  var comboPrice = parseFloat(comboPriceInput.value) || 0;
-  var savings = retailSum > comboPrice ? (retailSum - comboPrice) : 0;
-  var savingsPercent = retailSum > 0 ? Math.round((savings / retailSum) * 100) : 0;
-
-  var calcRetail = document.getElementById('calc-retail-sum');
-  var calcCombo = document.getElementById('calc-combo-price');
-  var calcSavings = document.getElementById('calc-savings');
-  var calcBadge = document.getElementById('calc-savings-badge');
-
-  if (calcRetail) calcRetail.textContent = '₹' + retailSum.toFixed(2);
-  if (calcCombo) calcCombo.textContent = '₹' + comboPrice.toFixed(2);
-  if (calcSavings) calcSavings.textContent = '₹' + savings.toFixed(2);
-  
-  if (calcBadge) {
-    if (savings > 0) {
-      calcBadge.textContent = savingsPercent + '% Customer Savings';
-      calcBadge.style.background = '#2E7D32';
-    } else {
-      calcBadge.textContent = 'Standard Pricing';
-      calcBadge.style.background = '#8C6D23';
-    }
-  }
-}
-
-// Bind add button
-document.getElementById('add-combo-item-btn').addEventListener('click', function(e) {
-  e.preventDefault();
-  addComboItemRow();
-});
-
-// Event delegation for remove button
-document.getElementById('combo-items-wrapper').addEventListener('click', function(e) {
-  if (e.target && e.target.closest('.remove-item-btn')) {
-    e.preventDefault();
-    var rows = document.querySelectorAll('#combo-items-wrapper .combo-item-row');
-    if (rows.length > 1) {
-      var row = e.target.closest('.combo-item-row');
-      row.remove();
-      reindexComboItems();
-    }
-  }
-});
-
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-  reindexComboItems();
-});
-</script>
 {% endblock %}
+

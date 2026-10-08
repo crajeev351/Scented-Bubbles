@@ -61,9 +61,10 @@
   <form id="purge-delivered-form" method="POST" action="{{ url_for('admin.order_purge_delivered') }}" style="margin: 0;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); border-color: #FCA5A5; font-size: 0.8125rem; padding: 0.4rem 0.85rem;"
-            onclick="confirmAction('purge-delivered-form', 'Purge ALL delivered orders from the system? This will delete all completed orders to free up database space.')">
+            data-confirm="purge-delivered-form" data-confirm-prompt="Purge ALL delivered orders from the system? This will delete all completed orders to free up database space.">
       🗑️ Purge Delivered Orders
     </button>
+
   </form>
 </div>
 
@@ -99,9 +100,10 @@
               <span id="order-phone-{{ o.id }}" data-full="{{ o.shipping_phone }}" data-masked="{{ o.shipping_phone | mask_phone }}">
                 {{ o.shipping_phone | mask_phone }}
               </span>
-              <button type="button" class="reveal-btn" onclick="toggleReveal('order-phone-{{ o.id }}', this)" title="Click to reveal/hide">
+              <button type="button" class="reveal-btn" data-toggle-reveal="order-phone-{{ o.id }}" title="Click to reveal/hide">
                 👁
               </button>
+
             </span>
           </div>
           <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.15rem;">📍 {{ o.shipping_city }}, {{ o.shipping_state }}</div>
@@ -132,9 +134,10 @@
             <form id="del-row-{{ o.id }}" method="POST" action="{{ url_for('admin.order_delete', order_id=o.order_id) }}" style="display: inline; margin-left: 0.25rem;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="button" class="btn btn-secondary btn-sm" style="color: var(--color-danger); border-color: #FCA5A5; padding: 0.25rem 0.5rem; font-size: 0.75rem;" title="Permanently delete order"
-                      onclick="confirmAction('del-row-{{ o.id }}', 'Permanently delete Order #{{ o.order_id }}? This will permanently remove it from the database.')">
+                      data-confirm="del-row-{{ o.id }}" data-confirm-prompt="Permanently delete Order #{{ o.order_id }}? This will permanently remove it from the database.">
                 🗑️
               </button>
+
             </form>
           {% endif %}
         </td>
