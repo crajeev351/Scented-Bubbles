@@ -52,7 +52,9 @@ from app.utils.security import get_safe_redirect_url
 
 
 def admin_required(f):
-    """Decorator ensuring request has an authenticated admin session and enforces inactivity timeout."""
+    """Decorator ensuring request has an authenticated admin session and enforces inactivity timeout.
+    If the admin logged in with 'Keep me signed in', no inactivity timeout is applied.
+    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get("admin_id"):
@@ -62,18 +64,21 @@ def admin_required(f):
             safe_next = get_safe_redirect_url(request.path, default_url="/admin")
             return redirect(url_for("admin.login", next=safe_next))
 
-        # Enforce 30-minute admin inactivity timeout
-        now_ts = datetime.datetime.now(datetime.timezone.utc).timestamp()
-        last_activity = session.get("admin_last_activity")
-        if last_activity and (now_ts - last_activity > 1800):
-            session.pop("admin_id", None)
-            session.pop("admin_username", None)
-            session.pop("admin_last_activity", None)
-            if request.is_json:
-                return jsonify({"error": "Admin session expired due to inactivity"}), 401
-            flash("Your admin session has expired due to 30 minutes of inactivity. Please sign in again.", "warning")
-            return redirect(url_for("admin.login"))
-        session["admin_last_activity"] = now_ts
+        # Skip inactivity timeout if admin chose "Keep me signed in"
+        if not session.get("admin_no_timeout"):
+            # Enforce 30-minute admin inactivity timeout
+            now_ts = datetime.datetime.now(datetime.timezone.utc).timestamp()
+            last_activity = session.get("admin_last_activity")
+            if last_activity and (now_ts - last_activity > 1800):
+                session.pop("admin_id", None)
+                session.pop("admin_username", None)
+                session.pop("admin_last_activity", None)
+                session.pop("admin_no_timeout", None)
+                if request.is_json:
+                    return jsonify({"error": "Admin session expired due to inactivity"}), 401
+                flash("Your admin session has expired due to 30 minutes of inactivity. Please sign in again.", "warning")
+                return redirect(url_for("admin.login"))
+            session["admin_last_activity"] = datetime.datetime.now(datetime.timezone.utc).timestamp()
 
         return f(*args, **kwargs)
     return decorated_function
@@ -143,6 +148,7 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
+        keep_me_signed_in = request.form.get("keep_me_signed_in") == "1"
 
         admin = Admin.query.filter_by(username=username, is_active=True).first()
         if admin:
@@ -160,6 +166,8 @@ def login():
                 if admin.is_2fa_enabled and admin.totp_secret:
                     session["admin_2fa_pending_id"] = admin.id
                     session["admin_next_url"] = next_url
+                    # Carry the keep-me-signed-in preference through 2FA flow
+                    session["admin_keep_signed_in"] = keep_me_signed_in
                     return redirect(url_for("admin.verify_2fa"))
 
                 secret_verified = session.get("admin_secret_verified")
@@ -168,6 +176,8 @@ def login():
                 session["admin_username"] = admin.username
                 session["admin_last_activity"] = datetime.datetime.now(datetime.timezone.utc).timestamp()
                 session.permanent = True
+                if keep_me_signed_in:
+                    session["admin_no_timeout"] = True
                 if secret_verified:
                     session["admin_secret_verified"] = True
 
@@ -207,12 +217,15 @@ def verify_2fa():
         from app.services.totp_service import verify_totp
         if verify_totp(admin.totp_secret, code):
             secret_verified = session.get("admin_secret_verified")
+            keep_signed_in = session.get("admin_keep_signed_in", False)
             next_target = session.pop("admin_next_url", None)
             session.clear()
             session["admin_id"] = admin.id
             session["admin_username"] = admin.username
             session["admin_last_activity"] = datetime.datetime.now(datetime.timezone.utc).timestamp()
             session.permanent = True
+            if keep_signed_in:
+                session["admin_no_timeout"] = True
             if secret_verified:
                 session["admin_secret_verified"] = True
 

@@ -34,7 +34,15 @@
         <input type="password" id="password" name="password" required autocomplete="current-password" class="form-control" placeholder="••••••••">
       </div>
 
-      <div style="margin-top: 1.5rem;">
+      <div style="margin-top: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+        <input type="checkbox" id="keep_me_signed_in" name="keep_me_signed_in" value="1"
+               style="width: 16px; height: 16px; accent-color: var(--gold-primary); cursor: pointer; flex-shrink: 0;">
+        <label for="keep_me_signed_in" style="font-size: 0.875rem; color: var(--text-muted); cursor: pointer; margin: 0; user-select: none;">
+          Keep me signed in until I manually log out
+        </label>
+      </div>
+
+      <div style="margin-top: 1.25rem;">
         <button type="submit" class="btn btn-primary btn-block" style="padding: 0.85rem;">
           Sign In to Portal &rarr;
         </button>
