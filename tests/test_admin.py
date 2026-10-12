@@ -724,7 +724,7 @@ def test_category_background_image_upload_and_auto_fit(app, client, auth_client)
     assert edit_res.status_code == 200
 
     with app.app_context():
-        updated_cat = Category.query.get(cat_id)
+        updated_cat = db.session.get(Category, cat_id)
         assert updated_cat.image_url is None
 
     # Homepage still renders category, but without the removed image URL

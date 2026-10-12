@@ -19,6 +19,12 @@
         <input type="hidden" name="idempotency_token" value="{{ idempotency_token }}">
         <input type="hidden" id="cart-items-json" name="items" value="">
 
+        {# Anti-bot Honeypot fields #}
+        <div style="display:none !important;" aria-hidden="true">
+          <input type="text" name="website_hp" tabindex="-1" autocomplete="off">
+          <input type="text" name="company_hp" tabindex="-1" autocomplete="off">
+        </div>
+
         {# Signed-in Customer Status #}
         {% if current_user %}
         <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-subtle); padding: 0.75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1.5rem; font-size: 0.84rem; border: 1px solid var(--border-light); flex-wrap: wrap; gap: 0.5rem;">

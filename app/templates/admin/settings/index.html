@@ -125,6 +125,73 @@
       <textarea id="footer_text" name="footer_text" rows="2" class="form-control">{{ settings.get('footer_text', '') }}</textarea>
     </div>
 
+    <h3 style="font-size: 1.15rem; margin: 2.5rem 0 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between;">
+      <span>5. Email &amp; SMTP Configuration (Password Resets &amp; Order Alerts)</span>
+      <span style="font-size: 0.75rem; background: var(--bg-surface); padding: 0.2rem 0.6rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); font-weight: 600; color: var(--gold-dark);">
+        {% if active_smtp.user and active_smtp.password %}🟢 Active &amp; Connected{% else %}⚪ Not Configured{% endif %}
+      </span>
+    </h3>
+
+    <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: var(--radius-sm); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;">
+      <h4 style="margin: 0 0 0.5rem; color: #166534; font-size: 0.9375rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+        <span>📘</span> How to Setup Free Gmail App Password (Step-by-Step for Store Owners)
+      </h4>
+      <ol style="margin: 0; padding-left: 1.25rem; font-size: 0.8125rem; color: #14532D; line-height: 1.6;">
+        <li>Go to your Google Account Security: <a href="https://myaccount.google.com/security" target="_blank" rel="noopener noreferrer" style="color: #15803D; font-weight: 700; text-decoration: underline;">myaccount.google.com/security</a></li>
+        <li>Ensure <strong>2-Step Verification</strong> is switched <strong>ON</strong>.</li>
+        <li>Open <strong>App Passwords</strong> (<a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" style="color: #15803D; font-weight: 700; text-decoration: underline;">myaccount.google.com/apppasswords</a>).</li>
+        <li>Type <em>"Scented Bubbles"</em> as the app name and click <strong>Create</strong>.</li>
+        <li>Copy the <strong>16-letter code</strong> and paste it into the <strong>SMTP Password</strong> field below.</li>
+      </ol>
+      <div style="margin-top: 0.6rem; font-size: 0.75rem; color: #166534;">
+        <em>💡 Works with any custom domain email on Google Workspace, Gmail, Zoho (smtp.zoho.in:587), or Outlook (smtp.office365.com:587).</em>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="smtp_host">SMTP Server Host *</label>
+        <input type="text" id="smtp_host" name="smtp_host" value="{{ settings.get('smtp_host', active_smtp.host) }}" required class="form-control" placeholder="e.g. smtp.gmail.com">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Default for Gmail is <code>smtp.gmail.com</code></small>
+      </div>
+
+      <div class="form-group">
+        <label for="smtp_port">SMTP Port *</label>
+        <input type="number" id="smtp_port" name="smtp_port" value="{{ settings.get('smtp_port', active_smtp.port) }}" required class="form-control" placeholder="587">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Port 587 (TLS/STARTTLS) recommended</small>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="smtp_user">Store Sender Email ID (Username) *</label>
+        <input type="email" id="smtp_user" name="smtp_user" value="{{ settings.get('smtp_user', active_smtp.user) }}" required class="form-control" placeholder="yourstore@gmail.com">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Emails to customers will be sent from this email address</small>
+      </div>
+
+      <div class="form-group">
+        <label for="smtp_password">SMTP App Password</label>
+        <input type="password" id="smtp_password" name="smtp_password" autocomplete="new-password" class="form-control" placeholder="{% if active_smtp.password %}•••••••••••••••• (Leave blank to keep existing){% else %}Enter 16-character App Password{% endif %}">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Leave empty if you don't wish to change the currently saved password</small>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="notification_email">Store Owner Alert Email</label>
+        <input type="email" id="notification_email" name="notification_email" value="{{ settings.get('notification_email', active_smtp.notification_email) }}" class="form-control" placeholder="owner@scentedbubbles.com">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Receives instant email notifications whenever a new customer order is placed</small>
+      </div>
+
+      <div class="form-group">
+        <label for="smtp_use_tls">Encryption Protocol</label>
+        <select id="smtp_use_tls" name="smtp_use_tls" class="form-control">
+          <option value="true" {{ 'selected' if settings.get('smtp_use_tls', 'true')|lower in ['true', '1', 'yes'] else '' }}>STARTTLS (Recommended &ndash; Port 587)</option>
+          <option value="false" {{ 'selected' if settings.get('smtp_use_tls', 'true')|lower not in ['true', '1', 'yes'] else '' }}>None / Plain (Port 25)</option>
+        </select>
+      </div>
+    </div>
+
     <div style="margin-top: 2.5rem;">
       <button type="submit" class="btn btn-primary" style="padding: 0.85rem 2.5rem; font-size: 1rem;">
         Save Store Settings &rarr;
@@ -132,6 +199,25 @@
     </div>
 
   </form>
+
+  {# Separate Test Email Card #}
+  <div class="admin-card" style="margin-top: 2rem; border-left: 4px solid var(--gold-dark);">
+    <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem;">Verify SMTP Connection</h3>
+    <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;">
+      Send a live test email to verify that your mail server coordinates and password authenticate cleanly with Gmail.
+    </p>
+
+    <form method="POST" action="{{ url_for('admin.settings_test_email') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div style="flex: 1; min-width: 260px;">
+        <label for="test_recipient" style="font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.35rem; display: block;">Recipient Email for Verification Test</label>
+        <input type="email" id="test_recipient" name="test_recipient" value="{{ active_smtp.notification_email or active_smtp.user }}" required class="form-control" placeholder="Enter recipient email">
+      </div>
+      <button type="submit" class="btn btn-secondary" style="padding: 0.75rem 1.5rem; white-space: nowrap;">
+        <span>✉️</span> Send Test Verification Email
+      </button>
+    </form>
+  </div>
 
 </div>
 {% endblock %}

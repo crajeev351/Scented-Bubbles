@@ -33,4 +33,5 @@ if __name__ == "__main__":
                     pass
         except Exception as e:
             app.logger.warning(f"Could not backfill product_categories: {e}")
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    is_debug = env.lower() != "production" and os.environ.get("FLASK_DEBUG", "1").lower() in ("1", "true")
+    app.run(host="127.0.0.1", port=5000, debug=is_debug)

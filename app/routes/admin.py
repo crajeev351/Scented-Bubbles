@@ -621,7 +621,7 @@ def product_create():
 @admin_required
 def product_edit(id):
     """Edit product details, manage variants, upload additional images."""
-    product = Product.query.get_or_404(id)
+    product = db.get_or_404(Product, id)
     categories = Category.query.filter_by(is_deleted=False).order_by(Category.display_order.asc(), Category.name.asc()).all()
 
     if request.method == "POST":
@@ -729,7 +729,7 @@ def product_edit(id):
 @admin_required
 def product_toggle(id):
     """Enable or disable product visibility."""
-    product = Product.query.get_or_404(id)
+    product = db.get_or_404(Product, id)
     product.active = not product.active
     db.session.commit()
     cache.invalidate_all()
@@ -741,7 +741,7 @@ def product_toggle(id):
 @admin_required
 def product_delete(id):
     """Soft delete product and its variants."""
-    product = Product.query.get_or_404(id)
+    product = db.get_or_404(Product, id)
     product.is_deleted = True
     product.active = False
     for v in product.variants:
@@ -879,7 +879,7 @@ def category_create():
 @admin_required
 def category_edit(id):
     """Edit existing category."""
-    category = Category.query.get_or_404(id)
+    category = db.get_or_404(Category, id)
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         slug = request.form.get("slug", "").strip() or re.sub(r"[^\w\-]", "-", name.lower()).strip("-")
@@ -928,7 +928,7 @@ def category_edit(id):
 @admin_required
 def category_toggle(id):
     """Toggle category active state."""
-    category = Category.query.get_or_404(id)
+    category = db.get_or_404(Category, id)
     if category.is_deleted:
         category.is_deleted = False
         category.active = True
@@ -945,7 +945,7 @@ def category_toggle(id):
 @admin_required
 def category_archive(id):
     """Archive (soft delete) category."""
-    category = Category.query.get_or_404(id)
+    category = db.get_or_404(Category, id)
     category.is_deleted = True
     category.active = False
     db.session.commit()
@@ -958,7 +958,7 @@ def category_archive(id):
 @admin_required
 def category_unarchive(id):
     """Restore an archived category."""
-    category = Category.query.get_or_404(id)
+    category = db.get_or_404(Category, id)
     category.is_deleted = False
     category.active = True
     db.session.commit()
@@ -972,7 +972,7 @@ def category_unarchive(id):
 @admin_required
 def category_delete(id):
     """Permanently delete category from database if no products are assigned."""
-    category = Category.query.get_or_404(id)
+    category = db.get_or_404(Category, id)
     product_count = category.products.count()
     if product_count > 0:
         flash(
@@ -1073,7 +1073,7 @@ def combo_create():
 @admin_required
 def combo_edit(id):
     """Edit combo details and components."""
-    combo = Combo.query.get_or_404(id)
+    combo = db.get_or_404(Combo, id)
     variants = ProductVariant.query.filter_by(active=True, is_deleted=False).all()
 
     if request.method == "POST":
@@ -1123,7 +1123,7 @@ def combo_edit(id):
 @admin_bp.route("/combos/<int:id>/toggle", methods=["POST"])
 @admin_required
 def combo_toggle(id):
-    combo = Combo.query.get_or_404(id)
+    combo = db.get_or_404(Combo, id)
     combo.active = not combo.active
     db.session.commit()
     cache.invalidate_all()
@@ -1134,7 +1134,7 @@ def combo_toggle(id):
 @admin_bp.route("/combos/<int:id>/delete", methods=["POST"])
 @admin_required
 def combo_delete(id):
-    combo = Combo.query.get_or_404(id)
+    combo = db.get_or_404(Combo, id)
     combo.is_deleted = True
     combo.active = False
     db.session.commit()
@@ -1260,7 +1260,7 @@ def banner_create():
 @admin_bp.route("/banners/<int:id>/edit", methods=["GET", "POST"])
 @admin_required
 def banner_edit(id):
-    banner = Banner.query.get_or_404(id)
+    banner = db.get_or_404(Banner, id)
     products = Product.query.filter_by(is_deleted=False).order_by(Product.name.asc()).all()
     combos = Combo.query.filter_by(is_deleted=False).order_by(Combo.name.asc()).all()
     categories = Category.query.filter_by(is_deleted=False).order_by(Category.name.asc()).all()
@@ -1364,7 +1364,7 @@ def banner_edit(id):
 @admin_bp.route("/banners/<int:id>/toggle", methods=["POST"])
 @admin_required
 def banner_toggle(id):
-    banner = Banner.query.get_or_404(id)
+    banner = db.get_or_404(Banner, id)
     banner.active = not banner.active
     db.session.commit()
     cache.invalidate_all()
@@ -1375,7 +1375,7 @@ def banner_toggle(id):
 @admin_bp.route("/banners/<int:id>/delete", methods=["POST"])
 @admin_required
 def banner_delete(id):
-    banner = Banner.query.get_or_404(id)
+    banner = db.get_or_404(Banner, id)
     banner.is_deleted = True
     banner.active = False
     db.session.commit()
@@ -1669,10 +1669,21 @@ def settings():
             "instagram_url",
             "footer_text",
             "admin_secret_slug",
+            "smtp_host",
+            "smtp_port",
+            "smtp_user",
+            "smtp_use_tls",
+            "notification_email",
         ]
         for k in keys:
             if k in request.form:
                 Setting.set_value(k, request.form.get(k, "").strip())
+
+        # Update SMTP password only if a new one is typed (preserves existing password if empty)
+        new_smtp_pw = request.form.get("smtp_password", "").strip()
+        if new_smtp_pw:
+            clean_pw = new_smtp_pw.replace(" ", "")
+            Setting.set_value("smtp_password", clean_pw)
 
         # Handle UPI QR Code Upload
         qr_file = request.files.get("upi_qr_file")
@@ -1685,11 +1696,27 @@ def settings():
 
         db.session.commit()
         cache.invalidate_all()
-        flash("Store settings updated successfully! Reflecting live immediately.", "success")
+        flash("Store & Email settings updated successfully! Reflecting live immediately.", "success")
         return redirect(url_for("admin.settings"))
 
     all_settings = Setting.get_all_dict()
-    return render_template("admin/settings/index.html", settings=all_settings)
+    from app.services.notification_service import NotificationService
+    active_smtp = NotificationService.get_smtp_config()
+    return render_template("admin/settings/index.html", settings=all_settings, active_smtp=active_smtp)
+
+
+@admin_bp.route("/settings/test-email", methods=["POST"])
+@admin_required
+def settings_test_email():
+    """Trigger a live test email probe using active SMTP configuration."""
+    from app.services.notification_service import NotificationService
+    recipient = request.form.get("test_recipient", "").strip() or None
+    success, message = NotificationService.test_smtp_connection(recipient)
+    if success:
+        flash(message, "success")
+    else:
+        flash(message, "error")
+    return redirect(url_for("admin.settings"))
 
 
 # ==============================================================================

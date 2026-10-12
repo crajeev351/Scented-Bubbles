@@ -11,11 +11,14 @@ from flask import (
     jsonify,
     current_app,
 )
+from sqlalchemy import or_
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from app.extensions import db, limiter
 from app.models.users import User
 from app.models.customers import Customer
 from app.models.orders import Order
 from app.models.settings import Setting
+from app.services.notification_service import NotificationService
 from app.utils.security import get_safe_redirect_url
 
 account_bp = Blueprint("account", __name__, url_prefix="/account")
@@ -77,8 +80,8 @@ def register():
             errors.append("Please enter a valid 10-digit Indian mobile number.")
         if email and not re.match(r"^[^@]+@[^@]+\.[^@]+$", email):
             errors.append("Please enter a valid email address.")
-        if len(password) < 6:
-            errors.append("Password must be at least 6 characters long.")
+        if len(password) < 8:
+            errors.append("Password must be at least 8 characters long.")
         if password != confirm_password:
             errors.append("Passwords do not match.")
 
@@ -287,8 +290,8 @@ def profile():
             if not user.check_password(current_pw):
                 flash("Current password is incorrect.", "error")
                 return redirect(url_for("account.profile"))
-            if len(new_pw) < 6:
-                flash("New password must be at least 6 characters long.", "error")
+            if len(new_pw) < 8:
+                flash("New password must be at least 8 characters long.", "error")
                 return redirect(url_for("account.profile"))
             if new_pw != confirm_new_pw:
                 flash("New passwords do not match.", "error")
@@ -318,8 +321,8 @@ def quick_signup():
 
     if not phone or not re.match(r"^[6-9]\d{9}$", phone):
         return jsonify({"success": False, "error": "Invalid phone number."}), 400
-    if len(password) < 6:
-        return jsonify({"success": False, "error": "Password must be at least 6 characters long."}), 400
+    if len(password) < 8:
+        return jsonify({"success": False, "error": "Password must be at least 8 characters long."}), 400
 
     # Check if user already exists with this phone
     existing_user = User.query.filter_by(phone=phone).first()
@@ -367,3 +370,125 @@ def quick_signup():
         "message": "Account created! You can now track your orders anytime.",
         "redirect_url": url_for("account.orders"),
     })
+
+
+@account_bp.route("/forgot-password", methods=["GET", "POST"])
+@limiter.limit("5 per minute; 20 per hour", methods=["POST"])
+def forgot_password():
+    """Request a password reset link via registered email or mobile."""
+    if session.get("user_id"):
+        return redirect(url_for("account.orders"))
+
+    all_s = Setting.get_all_dict()
+    brand_name = all_s.get("company_name", "Scented Bubbles")
+
+    if request.method == "POST":
+        identifier = request.form.get("identifier", "").strip()
+        if not identifier:
+            flash("Please enter your registered email address or mobile number.", "error")
+            return render_template("account/forgot_password.html", brand_name=brand_name)
+
+        user = User.query.filter(
+            or_(User.email == identifier.lower(), User.phone == identifier)
+        ).first()
+
+        if user and user.is_active:
+            s = URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
+            token = s.dumps({"user_id": user.id}, salt="customer-password-reset")
+            reset_url = url_for("account.reset_password", token=token, _external=True)
+
+            # Log to server console for development & administrative reference (never shown in UI)
+            current_app.logger.info(f"[Password Reset] Link for user {user.id} ({user.email or user.phone}): {reset_url}")
+
+            if user.email:
+                sent = NotificationService.send_password_reset_email(user.email, reset_url, brand_name)
+                if sent:
+                    flash(
+                        "Password reset instructions have been dispatched to your registered email address.",
+                        "info",
+                    )
+                else:
+                    if current_app.config.get("DEBUG") or current_app.config.get("TESTING"):
+                        flash(
+                            "SMTP email credentials are not set in .env. We printed the password reset link to your running terminal console (check your command prompt).",
+                            "warning",
+                        )
+                    else:
+                        flash(
+                            "Unable to send reset email at this moment. Please contact store support on WhatsApp.",
+                            "error",
+                        )
+                return redirect(url_for("account.login"))
+            else:
+                # Account exists with mobile number only (no linked email)
+                import urllib.parse
+                support_whatsapp = all_s.get("support_whatsapp") or current_app.config.get("SUPPORT_WHATSAPP", "919876543210")
+                wa_msg = urllib.parse.quote(
+                    f"Hello {brand_name}, I need help resetting my password for my account with phone number {user.phone}."
+                )
+                wa_url = f"https://wa.me/{support_whatsapp}?text={wa_msg}"
+                return render_template(
+                    "account/forgot_password.html",
+                    brand_name=brand_name,
+                    phone_no_email=True,
+                    phone=user.phone,
+                    whatsapp_url=wa_url,
+                    support_whatsapp=support_whatsapp,
+                )
+
+        # Uniform feedback for unknown identifiers to prevent account enumeration
+        flash(
+            "If an account is associated with that email or phone number, password reset instructions have been dispatched.",
+            "info",
+        )
+        return redirect(url_for("account.login"))
+
+    return render_template("account/forgot_password.html", brand_name=brand_name)
+
+
+@account_bp.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    """Set a new password using a verified timed token."""
+    if session.get("user_id"):
+        return redirect(url_for("account.orders"))
+
+    all_s = Setting.get_all_dict()
+    brand_name = all_s.get("company_name", "Scented Bubbles")
+
+    s = URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
+    try:
+        data = s.loads(token, salt="customer-password-reset", max_age=3600)  # 1 hour expiration
+        user_id = data.get("user_id")
+        user = db.session.get(User, user_id)
+        if not user or not user.is_active:
+            flash("Invalid or deactivated account.", "error")
+            return redirect(url_for("account.login"))
+    except SignatureExpired:
+        flash("The password reset link has expired. Please request a new one.", "error")
+        return redirect(url_for("account.forgot_password"))
+    except BadSignature:
+        flash("Invalid password reset token.", "error")
+        return redirect(url_for("account.forgot_password"))
+
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        errors = []
+        if len(password) < 8:
+            errors.append("Password must be at least 8 characters long.")
+        if password != confirm_password:
+            errors.append("Passwords do not match.")
+
+        if errors:
+            for err in errors:
+                flash(err, "error")
+            return render_template("account/reset_password.html", token=token, brand_name=brand_name)
+
+        user.set_password(password)
+        db.session.commit()
+        flash("Your password has been reset successfully! You can now sign in.", "success")
+        return redirect(url_for("account.login"))
+
+    return render_template("account/reset_password.html", token=token, brand_name=brand_name)
+

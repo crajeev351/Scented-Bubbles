@@ -144,20 +144,20 @@ def health_check():
     from sqlalchemy import text
     from app.extensions import db
     db_ok = False
-    products_count = 0
-    err_str = None
     try:
         db.session.execute(text("SELECT 1"))
-        products_count = Product.query.filter_by(active=True, is_deleted=False).count()
         db_ok = True
     except Exception as exc:
-        err_str = str(exc)
+        current_app.logger.warning(f"Health check DB probe failed: {exc}")
+        db_ok = False
 
+    if db_ok:
+        return {
+            "status": "ok",
+            "database": "connected",
+        }, 200
     return {
-        "status": "ok" if db_ok else "degraded",
-        "database_connected": db_ok,
-        "active_products": products_count,
-        "storage_backend": current_app.config.get("STORAGE_BACKEND", "local"),
-        "error": err_str,
-    }, (200 if db_ok else 500)
+        "status": "degraded",
+        "database": "disconnected",
+    }, 500
 

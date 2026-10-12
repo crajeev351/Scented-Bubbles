@@ -55,7 +55,7 @@
           <input type="hidden" id="qs-email" value="{{ (order.customer.email if order.customer and order.customer.email else '') }}">
           
           <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-            <input type="password" id="qs-password" placeholder="Create a password (min 6 chars)" minlength="6" required class="form-control" style="flex: 1; min-width: 220px; background: #FFFFFF;">
+            <input type="password" id="qs-password" placeholder="Create a password (min 8 chars)" minlength="8" required class="form-control" style="flex: 1; min-width: 220px; background: #FFFFFF;">
             <button type="submit" id="qs-btn" class="btn btn-primary" style="padding: 0.75rem 1.5rem; white-space: nowrap;">
               Save My Account &rarr;
             </button>
@@ -163,10 +163,10 @@ function handleQuickSignup(event) {
   const btn = document.getElementById("qs-btn");
   const feedback = document.getElementById("qs-feedback");
 
-  if (!password || password.length < 6) {
+  if (!password || password.length < 8) {
     feedback.style.display = "block";
     feedback.style.color = "var(--color-danger)";
-    feedback.textContent = "Please enter a password with at least 6 characters.";
+    feedback.textContent = "Please enter a password with at least 8 characters.";
     return;
   }
 

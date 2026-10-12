@@ -2,11 +2,13 @@ import uuid
 import re
 from decimal import Decimal
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, session
+from app.extensions import limiter
 from app.models.settings import Setting
 from app.services.order_service import create_order, OrderError, OutOfStockError
 from app.services.payment_service import DuplicateUTRError
 
 checkout_bp = Blueprint("checkout", __name__)
+
 
 
 def validate_checkout_payload(data: dict) -> tuple[bool, str]:
@@ -46,6 +48,7 @@ def validate_checkout_payload(data: dict) -> tuple[bool, str]:
 
 
 @checkout_bp.route("/checkout", methods=["GET", "POST"])
+@limiter.limit("15 per minute; 60 per hour", methods=["POST"])
 def checkout():
     """Checkout page with login requirement, server validation, CSRF, and one-time idempotency token."""
     # Enforce customer sign-in or sign-up before proceeding to checkout
@@ -93,6 +96,13 @@ def checkout():
     # POST request processing
     is_json = request.is_json
     data = request.get_json(silent=True) if is_json else request.form.to_dict()
+
+    # Anti-bot honeypot check (hidden fields filled only by bots)
+    if data.get("website_hp") or data.get("company_hp"):
+        if is_json:
+            return jsonify({"success": False, "error": "Invalid request."}), 400
+        flash("Invalid submission detected.", "error")
+        return redirect(url_for("checkout.checkout"))
 
     # Retrieve items
     items = data.get("items") or data.get("cart_data") or []

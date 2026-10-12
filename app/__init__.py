@@ -18,6 +18,40 @@ def create_app(config_name=None, config_override=None):
     if config_override:
         app.config.update(config_override)
 
+    # Production SECRET_KEY hardening
+    if config_name == "production" or os.environ.get("FLASK_ENV") == "production":
+        secret = app.config.get("SECRET_KEY", "")
+        insecure_keys = {
+            "dev-scented-bubbles-secret-key-change-in-prod",
+            "scented-bubbles-dev-secret-key-2026",
+            "dev-key",
+            "secret",
+        }
+        if not secret or secret in insecure_keys or len(secret) < 32:
+            app.logger.warning(
+                "CRITICAL SECURITY ALERT: Insecure or default SECRET_KEY detected in production! "
+                "Generating a cryptographically secure ephemeral SECRET_KEY for this process."
+            )
+            app.config["SECRET_KEY"] = secrets.token_hex(32)
+
+    # Optional Sentry error monitoring integration
+    sentry_dsn = os.environ.get("SENTRY_DSN")
+    if sentry_dsn:
+        try:
+            import sentry_sdk
+            from sentry_sdk.integrations.flask import FlaskIntegration
+            sentry_sdk.init(
+                dsn=sentry_dsn,
+                integrations=[FlaskIntegration()],
+                traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.2")),
+                send_default_pii=False,
+            )
+            app.logger.info("Sentry error monitoring initialized.")
+        except ImportError:
+            app.logger.warning("SENTRY_DSN provided, but sentry-sdk is not installed.")
+        except Exception as e:
+            app.logger.warning(f"Failed to initialize Sentry: {e}")
+
     # Initialize Flask extensions
     db.init_app(app)
     migrate.init_app(app, db)

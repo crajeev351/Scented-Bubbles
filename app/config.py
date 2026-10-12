@@ -24,20 +24,23 @@ def normalize_database_url(raw_url: str | None) -> str:
     6. Render fallback: if running on Render (RENDER=true) and no working postgres URI is configured,
        automatically connects to the verified Supabase project pooler.
     """
-    DEFAULT_POOLER = (
-        "postgresql+psycopg2://postgres.wbnwicvdekusaallpokg:ScentedBubbles%402026"
-        "@aws-0-ap-south-1.pooler.supabase.com:5432/postgres"
-    )
+    is_prod = os.environ.get("FLASK_ENV") == "production" or os.environ.get("RENDER") == "true"
 
     if not raw_url or not str(raw_url).strip():
-        if os.environ.get("RENDER") == "true" or os.environ.get("FLASK_ENV") == "production":
-            return DEFAULT_POOLER
+        if is_prod:
+            raise RuntimeError(
+                "DATABASE_URL environment variable is required in production mode. "
+                "Please configure DATABASE_URL in your hosting environment (e.g. Render)."
+            )
         return f"sqlite:///{BASE_DIR / 'scented_bubbles.db'}"
 
     url = str(raw_url).strip().strip("\"'")
     if url.startswith("sqlite"):
-        if os.environ.get("RENDER") == "true":
-            return DEFAULT_POOLER
+        if is_prod:
+            raise RuntimeError(
+                "SQLite is not supported in production mode. "
+                "Please configure a PostgreSQL/Supabase DATABASE_URL."
+            )
         return url
 
     # Standardize scheme to postgresql+psycopg2
@@ -50,7 +53,7 @@ def normalize_database_url(raw_url: str | None) -> str:
         url = "postgresql+psycopg2://" + rest
 
     if "://" not in url:
-        return DEFAULT_POOLER
+        raise ValueError(f"Invalid database URL format: {url}")
 
     scheme, rest = url.split("://", 1)
 
@@ -83,12 +86,11 @@ def normalize_database_url(raw_url: str | None) -> str:
         # Detect direct supabase host (db.<ref>.supabase.co is IPv6 only, fails on Render)
         if "db." in host_part and ".supabase.co" in host_part:
             match = re.search(r"db\.([a-zA-Z0-9]+)\.supabase\.co", host_part)
-            ref = match.group(1) if match else "wbnwicvdekusaallpokg"
-            host_part = "aws-0-ap-south-1.pooler.supabase.com:5432"
-            user = f"postgres.{ref}"
-        elif "pooler.supabase.com" in host_part:
-            if "." not in user:
-                user = "postgres.wbnwicvdekusaallpokg"
+            if match:
+                ref = match.group(1)
+                host_part = "aws-0-ap-south-1.pooler.supabase.com:5432"
+                if "." not in user:
+                    user = f"postgres.{ref}"
 
         return f"{scheme}://{user}:{pwd}@{host_part}/{db_name}"
 
@@ -140,7 +142,7 @@ class Config:
 
     # Rate Limiting
     RATELIMIT_DEFAULT = "200 per day, 50 per hour"
-    RATELIMIT_STORAGE_URI = "memory://"
+    RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
 
     # Notification & WhatsApp settings
     SUPPORT_WHATSAPP = os.environ.get("SUPPORT_WHATSAPP", "919876543210")

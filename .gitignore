@@ -34,11 +34,15 @@ env/
 .env
 .env.local
 
-# Databases
+# Databases & Data Dumps
 *.db
 *.sqlite3
 *.backup
+*.dump
+data_backup.json
+data_backup.sql
 instance/
+
 
 # Uploads (except placeholder assets)
 app/static/uploads/*
