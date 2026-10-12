@@ -57,12 +57,22 @@ def admin_required(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        is_api = request.path.startswith("/admin/api/") or request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest"
         if not session.get("admin_id"):
-            if request.is_json:
+            if is_api:
                 return jsonify({"error": "Unauthorized"}), 401
             flash("Please sign in to access the admin portal.", "error")
             safe_next = get_safe_redirect_url(request.path, default_url="/admin")
             return redirect(url_for("admin.login", next=safe_next))
+
+        # Real-time check: Verify admin account exists and remains active
+        current_admin_obj = db.session.get(Admin, session.get("admin_id"))
+        if not current_admin_obj or not current_admin_obj.is_active:
+            session.clear()
+            if is_api:
+                return jsonify({"error": "Admin account is deactivated or no longer exists"}), 401
+            flash("Your admin account has been deactivated or disabled.", "error")
+            return redirect(url_for("admin.login"))
 
         # Skip inactivity timeout if admin chose "Keep me signed in"
         if not session.get("admin_no_timeout"):
@@ -276,6 +286,38 @@ def logout():
     session.clear()
     flash("You have been signed out successfully.", "info")
     return redirect(url_for("admin.login"))
+
+
+@admin_bp.route("/api/live-sync")
+@admin_required
+def api_live_sync():
+    """Lightweight real-time sync endpoint for active admin sessions.
+    Returns live counts for pending orders, low stock items, latest order details,
+    and server timestamp so multiple open admin tabs stay perfectly in sync.
+    """
+    try:
+        pending_orders_count = Order.query.filter_by(order_status=Order.STATUS_PENDING).count()
+        low_stock_count = ProductVariant.query.filter(
+            ProductVariant.stock <= 5,
+            ProductVariant.active.is_(True),
+            ProductVariant.is_deleted.is_(False),
+        ).count()
+        latest_order = Order.query.order_by(Order.id.desc()).first()
+        latest_order_id = latest_order.id if latest_order else 0
+        latest_order_number = latest_order.order_id if latest_order else ""
+        total_orders = Order.query.count()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({
+        "success": True,
+        "pending_orders": pending_orders_count,
+        "low_stock_count": low_stock_count,
+        "latest_order_id": latest_order_id,
+        "latest_order_number": latest_order_number,
+        "total_orders": total_orders,
+        "server_time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    })
 
 
 # ==============================================================================

@@ -344,6 +344,94 @@
     toggleTargetFields();
   }
 
+  // 9. Instant Multi-Admin Live Sync Engine
+  function initLiveSync() {
+    var syncUrl = '/admin/api/live-sync';
+    var lastLatestOrderId = null;
+    var isInitialSync = true;
+    var syncIntervalMs = 15000; // 15 seconds
+
+    function updateBadges(data) {
+      // 1. Pending orders badge
+      var orderBadge = document.getElementById('pendingOrdersBadge');
+      if (orderBadge) {
+        var count = parseInt(data.pending_orders, 10) || 0;
+        orderBadge.textContent = count;
+        orderBadge.style.display = count > 0 ? 'inline-block' : 'none';
+      }
+
+      // 2. Low stock badge
+      var stockBadge = document.getElementById('lowStockBadge');
+      if (stockBadge) {
+        var stockCount = parseInt(data.low_stock_count, 10) || 0;
+        stockBadge.textContent = stockCount;
+        stockBadge.style.display = stockCount > 0 ? 'inline-block' : 'none';
+      }
+
+      // 3. Notify when a new order arrives while admin has page open
+      if (!isInitialSync && lastLatestOrderId !== null && data.latest_order_id > lastLatestOrderId) {
+        showSyncToast('✨ New Order #' + (data.latest_order_number || data.latest_order_id) + ' received!');
+      }
+
+      lastLatestOrderId = data.latest_order_id;
+      isInitialSync = false;
+    }
+
+    function showSyncToast(message) {
+      var toast = document.getElementById('adminSyncToast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'adminSyncToast';
+        toast.style.cssText = 'position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 99999; background: #1B1815; color: #FAF7F2; border: 1px solid var(--gold-primary, #C5A059); border-radius: 8px; padding: 0.85rem 1.25rem; box-shadow: 0 10px 25px rgba(0,0,0,0.35); display: flex; align-items: center; gap: 0.85rem; font-size: 0.875rem;';
+        document.body.appendChild(toast);
+      }
+      toast.innerHTML = '<span>' + message + '</span>' +
+        '<button type="button" style="background: var(--gold-primary, #C5A059); color: #1B1815; border: none; padding: 0.35rem 0.75rem; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 0.78rem;" onclick="location.reload()">' +
+        'Refresh' +
+        '</button>' +
+        '<button type="button" style="background: transparent; color: #999; border: none; font-size: 1.1rem; cursor: pointer; padding: 0 0.3rem;" onclick="this.parentElement.remove()">&times;</button>';
+
+      setTimeout(function() {
+        if (toast && toast.parentElement) toast.remove();
+      }, 10000);
+    }
+
+    function doSync() {
+      fetch(syncUrl, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin'
+      })
+      .then(function(res) {
+        if (res.status === 401) {
+          window.location.href = '/admin/login';
+          return null;
+        }
+        if (res.ok) return res.json();
+        return null;
+      })
+      .then(function(data) {
+        if (data && data.success) {
+          updateBadges(data);
+        }
+      })
+      .catch(function() {
+        // Silently tolerate transient offline/network pauses
+      });
+    }
+
+    // Initial check
+    doSync();
+
+    // Background interval sync
+    setInterval(doSync, syncIntervalMs);
+
+    // Instant sync when tab/window regains user focus
+    window.addEventListener('focus', doSync);
+    document.addEventListener('visibilitychange', function() {
+      if (!document.hidden) doSync();
+    });
+  }
+
   // Document Ready Initialization
   document.addEventListener('DOMContentLoaded', function() {
     initSidebar();
@@ -351,5 +439,6 @@
     initProductForm();
     initComboForm();
     initBannerForm();
+    initLiveSync();
   });
 })();

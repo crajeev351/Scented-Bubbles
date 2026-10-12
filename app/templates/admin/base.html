@@ -49,17 +49,13 @@
         <li class="admin-nav-item">
           <a href="{{ url_for('admin.order_list') }}" class="{{ 'active' if 'order' in request.endpoint else '' }}">
             <span>📦 Orders</span>
-            {% if pending_orders_count and pending_orders_count > 0 %}
-              <span class="badge-count">{{ pending_orders_count }}</span>
-            {% endif %}
+            <span class="badge-count" id="pendingOrdersBadge" style="{{ 'display: inline-block;' if pending_orders_count and pending_orders_count > 0 else 'display: none;' }}">{{ pending_orders_count or 0 }}</span>
           </a>
         </li>
         <li class="admin-nav-item">
           <a href="{{ url_for('admin.inventory') }}" class="{{ 'active' if 'inventory' in request.endpoint else '' }}">
             <span>🏷️ Inventory</span>
-            {% if low_stock_count and low_stock_count > 0 %}
-              <span class="badge-count" style="background: #E65100;">{{ low_stock_count }}</span>
-            {% endif %}
+            <span class="badge-count" id="lowStockBadge" style="background: #E65100; {{ 'display: inline-block;' if low_stock_count and low_stock_count > 0 else 'display: none;' }}">{{ low_stock_count or 0 }}</span>
           </a>
         </li>
         <li class="admin-nav-item">
