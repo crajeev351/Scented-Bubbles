@@ -188,11 +188,16 @@ def login():
     next_url = get_safe_redirect_url(raw_next, default_url=url_for("admin.dashboard"))
 
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
+        login_input = request.form.get("username", "").strip()
         password = request.form.get("password", "")
         keep_me_signed_in = request.form.get("keep_me_signed_in") == "1"
 
-        admin = Admin.query.filter_by(username=username, is_active=True).first()
+        # Allow logging in with username, email, or display name (case-insensitive)
+        admin = Admin.query.filter(
+            (func.lower(Admin.username) == login_input.lower()) |
+            (func.lower(Admin.email) == login_input.lower()) |
+            (func.lower(Admin.display_name) == login_input.lower())
+        ).filter(Admin.is_active.is_(True)).first()
         if admin:
             # Check lockout
             if admin.is_locked():

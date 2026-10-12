@@ -205,3 +205,22 @@ def test_deactivated_admin_instantly_blocked(client, superadmin_user, manager_us
     res_page = client.get("/admin/dashboard", follow_redirects=False)
     assert res_page.status_code == 302
     assert "/admin/login" in res_page.headers["Location"]
+
+
+def test_login_with_email_and_case_insensitive(client, superadmin_user):
+    """Admins can log in with their email, mixed-case username, or username."""
+    # 1. Login with uppercase username
+    res1 = client.post("/admin/login", data={
+        "username": "SUPER_OWNER",
+        "password": "SuperPassword123!",
+    }, follow_redirects=False)
+    assert res1.status_code == 302
+    assert "/admin/dashboard" in res1.headers["Location"]
+
+    # 2. Login with email
+    res2 = client.post("/admin/login", data={
+        "username": "owner@test.com",
+        "password": "SuperPassword123!",
+    }, follow_redirects=False)
+    assert res2.status_code == 302
+    assert "/admin/dashboard" in res2.headers["Location"]
