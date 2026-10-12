@@ -84,9 +84,25 @@ def admin_required(f):
     return decorated_function
 
 
+def superadmin_required(f):
+    """Decorator restricting a route to superadmin-role admins only.
+    Must be placed AFTER @admin_required so the session is already validated.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        admin = db.session.get(Admin, session.get("admin_id"))
+        if not admin or not admin.is_superadmin:
+            if request.is_json:
+                return jsonify({"error": "Forbidden: superadmin access required"}), 403
+            flash("Access denied. Only the primary owner (superadmin) can perform this action.", "error")
+            return redirect(url_for("admin.dashboard"))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 @admin_bp.context_processor
 def inject_admin_globals():
-    """Injects live badge counts and brand name into all admin templates."""
+    """Injects live badge counts, brand name, and current admin role into all admin templates."""
     try:
         pending_orders_count = Order.query.filter_by(order_status=Order.STATUS_PENDING).count()
         low_stock_count = ProductVariant.query.filter(
@@ -99,10 +115,26 @@ def inject_admin_globals():
         low_stock_count = 0
 
     brand_name = Setting.get_value("company_name", "Scented Bubbles")
+
+    # Inject current admin role for conditional UI rendering
+    current_admin_role = None
+    current_admin_is_superadmin = False
+    admin_id = session.get("admin_id")
+    if admin_id:
+        try:
+            _admin = db.session.get(Admin, admin_id)
+            if _admin:
+                current_admin_role = _admin.role
+                current_admin_is_superadmin = _admin.is_superadmin
+        except Exception:
+            pass
+
     return {
         "pending_orders_count": pending_orders_count,
         "low_stock_count": low_stock_count,
         "brand_name": brand_name,
+        "current_admin_role": current_admin_role,
+        "current_admin_is_superadmin": current_admin_is_superadmin,
     }
 
 
@@ -1801,3 +1833,177 @@ def security():
         brand_name=brand_name,
     )
 
+
+
+# ==============================================================================
+# ADMIN TEAM MANAGEMENT (superadmin only)
+# ==============================================================================
+
+@admin_bp.route('/team')
+@admin_required
+@superadmin_required
+def admin_team():
+    """List all admin accounts. Superadmin only."""
+    admins = Admin.query.order_by(Admin.created_at.asc()).all()
+    brand_name = Setting.get_value('company_name', 'Scented Bubbles')
+    current_admin = db.session.get(Admin, session['admin_id'])
+    return render_template(
+        'admin/team/index.html',
+        admins=admins,
+        current_admin=current_admin,
+        brand_name=brand_name,
+    )
+
+
+@admin_bp.route('/team/create', methods=['GET', 'POST'])
+@admin_required
+@superadmin_required
+def admin_team_create():
+    """Create a new admin account. Superadmin only."""
+    brand_name = Setting.get_value('company_name', 'Scented Bubbles')
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip().lower()
+        email = request.form.get('email', '').strip().lower()
+        display_name = request.form.get('display_name', '').strip()
+        role = request.form.get('role', Admin.ROLE_MANAGER)
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm_password', '')
+
+        if not username or not email or not password:
+            flash('Username, email, and password are all required.', 'error')
+        elif role not in (Admin.ROLE_SUPERADMIN, Admin.ROLE_MANAGER):
+            flash('Invalid role selected.', 'error')
+        elif len(password) < 10:
+            flash('Password must be at least 10 characters for admin accounts.', 'error')
+        elif password != confirm:
+            flash('Passwords do not match.', 'error')
+        elif Admin.query.filter(
+            (Admin.username == username) | (Admin.email == email)
+        ).first():
+            flash('An admin account with that username or email already exists.', 'error')
+        else:
+            new_admin = Admin(
+                username=username,
+                email=email,
+                display_name=display_name or None,
+                role=role,
+                is_active=True,
+            )
+            new_admin.set_password(password)
+            db.session.add(new_admin)
+            db.session.commit()
+            flash("Admin account '{}' ({}) created successfully!".format(username, role), 'success')
+            return redirect(url_for('admin.admin_team'))
+
+    return render_template('admin/team/create.html', brand_name=brand_name)
+
+
+@admin_bp.route('/team/<int:target_id>/toggle-active', methods=['POST'])
+@admin_required
+@superadmin_required
+def admin_team_toggle_active(target_id):
+    """Activate or deactivate an admin account. Cannot deactivate yourself."""
+    target = db.get_or_404(Admin, target_id)
+    if target.id == session['admin_id']:
+        flash('You cannot deactivate your own account.', 'error')
+        return redirect(url_for('admin.admin_team'))
+    target.is_active = not target.is_active
+    db.session.commit()
+    state = 'activated' if target.is_active else 'deactivated'
+    flash("Admin '{}' has been {}.".format(target.username, state), 'success')
+    return redirect(url_for('admin.admin_team'))
+
+
+@admin_bp.route('/team/<int:target_id>/change-role', methods=['POST'])
+@admin_required
+@superadmin_required
+def admin_team_change_role(target_id):
+    """Change an admin's role. Cannot change your own role."""
+    target = db.get_or_404(Admin, target_id)
+    if target.id == session['admin_id']:
+        flash('You cannot change your own role.', 'error')
+        return redirect(url_for('admin.admin_team'))
+    new_role = request.form.get('role', '')
+    if new_role not in (Admin.ROLE_SUPERADMIN, Admin.ROLE_MANAGER):
+        flash('Invalid role.', 'error')
+        return redirect(url_for('admin.admin_team'))
+    target.role = new_role
+    db.session.commit()
+    flash("'{}' role updated to {}.".format(target.username, new_role), 'success')
+    return redirect(url_for('admin.admin_team'))
+
+
+@admin_bp.route('/team/<int:target_id>/reset-password', methods=['POST'])
+@admin_required
+@superadmin_required
+def admin_team_reset_password(target_id):
+    """Force-reset another admin's password. Superadmin only."""
+    target = db.get_or_404(Admin, target_id)
+    new_password = request.form.get('new_password', '')
+    confirm = request.form.get('confirm_password', '')
+    if len(new_password) < 10:
+        flash('New password must be at least 10 characters.', 'error')
+    elif new_password != confirm:
+        flash('Passwords do not match.', 'error')
+    else:
+        target.set_password(new_password)
+        target.failed_login_attempts = 0
+        target.locked_until = None
+        db.session.commit()
+        flash("Password for '{}' has been reset successfully.".format(target.username), 'success')
+    return redirect(url_for('admin.admin_team'))
+
+
+@admin_bp.route('/team/<int:target_id>/delete', methods=['POST'])
+@admin_required
+@superadmin_required
+def admin_team_delete(target_id):
+    """Permanently delete an admin account. Cannot delete yourself."""
+    target = db.get_or_404(Admin, target_id)
+    if target.id == session['admin_id']:
+        flash('You cannot delete your own account.', 'error')
+        return redirect(url_for('admin.admin_team'))
+    username = target.username
+    db.session.delete(target)
+    db.session.commit()
+    flash("Admin account '{}' has been permanently deleted.".format(username), 'success')
+    return redirect(url_for('admin.admin_team'))
+
+
+@admin_bp.route('/my-profile', methods=['GET', 'POST'])
+@admin_required
+def my_profile():
+    """Any admin can update their own display name and password."""
+    admin = db.session.get(Admin, session['admin_id'])
+    brand_name = Setting.get_value('company_name', 'Scented Bubbles')
+
+    if request.method == 'POST':
+        action = request.form.get('action', '')
+
+        if action == 'update_profile':
+            display_name = request.form.get('display_name', '').strip()
+            admin.display_name = display_name or None
+            db.session.commit()
+            session['admin_username'] = admin.friendly_name
+            flash('Your display name has been updated.', 'success')
+            return redirect(url_for('admin.my_profile'))
+
+        elif action == 'change_password':
+            current_pw = request.form.get('current_password', '')
+            new_pw = request.form.get('new_password', '')
+            confirm_pw = request.form.get('confirm_password', '')
+
+            if not admin.check_password(current_pw):
+                flash('Current password is incorrect.', 'error')
+            elif len(new_pw) < 10:
+                flash('New password must be at least 10 characters.', 'error')
+            elif new_pw != confirm_pw:
+                flash('New passwords do not match.', 'error')
+            else:
+                admin.set_password(new_pw)
+                db.session.commit()
+                flash('Your password has been changed successfully.', 'success')
+            return redirect(url_for('admin.my_profile'))
+
+    return render_template('admin/team/my_profile.html', admin=admin, brand_name=brand_name)

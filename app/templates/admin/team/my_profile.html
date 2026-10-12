@@ -1,0 +1,90 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}My Profile{% endblock %}
+
+{% block content %}
+<div style="max-width: 640px; margin: 0 auto;">
+
+  <div style="margin-bottom: 2rem;">
+    <h2 style="font-size: 1.5rem; margin: 0 0 0.4rem;">👤 My Profile</h2>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">
+      Update your display name or change your password.
+    </p>
+  </div>
+
+  {# Profile Info Card #}
+  <div class="admin-card" style="padding: 2rem; margin-bottom: 2rem;">
+    <div style="display: flex; align-items: center; gap: 1.25rem; margin-bottom: 2rem; padding-bottom: 1.75rem; border-bottom: 1px solid var(--border-light);">
+      <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--gold-light); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; color: var(--gold-dark); flex-shrink: 0;">
+        {{ (admin.display_name or admin.username)[0].upper() }}
+      </div>
+      <div>
+        <div style="font-size: 1.15rem; font-weight: 700;">{{ admin.friendly_name }}</div>
+        <div style="color: var(--text-muted); font-size: 0.875rem;">@{{ admin.username }} · {{ admin.email }}</div>
+        <div style="margin-top: 0.35rem;">
+          {% if admin.is_superadmin %}
+            <span style="background: #FEF9C3; color: #713F12; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.72rem;">⭐ SUPERADMIN</span>
+          {% else %}
+            <span style="background: #EDE9FE; color: #4C1D95; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.72rem;">🔧 MANAGER</span>
+          {% endif %}
+          {% if admin.is_2fa_enabled %}
+            <span style="background: #DCFCE7; color: #166534; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.72rem; margin-left: 0.35rem;">🛡️ 2FA ON</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {# Update Display Name #}
+    <h3 style="font-size: 1rem; margin: 0 0 1rem;">Update Display Name</h3>
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="update_profile">
+      <div class="form-group" style="margin-bottom: 1rem; max-width: 400px;">
+        <label for="display_name" style="font-size: 0.875rem; font-weight: 600;">Display Name</label>
+        <input type="text" id="display_name" name="display_name"
+               value="{{ admin.display_name or '' }}"
+               class="form-control" placeholder="Your full name" maxlength="100">
+        <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+          This is shown in the portal header instead of your username.
+        </small>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Save Display Name</button>
+    </form>
+  </div>
+
+  {# Change Password Card #}
+  <div class="admin-card" style="padding: 2rem; margin-bottom: 2rem;">
+    <h3 style="font-size: 1rem; margin: 0 0 1.25rem;">🔑 Change Password</h3>
+    <form method="POST" autocomplete="off">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="change_password">
+
+      <div class="form-group" style="margin-bottom: 1rem; max-width: 400px;">
+        <label for="current_password" style="font-size: 0.875rem; font-weight: 600;">Current Password</label>
+        <input type="password" id="current_password" name="current_password" required class="form-control" placeholder="••••••••••" autocomplete="current-password">
+      </div>
+      <div class="form-group" style="margin-bottom: 1rem; max-width: 400px;">
+        <label for="new_password" style="font-size: 0.875rem; font-weight: 600;">New Password</label>
+        <input type="password" id="new_password" name="new_password" required minlength="10" class="form-control" placeholder="Min 10 characters" autocomplete="new-password">
+      </div>
+      <div class="form-group" style="margin-bottom: 1.5rem; max-width: 400px;">
+        <label for="confirm_password" style="font-size: 0.875rem; font-weight: 600;">Confirm New Password</label>
+        <input type="password" id="confirm_password" name="confirm_password" required minlength="10" class="form-control" placeholder="••••••••••" autocomplete="new-password">
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Change Password</button>
+    </form>
+  </div>
+
+  {# 2FA Link #}
+  <div class="admin-card" style="padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <div style="font-weight: 600; margin-bottom: 0.2rem;">🛡️ Two-Factor Authentication (2FA)</div>
+      <div style="font-size: 0.875rem; color: var(--text-muted);">
+        {% if admin.is_2fa_enabled %}2FA is currently <strong style="color: #166534;">enabled</strong> on your account.{% else %}2FA is <strong style="color: #991B1B;">not enabled</strong>. We strongly recommend enabling it.{% endif %}
+      </div>
+    </div>
+    <a href="{{ url_for('admin.security') }}" class="btn btn-secondary btn-sm">Manage 2FA →</a>
+  </div>
+
+</div>
+{% endblock %}

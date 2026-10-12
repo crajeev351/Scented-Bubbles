@@ -20,8 +20,9 @@ from app.services.cache_service import cache
 
 
 @click.command("create-admin")
+@click.option("--role", default="superadmin", type=click.Choice(["superadmin", "manager"]), help="Admin role (default: superadmin)")
 @with_appcontext
-def create_admin_command():
+def create_admin_command(role):
     """Create a new admin user interactively. No default passwords anywhere."""
     click.echo("\n--- Scented Bubbles: Create Admin User ---")
     username = click.prompt("Enter admin username", type=str).strip()
@@ -32,15 +33,15 @@ def create_admin_command():
         return
 
     password = click.prompt("Enter secure password", hide_input=True, confirmation_prompt=True)
-    if len(password) < 8:
-        click.echo("Error: Password must be at least 8 characters long.", err=True)
+    if len(password) < 10:
+        click.echo("Error: Password must be at least 10 characters long.", err=True)
         return
 
-    admin = Admin(username=username, email=email, is_active=True)
+    admin = Admin(username=username, email=email, role=role, is_active=True)
     admin.set_password(password)
     db.session.add(admin)
     db.session.commit()
-    click.echo(f"Success: Admin account '{username}' created successfully!")
+    click.echo(f"Success: Admin account '{username}' ({role}) created successfully!")
 
 
 @click.command("seed-demo")

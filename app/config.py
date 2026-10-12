@@ -119,7 +119,7 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False  # Enabled in ProductionConfig
-    PERMANENT_SESSION_LIFETIME = 86400 * 7  # 7 days
+    PERMANENT_SESSION_LIFETIME = 86400 * 30  # 30 days
     
     # File Uploads & Storage Backend
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB max upload

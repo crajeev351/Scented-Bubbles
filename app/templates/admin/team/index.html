@@ -1,0 +1,191 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}Admin Team Management{% endblock %}
+
+{% block content %}
+<div style="max-width: 1000px; margin: 0 auto;">
+
+  {# Header #}
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h2 style="font-size: 1.5rem; margin: 0 0 0.4rem;">👥 Admin Team</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">
+        Manage who has access to the admin portal. Only superadmins can add, modify, or remove other admins.
+      </p>
+    </div>
+    <a href="{{ url_for('admin.admin_team_create') }}" class="btn btn-primary">
+      + Add New Admin
+    </a>
+  </div>
+
+  {# Role legend #}
+  <div style="display: flex; gap: 1.5rem; margin-bottom: 1.75rem; flex-wrap: wrap;">
+    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+      <span style="background: #FEF9C3; color: #713F12; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 99px; font-size: 0.75rem;">SUPERADMIN</span>
+      <span style="color: var(--text-muted);">Full access including admin management</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+      <span style="background: #EDE9FE; color: #4C1D95; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 99px; font-size: 0.75rem;">MANAGER</span>
+      <span style="color: var(--text-muted);">Orders, products, settings — cannot manage other admins</span>
+    </div>
+  </div>
+
+  {# Admin list #}
+  <div class="admin-card" style="padding: 0; overflow: hidden;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+      <thead>
+        <tr style="background: var(--bg-subtle); border-bottom: 2px solid var(--border-light);">
+          <th style="padding: 0.9rem 1.25rem; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted);">Admin</th>
+          <th style="padding: 0.9rem 1rem; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted);">Role</th>
+          <th style="padding: 0.9rem 1rem; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted);">Status</th>
+          <th style="padding: 0.9rem 1rem; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted);">Last Login</th>
+          <th style="padding: 0.9rem 1rem; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted);">2FA</th>
+          <th style="padding: 0.9rem 1.25rem; text-align: right; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted);">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in admins %}
+        <tr style="border-bottom: 1px solid var(--border-light); {{ 'background: rgba(212,175,55,0.04);' if a.id == current_admin.id else '' }}">
+          <td style="padding: 1rem 1.25rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <div style="width: 38px; height: 38px; border-radius: 50%; background: var(--gold-light); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem; color: var(--gold-dark); flex-shrink: 0;">
+                {{ (a.display_name or a.username)[0].upper() }}
+              </div>
+              <div>
+                <div style="font-weight: 600;">{{ a.display_name or a.username }}</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">@{{ a.username }} · {{ a.email }}</div>
+              </div>
+            </div>
+            {% if a.id == current_admin.id %}
+              <span style="font-size: 0.7rem; color: var(--gold-dark); font-weight: 600; margin-left: 0.25rem;">(You)</span>
+            {% endif %}
+          </td>
+
+          <td style="padding: 1rem;">
+            {% if a.id != current_admin.id %}
+            <form method="POST" action="{{ url_for('admin.admin_team_change_role', target_id=a.id) }}" style="display: inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <select name="role" onchange="this.form.submit()" style="font-size: 0.8rem; padding: 0.3rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--bg-surface); cursor: pointer;">
+                <option value="superadmin" {{ 'selected' if a.role == 'superadmin' else '' }}>⭐ Superadmin</option>
+                <option value="manager" {{ 'selected' if a.role == 'manager' else '' }}>🔧 Manager</option>
+              </select>
+            </form>
+            {% else %}
+              {% if a.is_superadmin %}
+                <span style="background: #FEF9C3; color: #713F12; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 99px; font-size: 0.75rem;">SUPERADMIN</span>
+              {% else %}
+                <span style="background: #EDE9FE; color: #4C1D95; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 99px; font-size: 0.75rem;">MANAGER</span>
+              {% endif %}
+            {% endif %}
+          </td>
+
+          <td style="padding: 1rem;">
+            {% if a.is_active %}
+              <span style="background: #DCFCE7; color: #166534; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.75rem;">Active</span>
+            {% else %}
+              <span style="background: #FEE2E2; color: #991B1B; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.75rem;">Inactive</span>
+            {% endif %}
+          </td>
+
+          <td style="padding: 1rem; color: var(--text-muted); font-size: 0.82rem;">
+            {% if a.last_login_at %}
+              {{ a.last_login_at | format_dt }}
+            {% else %}
+              <span style="color: #bbb;">Never</span>
+            {% endif %}
+          </td>
+
+          <td style="padding: 1rem;">
+            {% if a.is_2fa_enabled %}
+              <span title="2FA Enabled" style="color: #166534; font-size: 1.1rem;">🛡️</span>
+            {% else %}
+              <span title="2FA Not Enabled" style="color: #999; font-size: 1.1rem;">⚠️</span>
+            {% endif %}
+          </td>
+
+          <td style="padding: 1rem 1.25rem; text-align: right;">
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap;">
+
+              {% if a.id != current_admin.id %}
+              {# Toggle active/inactive #}
+              <form method="POST" action="{{ url_for('admin.admin_team_toggle_active', target_id=a.id) }}"
+                    onsubmit="return confirm('{{ 'Deactivate' if a.is_active else 'Activate' }} admin account for {{ a.username }}?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-secondary btn-sm"
+                        style="{{ 'color: #991B1B;' if a.is_active else 'color: #166534;' }}">
+                  {{ 'Deactivate' if a.is_active else 'Activate' }}
+                </button>
+              </form>
+
+              {# Reset Password #}
+              <button type="button" class="btn btn-secondary btn-sm"
+                      onclick="openResetModal({{ a.id }}, '{{ a.username }}')">
+                Reset PW
+              </button>
+
+              {# Delete #}
+              <form method="POST" action="{{ url_for('admin.admin_team_delete', target_id=a.id) }}"
+                    onsubmit="return confirm('PERMANENTLY delete admin account for {{ a.username }}? This cannot be undone!')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-secondary btn-sm" style="color: #991B1B; border-color: #FCA5A5;">
+                  Delete
+                </button>
+              </form>
+              {% else %}
+                <a href="{{ url_for('admin.my_profile') }}" class="btn btn-secondary btn-sm">My Profile</a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted);">
+    💡 <strong>Tip:</strong> New admin accounts are created with the <strong>Manager</strong> role by default and must have a minimum 10-character password.
+    Only <strong>Superadmin</strong> can manage this team.
+  </p>
+
+</div>
+
+{# Reset Password Modal #}
+<div id="resetPwModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+  <div style="background:var(--bg-surface); border-radius:var(--radius-md); padding:2rem; max-width:420px; width:90%; box-shadow:var(--shadow-lg);">
+    <h3 style="margin:0 0 0.25rem; font-size:1.1rem;">Reset Admin Password</h3>
+    <p id="resetModalUser" style="color:var(--text-muted); font-size:0.875rem; margin:0 0 1.5rem;"></p>
+    <form id="resetPwForm" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group" style="margin-bottom:1rem;">
+        <label style="font-size:0.85rem; font-weight:600;">New Password (min 10 chars)</label>
+        <input type="password" name="new_password" required minlength="10" class="form-control" placeholder="••••••••••" autocomplete="new-password">
+      </div>
+      <div class="form-group" style="margin-bottom:1.5rem;">
+        <label style="font-size:0.85rem; font-weight:600;">Confirm New Password</label>
+        <input type="password" name="confirm_password" required minlength="10" class="form-control" placeholder="••••••••••" autocomplete="new-password">
+      </div>
+      <div style="display:flex; gap:0.75rem;">
+        <button type="submit" class="btn btn-primary">Reset Password</button>
+        <button type="button" class="btn btn-secondary" onclick="closeResetModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ csp_nonce }}">
+function openResetModal(adminId, username) {
+  document.getElementById('resetPwForm').action = '/admin/team/' + adminId + '/reset-password';
+  document.getElementById('resetModalUser').textContent = 'Setting new password for @' + username;
+  const modal = document.getElementById('resetPwModal');
+  modal.style.display = 'flex';
+}
+function closeResetModal() {
+  document.getElementById('resetPwModal').style.display = 'none';
+}
+document.getElementById('resetPwModal').addEventListener('click', function(e) {
+  if (e.target === this) closeResetModal();
+});
+</script>
+{% endblock %}

@@ -91,6 +91,40 @@ def create_app(config_name=None, config_override=None):
         except Exception:
             pass
 
+    # Auto-migrate admin table for new role-based access control columns
+    with app.app_context():
+        try:
+            from sqlalchemy import inspect, text
+            inspector = inspect(db.engine)
+            dialect_name = db.engine.dialect.name  # 'sqlite' or 'postgresql'
+            if "admins" in inspector.get_table_names():
+                existing_cols = {col["name"] for col in inspector.get_columns("admins")}
+                with db.engine.connect() as conn:
+                    if "display_name" not in existing_cols:
+                        conn.execute(text("ALTER TABLE admins ADD COLUMN display_name VARCHAR(100)"))
+                    if "role" not in existing_cols:
+                        conn.execute(text("ALTER TABLE admins ADD COLUMN role VARCHAR(20)"))
+                        # Set default value for existing rows
+                        conn.execute(text("UPDATE admins SET role = 'manager' WHERE role IS NULL"))
+                    if "last_login_at" not in existing_cols:
+                        ts_type = "TIMESTAMP WITH TIME ZONE" if dialect_name == "postgresql" else "DATETIME"
+                        conn.execute(text(f"ALTER TABLE admins ADD COLUMN last_login_at {ts_type}"))
+                    conn.commit()
+
+                # Ensure at least one superadmin exists (promote the oldest admin account)
+                with db.engine.connect() as conn:
+                    result = conn.execute(text(
+                        "SELECT COUNT(*) FROM admins WHERE role = 'superadmin'"
+                    )).scalar()
+                    if result == 0:
+                        conn.execute(text(
+                            "UPDATE admins SET role = 'superadmin' WHERE id = (SELECT id FROM admins ORDER BY id ASC LIMIT 1)"
+                        ))
+                        conn.commit()
+                        app.logger.info("First admin account promoted to superadmin role.")
+        except Exception as e:
+            app.logger.warning(f"Admin column migration warning: {e}")
+
     # Register CLI commands
     from app.cli import (
         create_admin_command,

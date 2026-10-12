@@ -1,0 +1,87 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}Add New Admin{% endblock %}
+
+{% block content %}
+<div style="max-width: 560px; margin: 0 auto;">
+
+  <div style="margin-bottom: 2rem;">
+    <a href="{{ url_for('admin.admin_team') }}" style="font-size: 0.875rem; color: var(--text-muted); text-decoration: none;">← Back to Admin Team</a>
+    <h2 style="font-size: 1.5rem; margin: 0.75rem 0 0.4rem;">Add New Admin Account</h2>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">
+      Each admin gets their own secure login. Assign the right role based on what they need access to.
+    </p>
+  </div>
+
+  <div class="admin-card" style="padding: 2.25rem;">
+
+    {# Role explainer #}
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+      <div style="border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 1rem; background: #FFFBEB;">
+        <div style="font-weight: 700; font-size: 0.875rem; margin-bottom: 0.35rem; color: #713F12;">⭐ Superadmin</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
+          Full access. Can manage other admin accounts, roles, store settings, and all operations.
+        </div>
+      </div>
+      <div style="border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 1rem; background: #F5F3FF;">
+        <div style="font-weight: 700; font-size: 0.875rem; margin-bottom: 0.35rem; color: #4C1D95;">🔧 Manager</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
+          Operational access — orders, products, customers, settings. Cannot manage other admins.
+        </div>
+      </div>
+    </div>
+
+    <form method="POST" autocomplete="off">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label for="display_name" style="font-weight: 600; font-size: 0.875rem;">Display Name <span style="color: var(--text-muted); font-weight: 400;">(optional — shown in portal)</span></label>
+        <input type="text" id="display_name" name="display_name" class="form-control" placeholder="e.g. Priya Sharma" maxlength="100">
+      </div>
+
+      <div class="admin-two-col" style="gap: 1.25rem; margin-bottom: 1.25rem;">
+        <div class="form-group">
+          <label for="username" style="font-weight: 600; font-size: 0.875rem;">Username <span style="color: #991B1B;">*</span></label>
+          <input type="text" id="username" name="username" required class="form-control" placeholder="e.g. priya.admin" maxlength="64" autocomplete="off">
+          <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">Lowercase letters, numbers, dots, underscores</small>
+        </div>
+        <div class="form-group">
+          <label for="email" style="font-weight: 600; font-size: 0.875rem;">Email Address <span style="color: #991B1B;">*</span></label>
+          <input type="email" id="email" name="email" required class="form-control" placeholder="e.g. priya@yourdomain.com" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label for="role" style="font-weight: 600; font-size: 0.875rem;">Access Role <span style="color: #991B1B;">*</span></label>
+        <select id="role" name="role" required class="form-control">
+          <option value="manager" selected>🔧 Manager — Operational access</option>
+          <option value="superadmin">⭐ Superadmin — Full access (including admin management)</option>
+        </select>
+      </div>
+
+      <div class="admin-two-col" style="gap: 1.25rem; margin-bottom: 2rem;">
+        <div class="form-group">
+          <label for="password" style="font-weight: 600; font-size: 0.875rem;">Password <span style="color: #991B1B;">*</span></label>
+          <input type="password" id="password" name="password" required class="form-control" placeholder="Min 10 characters" minlength="10" autocomplete="new-password">
+          <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">Minimum 10 characters. Use a strong, unique password.</small>
+        </div>
+        <div class="form-group">
+          <label for="confirm_password" style="font-weight: 600; font-size: 0.875rem;">Confirm Password <span style="color: #991B1B;">*</span></label>
+          <input type="password" id="confirm_password" name="confirm_password" required class="form-control" placeholder="Re-enter password" minlength="10" autocomplete="new-password">
+        </div>
+      </div>
+
+      <div style="background: #FEF9C3; border: 1px solid #FCD34D; border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; margin-bottom: 1.5rem; font-size: 0.85rem; color: #713F12;">
+        🔒 <strong>Security Note:</strong> Share the password with the new admin via a secure channel (not plain text or WhatsApp). Advise them to change it on first login from <strong>My Profile</strong>.
+      </div>
+
+      <div style="display: flex; gap: 1rem;">
+        <button type="submit" class="btn btn-primary" style="padding: 0.75rem 1.75rem;">
+          Create Admin Account →
+        </button>
+        <a href="{{ url_for('admin.admin_team') }}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
