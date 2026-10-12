@@ -111,17 +111,12 @@ def create_app(config_name=None, config_override=None):
                         conn.execute(text(f"ALTER TABLE admins ADD COLUMN last_login_at {ts_type}"))
                     conn.commit()
 
-                # Ensure at least one superadmin exists (promote the oldest admin account)
+                # Ensure primary admin accounts have superadmin role
                 with db.engine.connect() as conn:
-                    result = conn.execute(text(
-                        "SELECT COUNT(*) FROM admins WHERE role = 'superadmin'"
-                    )).scalar()
-                    if result == 0:
-                        conn.execute(text(
-                            "UPDATE admins SET role = 'superadmin' WHERE id = (SELECT id FROM admins ORDER BY id ASC LIMIT 1)"
-                        ))
-                        conn.commit()
-                        app.logger.info("First admin account promoted to superadmin role.")
+                    conn.execute(text(
+                        "UPDATE admins SET role = 'superadmin' WHERE username IN ('admin', 'store_owner')"
+                    ))
+                    conn.commit()
         except Exception as e:
             app.logger.warning(f"Admin column migration warning: {e}")
 
