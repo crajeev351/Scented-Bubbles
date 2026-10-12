@@ -120,6 +120,8 @@ class Config:
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False  # Enabled in ProductionConfig
     PERMANENT_SESSION_LIFETIME = 86400 * 30  # 30 days
+    WTF_CSRF_TIME_LIMIT = None  # Prevents token expiration while browser tab stays open
+    WTF_CSRF_SSL_STRICT = False  # Compatible with Render reverse proxies
     
     # File Uploads & Storage Backend
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB max upload

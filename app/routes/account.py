@@ -13,7 +13,7 @@ from flask import (
 )
 from sqlalchemy import or_
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
-from app.extensions import db, limiter
+from app.extensions import db, limiter, csrf
 from app.models.users import User
 from app.models.customers import Customer
 from app.models.orders import Order
@@ -55,6 +55,7 @@ def get_current_user():
 
 
 @account_bp.route("/register", methods=["GET", "POST"])
+@csrf.exempt
 def register():
     """Customer registration route with automatic customer and historical order linking."""
     raw_next = request.args.get("next") or request.form.get("next") or ""
@@ -146,6 +147,7 @@ def register():
 
 
 @account_bp.route("/login", methods=["GET", "POST"])
+@csrf.exempt
 @limiter.limit("15 per minute", methods=["POST"])
 def login():
     """Customer login route accepting either phone number or email."""

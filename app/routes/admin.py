@@ -19,7 +19,7 @@ from werkzeug.utils import secure_filename
 from sqlalchemy import or_, func, desc
 from sqlalchemy.orm import selectinload
 
-from app.extensions import db, limiter
+from app.extensions import db, limiter, csrf
 from app.models.admins import Admin
 from app.models.products import Product
 from app.models.product_variants import ProductVariant
@@ -168,6 +168,7 @@ def handle_uploaded_file(file_storage, prefix="img", fit_dimensions=None) -> str
 # ==============================================================================
 
 @admin_bp.route("/login", methods=["GET", "POST"])
+@csrf.exempt
 @limiter.limit("5 per minute; 60 per hour", methods=["POST"])
 def login():
     """Rate-limited admin authentication page with lockout policy and 2FA verification."""
