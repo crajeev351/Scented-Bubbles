@@ -187,6 +187,13 @@ class SupabaseStorage(StorageBackend):
                 }
                 res = requests.post(upload_url, data=file_data, headers=headers, timeout=15)
                 if res.status_code in (200, 201):
+                    try:
+                        dest = Path("app/static/uploads") / clean_key
+                        dest.parent.mkdir(parents=True, exist_ok=True)
+                        with open(dest, "wb") as f:
+                            f.write(file_data)
+                    except Exception:
+                        pass
                     return clean_key
             except Exception:
                 pass

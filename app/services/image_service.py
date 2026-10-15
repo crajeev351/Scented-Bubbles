@@ -160,6 +160,15 @@ def get_image_url(image_key: str, size: str = "medium") -> str:
 
     storage = get_storage()
 
+    # If it was saved with a /static/uploads/ prefix, resolve it dynamically via storage backend
+    if image_key.startswith("/static/uploads/") or image_key.startswith("static/uploads/"):
+        clean_upload = image_key.replace("/static/uploads/", "").replace("static/uploads/", "")
+        for s in ("_thumb.webp", "_medium.webp", "_large.webp"):
+            if clean_upload.endswith(s):
+                clean_stem = clean_upload[:-len(s)]
+                return storage.url_for(f"{clean_stem}_{size}.webp")
+        return storage.url_for(clean_upload)
+
     # If it's a seed or static image e.g. /static/images/perfume_velvet_oud.webp
     if image_key.startswith("/static/") or image_key.startswith("static/"):
         return image_key if image_key.startswith("/") else f"/{image_key}"
@@ -182,6 +191,8 @@ def get_image_srcset(image_key: str) -> str:
     """Generates standard HTML srcset string for responsive images."""
     if not image_key or image_key.startswith("http://") or image_key.startswith("https://"):
         return ""
+    if image_key.startswith("/static/uploads/") or image_key.startswith("static/uploads/"):
+        image_key = image_key.replace("/static/uploads/", "").replace("static/uploads/", "")
     if image_key.startswith("/static/") or image_key.startswith("static/"):
         # For seed static files, return single url
         url = image_key if image_key.startswith("/") else f"/{image_key}"

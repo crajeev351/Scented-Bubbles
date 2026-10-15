@@ -1783,7 +1783,9 @@ def settings():
         if qr_file and qr_file.filename:
             try:
                 qr_key = handle_uploaded_file(qr_file, prefix="qr")
-                Setting.set_value("upi_qr_url", f"/static/uploads/{qr_key}")
+                from app.services.storage import get_storage
+                storage = get_storage()
+                Setting.set_value("upi_qr_url", storage.url_for(qr_key))
             except ValueError as ve:
                 flash(str(ve), "error")
 

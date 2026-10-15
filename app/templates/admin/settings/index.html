@@ -88,7 +88,7 @@
       <input type="file" id="upi_qr_file" name="upi_qr_file" accept=".png,.jpg,.jpeg,.webp" class="form-control">
       {% if settings.get('upi_qr_url') %}
         <div style="margin-top: 0.75rem; display: flex; align-items: center; gap: 1rem;">
-          <img src="{{ settings.get('upi_qr_url') }}" alt="Current QR" style="width: 80px; height: 80px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); object-fit: contain;">
+          <img src="{{ image_url(settings.get('upi_qr_url')) }}" alt="Current QR" style="width: 80px; height: 80px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); object-fit: contain; background: #ffffff;">
           <span style="font-size: 0.8125rem; color: var(--text-muted);">Current Active QR Code</span>
         </div>
       {% endif %}

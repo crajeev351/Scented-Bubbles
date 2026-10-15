@@ -47,7 +47,9 @@ def upi_pay(order_id):
 
     # Store settings for UPI
     upi_id = Setting.get_value("upi_id", "scentedbubbles@upi")
-    upi_qr_url = Setting.get_value("upi_qr_url", "/static/images/placeholder_upi_qr.png")
+    raw_qr = Setting.get_value("upi_qr_url", "/static/images/placeholder_upi_qr.png")
+    from app.services.image_service import get_image_url
+    upi_qr_url = get_image_url(raw_qr, size="medium") if raw_qr else "/static/images/placeholder_upi_qr.png"
     brand_name = Setting.get_value("company_name", "Scented Bubbles")
 
     if request.method == "POST":

@@ -47,6 +47,7 @@ instance/
 # Uploads (except placeholder assets)
 app/static/uploads/*
 !app/static/uploads/.gitkeep
+QR CODE.png
 
 # IDE & Editor files
 .vscode/
