@@ -46,7 +46,6 @@ def product_list():
         query = query.filter(
             or_(
                 Product.name.ilike(search_pattern),
-                Product.inspired_by.ilike(search_pattern),
                 Product.short_description.ilike(search_pattern),
             )
         )
@@ -183,7 +182,6 @@ def live_search():
             Product.is_deleted.is_(False),
             or_(
                 Product.name.ilike(pattern),
-                Product.inspired_by.ilike(pattern),
                 Product.short_description.ilike(pattern),
             ),
         )
@@ -199,7 +197,6 @@ def live_search():
             "id": p.id,
             "name": p.name,
             "slug": p.slug,
-            "inspired_by": p.inspired_by or "",
             "price": float(default_var.price) if default_var else 0.0,
             "discounted_price": float(default_var.discounted_price) if (default_var and default_var.discounted_price) else None,
             "thumbnail": p.primary_image_url,

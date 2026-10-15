@@ -207,6 +207,11 @@ def create_order(
         # 5. Generate Atomic Order ID
         atomic_order_id = generate_order_id(db.session)
 
+        # Determine initial confirmation status:
+        # If UTR is supplied upfront (e.g. from API/test) or non-manual UPI, order is confirmed immediately.
+        # Otherwise, order is AWAITING_PAYMENT until customer submits UTR on the UPI screen.
+        is_initially_confirmed = bool((utr and len(str(utr).strip()) >= 6) or (payment_method and payment_method.upper() != "MANUAL_UPI"))
+
         # 6. Create Order record
         order = Order(
             order_id=atomic_order_id,
@@ -215,9 +220,11 @@ def create_order(
             subtotal=subtotal,
             delivery_charge=delivery_charge,
             total_amount=total_amount,
-            order_status=Order.STATUS_PENDING,
+            order_status=Order.STATUS_PENDING if is_initially_confirmed else Order.STATUS_AWAITING_PAYMENT,
             payment_status=Order.PAYMENT_PENDING_VERIFICATION,
             payment_method=payment_method.upper(),
+            is_confirmed=is_initially_confirmed,
+            confirmed_at=datetime.datetime.now(timezone.utc) if is_initially_confirmed else None,
             shipping_name=str(shipping_info.get("name") or customer.name).strip(),
             shipping_phone=str(shipping_info.get("phone") or customer.phone).strip(),
             shipping_address_line1=str(shipping_info.get("address_line1") or "").strip(),
@@ -239,34 +246,58 @@ def create_order(
         pay_svc = get_payment_service(payment_method)
         pay_svc.create_payment(order=order, utr=utr)
 
-        # 8. Record initial milestone history
-        placed_history = OrderStatusHistory(
-            order_id=order.id,
-            status=Order.STATUS_PENDING,
-            title="Order Placed",
-            notes="Order placed by customer via checkout.",
-            created_by="Customer",
-            created_at=order.created_at,
-        )
-        db.session.add(placed_history)
+        # 8. Record initial milestone history ONLY if order is confirmed upfront
+        if is_initially_confirmed:
+            placed_history = OrderStatusHistory(
+                order_id=order.id,
+                status=Order.STATUS_PENDING,
+                title="Order Placed",
+                notes="Order placed by customer via checkout.",
+                created_by="Customer",
+                created_at=order.created_at,
+            )
+            db.session.add(placed_history)
 
         # Commit transaction
         db.session.commit()
-        logger.info(f"Order {order.order_id} successfully created.")
+        logger.info(f"Order {order.order_id} successfully created (confirmed={order.is_confirmed}).")
 
     except Exception as e:
         db.session.rollback()
         logger.error(f"Failed to create order: {e}")
         raise
 
-    # 9. Notifications (safely outside transaction; failure must never fail the order)
-    try:
-        brand_name = Setting.get_value("company_name", "Scented Bubbles")
-        NotificationService.notify_order_created(order, brand_name=brand_name)
-    except Exception as notif_err:
-        logger.warning(f"Notification error for order {order.order_id}: {notif_err}")
+    # 9. Notifications (safely outside transaction; ONLY IF CONFIRMED UPFRONT)
+    if order.is_confirmed:
+        try:
+            brand_name = Setting.get_value("company_name", "Scented Bubbles")
+            NotificationService.notify_order_created(order, brand_name=brand_name)
+        except Exception as notif_err:
+            logger.warning(f"Notification error for order {order.order_id}: {notif_err}")
 
     return order
+
+
+def cleanup_expired_unconfirmed_orders(max_age_minutes: int = 60) -> int:
+    """Cancels unconfirmed orders older than max_age_minutes and restores reserved stock."""
+    cutoff = datetime.datetime.now(timezone.utc) - datetime.timedelta(minutes=max_age_minutes)
+    unconfirmed = (
+        Order.query.filter(
+            Order.is_confirmed.is_(False),
+            Order.order_status == Order.STATUS_AWAITING_PAYMENT,
+            Order.created_at <= cutoff,
+        ).all()
+    )
+    count = 0
+    for ord_obj in unconfirmed:
+        try:
+            cancel_order(ord_obj.order_id, reason="Expired: Customer abandoned checkout before confirming payment.")
+            count += 1
+        except Exception as e:
+            logger.warning(f"Failed to expire unconfirmed order {ord_obj.order_id}: {e}")
+    if count > 0:
+        logger.info(f"Expired {count} abandoned unconfirmed orders and restored catalog stock.")
+    return count
 
 
 def cancel_order(order_id: str, reason: Optional[str] = None) -> Order:

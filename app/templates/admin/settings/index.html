@@ -192,6 +192,19 @@
       </div>
     </div>
 
+    <div class="form-group" style="background: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-sm); border-left: 3px solid var(--gold-primary); margin-top: 1rem;">
+      <label for="order_notifications_enabled" style="font-weight: 700; display: flex; align-items: center; gap: 0.4rem;">
+        <span>🔔</span> Order Email Notifications (Testing Mode Toggle)
+      </label>
+      <select id="order_notifications_enabled" name="order_notifications_enabled" class="form-control" style="font-weight: 600;">
+        <option value="true" {{ 'selected' if settings.get('order_notifications_enabled', 'true')|lower in ['true', '1', 'yes'] else '' }}>🟢 Enabled &ndash; Send live email notifications when customer confirms order</option>
+        <option value="false" {{ 'selected' if settings.get('order_notifications_enabled', 'true')|lower not in ['true', '1', 'yes'] else '' }}>🔇 Muted / Testing Mode &ndash; Do NOT send order emails (Use while testing orders)</option>
+      </select>
+      <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 0.4rem; line-height: 1.4;">
+        Switch to <strong>"Muted / Testing Mode"</strong> while testing checkouts and orders to avoid receiving repetitive emails in your inbox. Switch back to <strong>"Enabled"</strong> when you are ready for real customer orders.
+      </small>
+    </div>
+
     <div style="margin-top: 2.5rem;">
       <button type="submit" class="btn btn-primary" style="padding: 0.85rem 2.5rem; font-size: 1rem;">
         Save Store Settings &rarr;

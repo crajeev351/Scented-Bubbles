@@ -45,6 +45,10 @@ def upi_pay(order_id):
         flash("You do not have permission to view or manage this order.", "error")
         return redirect(url_for("account.login"))
 
+    # If already confirmed, redirect directly to success screen
+    if order.is_confirmed and order.order_status != Order.STATUS_AWAITING_PAYMENT:
+        return redirect(url_for("orders.order_success", order_id=order.order_id))
+
     # Store settings for UPI
     upi_id = Setting.get_value("upi_id", "scentedbubbles@upi")
     raw_qr = Setting.get_value("upi_qr_url", "/static/images/placeholder_upi_qr.png")
@@ -53,15 +57,28 @@ def upi_pay(order_id):
     brand_name = Setting.get_value("company_name", "Scented Bubbles")
 
     if request.method == "POST":
-        utr = request.form.get("utr", "").strip()
-        if not utr or len(utr) < 6:
-            flash("Please enter a valid Bank Transaction Reference / UTR number (at least 6 digits).", "error")
+        raw_utr = request.form.get("utr", "").strip()
+        # Clean non-digits
+        digits = re.sub(r"\D", "", raw_utr)
+
+        # If user pasted 12-digit UTR, automatically extract the last 6 digits
+        if len(digits) >= 6:
+            digits = digits[-6:]
+
+        if len(digits) != 6:
+            flash("Please enter the compulsory last 6 digits of your UPI Bank Reference / UTR Number.", "error")
             return redirect(url_for("orders.upi_pay", order_id=order_id))
 
-        # Check UTR uniqueness across other orders
-        existing_payment = Payment.query.filter(Payment.utr == utr, Payment.order_id != order.id).first()
+        utr = digits
+
+        # Check UTR uniqueness across other confirmed orders
+        existing_payment = Payment.query.join(Order).filter(
+            Payment.utr == utr,
+            Payment.order_id != order.id,
+            Order.is_confirmed.is_(True),
+        ).first()
         if existing_payment:
-            flash(f"This UTR '{utr}' has already been submitted for another order.", "error")
+            flash(f"This UTR (last 6 digits: {utr}) has already been submitted for another order.", "error")
             return redirect(url_for("orders.upi_pay", order_id=order_id))
 
         # Update or create payment record
@@ -76,12 +93,38 @@ def upi_pay(order_id):
                 amount=order.total_amount,
                 utr=utr,
                 status=Payment.STATUS_PENDING_VERIFICATION,
-                notes="UTR submitted by customer on Scan & Pay screen",
+                notes="UTR (last 6 digits) submitted by customer on Scan & Pay screen",
             )
             db.session.add(payment)
 
+        # Mark order as confirmed and advance status to PENDING
+        from datetime import datetime, timezone
+        from app.models.order_status_history import OrderStatusHistory
+        now = datetime.now(timezone.utc)
+        order.is_confirmed = True
+        order.confirmed_at = now
+        order.order_status = Order.STATUS_PENDING
+
+        placed_history = OrderStatusHistory(
+            order_id=order.id,
+            status=Order.STATUS_PENDING,
+            title="Order Placed & Reference Submitted",
+            notes=f"Customer verified payment with UTR (last 6 digits: {utr}). Order registered.",
+            created_by="Customer",
+            created_at=now,
+        )
+        db.session.add(placed_history)
         db.session.commit()
-        flash("Payment reference submitted! We will verify and process your order shortly.", "success")
+
+        # Send notifications now that order is confirmed and registered
+        try:
+            from app.services.notification_service import NotificationService
+            NotificationService.notify_order_created(order, brand_name=brand_name)
+        except Exception as notif_err:
+            import logging
+            logging.getLogger(__name__).warning(f"Notification error for order {order.order_id}: {notif_err}")
+
+        flash("Payment reference submitted! Your order has been placed and registered successfully.", "success")
         return redirect(url_for("orders.order_success", order_id=order.order_id))
 
     return render_template(
@@ -101,6 +144,11 @@ def order_success(order_id):
     if not has_order_access(order):
         flash("You do not have permission to view this order confirmation.", "error")
         return redirect(url_for("account.login"))
+
+    # Block access if order was not confirmed yet
+    if not order.is_confirmed:
+        flash("Please complete your payment and submit your UTR reference to confirm your order.", "warning")
+        return redirect(url_for("orders.upi_pay", order_id=order.order_id))
 
     store_phone = Setting.get_value("support_whatsapp", "919876543210")
     brand_name = Setting.get_value("company_name", "Scented Bubbles")

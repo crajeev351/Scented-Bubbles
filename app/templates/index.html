@@ -131,12 +131,6 @@
         <div class="card-body">
           <div class="card-category">{{ prod.category.name if prod.category else 'Fragrance' }}</div>
           <h3 class="card-title"><a href="{{ url_for('products.product_detail', slug=prod.slug) }}">{{ prod.name }}</a></h3>
-          {% if prod.inspired_by %}
-            <div style="font-size: 0.72rem; color: #8C6D23; font-weight: 600; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.25rem;">
-              <span style="opacity: 0.75;">✨</span>
-              <span>{{ prod.inspired_by if 'inspired' in prod.inspired_by.lower() else 'Inspired by ' ~ prod.inspired_by }}</span>
-            </div>
-          {% endif %}
           {% if prod.short_description %}
             <p class="card-notes">{{ prod.short_description }}</p>
           {% endif %}
@@ -242,12 +236,6 @@
         <div class="card-body">
           <div class="card-category">{{ prod.category.name if prod.category else 'Fragrance' }}</div>
           <h3 class="card-title"><a href="{{ url_for('products.product_detail', slug=prod.slug) }}">{{ prod.name }}</a></h3>
-          {% if prod.inspired_by %}
-            <div style="font-size: 0.72rem; color: #8C6D23; font-weight: 600; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.25rem;">
-              <span style="opacity: 0.75;">✨</span>
-              <span>{{ prod.inspired_by if 'inspired' in prod.inspired_by.lower() else 'Inspired by ' ~ prod.inspired_by }}</span>
-            </div>
-          {% endif %}
           {% if prod.short_description %}
             <p class="card-notes">{{ prod.short_description }}</p>
           {% endif %}

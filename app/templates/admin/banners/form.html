@@ -83,7 +83,7 @@
           <option value="">-- Choose a Product --</option>
           {% for p in products %}
             <option value="{{ p.id }}" {{ 'selected' if banner and banner.target_type == 'product' and banner.target_id == p.id else '' }}>
-              {{ p.name }} {% if p.inspired_by %}(Inspired by {{ p.inspired_by }}){% endif %}
+              {{ p.name }}
             </option>
           {% endfor %}
         </select>

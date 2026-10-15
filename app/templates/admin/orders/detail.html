@@ -295,9 +295,10 @@
         <div><strong>Amount:</strong> {{ order.total_amount | currency }}</div>
         <div><strong>Status:</strong> <span class="status-badge status-{{ order.payment_status.lower() }}">{{ order.payment_status }}</span></div>
         {% if order.latest_payment and order.latest_payment.utr %}
-          <div style="margin-top: 0.5rem; background: var(--bg-subtle); padding: 0.5rem; border-radius: var(--radius-sm);">
-            <strong>Customer Submitted UTR:</strong><br>
-            <code style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">{{ order.latest_payment.utr }}</code>
+          <div style="margin-top: 0.75rem; background: var(--bg-subtle); padding: 0.75rem 1rem; border-radius: var(--radius-sm); border-left: 3px solid var(--gold-primary);">
+            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em;">Bank Reference / UTR (Last 6 Digits)</div>
+            <code style="font-size: 1.35rem; font-weight: 800; color: var(--gold-dark); letter-spacing: 0.15em; display: inline-block; margin: 0.25rem 0;">{{ order.latest_payment.utr }}</code>
+            <small style="display: block; font-size: 0.75rem; color: var(--text-muted); line-height: 1.3;">Check the last 6 digits in your bank credit SMS or UPI notification to confirm receipt.</small>
           </div>
         {% endif %}
       </div>

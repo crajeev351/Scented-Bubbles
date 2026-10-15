@@ -47,7 +47,7 @@ def get_summary_kpis(
         func.coalesce(func.sum(case((Order.order_status == Order.STATUS_PENDING, 1), else_=0)), 0).label("pending_orders_count"),
         func.coalesce(func.sum(case((Order.order_status == Order.STATUS_SHIPPED, 1), else_=0)), 0).label("shipped_orders_count"),
         func.coalesce(func.sum(case((Order.order_status == Order.STATUS_DELIVERED, 1), else_=0)), 0).label("delivered_orders_count"),
-    )
+    ).filter(Order.is_confirmed.is_(True))
 
     if start_date:
         query = query.filter(date_col >= datetime.datetime.combine(start_date, datetime.time.min))
@@ -61,13 +61,13 @@ def get_summary_kpis(
     divisor = valid_orders if valid_orders > 0 else total_orders
     aov = (net_revenue / divisor) if divisor > 0 else Decimal("0.00")
 
-    # Real-time active store fulfillment pipeline across all orders in database
+    # Real-time active store fulfillment pipeline across all confirmed orders in database
     live_pipeline = db.session.query(
         func.coalesce(func.sum(case((Order.order_status == Order.STATUS_DELIVERED, 1), else_=0)), 0).label("delivered_total"),
         func.coalesce(func.sum(case((Order.order_status == Order.STATUS_SHIPPED, 1), else_=0)), 0).label("shipped_total"),
         func.coalesce(func.sum(case((Order.order_status == Order.STATUS_PENDING, 1), else_=0)), 0).label("pending_total"),
         func.coalesce(func.sum(case((Order.payment_status == Order.PAYMENT_PENDING_VERIFICATION, 1), else_=0)), 0).label("pending_upi_total"),
-    ).one()
+    ).filter(Order.is_confirmed.is_(True)).one()
 
     return {
         "total_orders": total_orders,
@@ -99,7 +99,7 @@ def get_daily_revenue_trend(
         date_expr.label("day"),
         func.coalesce(func.sum(Order.total_amount), 0).label("revenue"),
         func.count(Order.id).label("orders_count"),
-    ).filter(Order.order_status != Order.STATUS_CANCELLED)
+    ).filter(Order.is_confirmed.is_(True), Order.order_status != Order.STATUS_CANCELLED)
 
     if start_date:
         query = query.filter(dt_col >= datetime.datetime.combine(start_date, datetime.time.min))
@@ -147,7 +147,7 @@ def get_monthly_revenue_trend() -> Dict[str, Any]:
         month_col.label("month"),
         func.coalesce(func.sum(Order.total_amount), 0).label("revenue"),
         func.count(Order.id).label("orders_count"),
-    ).filter(Order.order_status != Order.STATUS_CANCELLED)\
+    ).filter(Order.is_confirmed.is_(True), Order.order_status != Order.STATUS_CANCELLED)\
      .group_by("month")\
      .order_by("month")\
      .all()
@@ -164,7 +164,7 @@ def get_orders_by_status(start_date: Optional[datetime.date] = None, end_date: O
     query = db.session.query(
         Order.order_status,
         func.count(Order.id).label("count")
-    )
+    ).filter(Order.is_confirmed.is_(True))
     if start_date:
         query = query.filter(Order.created_at >= datetime.datetime.combine(start_date, datetime.time.min))
     if end_date:
@@ -182,7 +182,7 @@ def get_orders_by_payment_status(start_date: Optional[datetime.date] = None, end
     query = db.session.query(
         Order.payment_status,
         func.count(Order.id).label("count")
-    )
+    ).filter(Order.is_confirmed.is_(True))
     if start_date:
         query = query.filter(Order.created_at >= datetime.datetime.combine(start_date, datetime.time.min))
     if end_date:
@@ -202,7 +202,7 @@ def get_top_bestsellers(limit: int = 10, start_date: Optional[datetime.date] = N
         func.sum(OrderItem.quantity).label("units_sold"),
         func.sum(OrderItem.total_price).label("total_revenue"),
     ).join(Order, OrderItem.order_id == Order.id)\
-     .filter(Order.order_status != Order.STATUS_CANCELLED)
+     .filter(Order.is_confirmed.is_(True), Order.order_status != Order.STATUS_CANCELLED)
 
     if start_date:
         query = query.filter(Order.created_at >= datetime.datetime.combine(start_date, datetime.time.min))
@@ -240,7 +240,7 @@ def get_sales_by_category(start_date: Optional[datetime.date] = None, end_date: 
      .outerjoin(ProductVariant, OrderItem.product_variant_id == ProductVariant.id)\
      .outerjoin(Product, ProductVariant.product_id == Product.id)\
      .outerjoin(Category, Product.category_id == Category.id)\
-     .filter(Order.order_status != Order.STATUS_CANCELLED)
+     .filter(Order.is_confirmed.is_(True), Order.order_status != Order.STATUS_CANCELLED)
 
     if start_date:
         query = query.filter(Order.created_at >= datetime.datetime.combine(start_date, datetime.time.min))
@@ -274,7 +274,7 @@ def get_orders_by_hour(start_date: Optional[datetime.date] = None, end_date: Opt
     query = db.session.query(
         hour_col.label("hour"),
         func.count(Order.id).label("count")
-    ).filter(Order.order_status != Order.STATUS_CANCELLED)
+    ).filter(Order.is_confirmed.is_(True), Order.order_status != Order.STATUS_CANCELLED)
 
     if start_date:
         query = query.filter(Order.created_at >= datetime.datetime.combine(start_date, datetime.time.min))

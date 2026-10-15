@@ -50,6 +50,24 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 from app.utils.security import get_safe_redirect_url
 
+ADMIN_SESSION_KEYS = (
+    "admin_id",
+    "admin_username",
+    "admin_last_activity",
+    "admin_no_timeout",
+    "admin_secret_verified",
+    "admin_2fa_pending_id",
+    "admin_next_url",
+    "admin_keep_signed_in",
+    "admin_setup_totp_secret",
+)
+
+
+def clear_admin_session():
+    """Clears all admin-related session keys without destroying customer session keys."""
+    for key in ADMIN_SESSION_KEYS:
+        session.pop(key, None)
+
 
 def admin_required(f):
     """Decorator ensuring request has an authenticated admin session and enforces inactivity timeout.
@@ -68,7 +86,7 @@ def admin_required(f):
         # Real-time check: Verify admin account exists and remains active
         current_admin_obj = db.session.get(Admin, session.get("admin_id"))
         if not current_admin_obj or not current_admin_obj.is_active:
-            session.clear()
+            clear_admin_session()
             if is_api:
                 return jsonify({"error": "Admin account is deactivated or no longer exists"}), 401
             flash("Your admin account has been deactivated or disabled.", "error")
@@ -80,11 +98,8 @@ def admin_required(f):
             now_ts = datetime.datetime.now(datetime.timezone.utc).timestamp()
             last_activity = session.get("admin_last_activity")
             if last_activity and (now_ts - last_activity > 1800):
-                session.pop("admin_id", None)
-                session.pop("admin_username", None)
-                session.pop("admin_last_activity", None)
-                session.pop("admin_no_timeout", None)
-                if request.is_json:
+                clear_admin_session()
+                if is_api:
                     return jsonify({"error": "Admin session expired due to inactivity"}), 401
                 flash("Your admin session has expired due to 30 minutes of inactivity. Please sign in again.", "warning")
                 return redirect(url_for("admin.login"))
@@ -114,7 +129,7 @@ def superadmin_required(f):
 def inject_admin_globals():
     """Injects live badge counts, brand name, and current admin role into all admin templates."""
     try:
-        pending_orders_count = Order.query.filter_by(order_status=Order.STATUS_PENDING).count()
+        pending_orders_count = Order.query.filter_by(is_confirmed=True, order_status=Order.STATUS_PENDING).count()
         low_stock_count = ProductVariant.query.filter(
             ProductVariant.stock <= 5,
             ProductVariant.active.is_(True),
@@ -219,7 +234,8 @@ def login():
                     return redirect(url_for("admin.verify_2fa"))
 
                 secret_verified = session.get("admin_secret_verified")
-                session.clear()
+                # Clear previous admin session while preserving customer session
+                clear_admin_session()
                 session["admin_id"] = admin.id
                 session["admin_username"] = admin.username
                 session["admin_last_activity"] = datetime.datetime.now(datetime.timezone.utc).timestamp()
@@ -267,7 +283,8 @@ def verify_2fa():
             secret_verified = session.get("admin_secret_verified")
             keep_signed_in = session.get("admin_keep_signed_in", False)
             next_target = session.pop("admin_next_url", None)
-            session.clear()
+            # Clear previous admin session while preserving customer session
+            clear_admin_session()
             session["admin_id"] = admin.id
             session["admin_username"] = admin.username
             session["admin_last_activity"] = datetime.datetime.now(datetime.timezone.utc).timestamp()
@@ -288,8 +305,8 @@ def verify_2fa():
 
 @admin_bp.route("/logout")
 def logout():
-    """Securely terminates admin session."""
-    session.clear()
+    """Securely terminates admin session without logging out customer in other tabs."""
+    clear_admin_session()
     flash("You have been signed out successfully.", "info")
     return redirect(url_for("admin.login"))
 
@@ -302,16 +319,16 @@ def api_live_sync():
     and server timestamp so multiple open admin tabs stay perfectly in sync.
     """
     try:
-        pending_orders_count = Order.query.filter_by(order_status=Order.STATUS_PENDING).count()
+        pending_orders_count = Order.query.filter_by(is_confirmed=True, order_status=Order.STATUS_PENDING).count()
         low_stock_count = ProductVariant.query.filter(
             ProductVariant.stock <= 5,
             ProductVariant.active.is_(True),
             ProductVariant.is_deleted.is_(False),
         ).count()
-        latest_order = Order.query.order_by(Order.id.desc()).first()
+        latest_order = Order.query.filter_by(is_confirmed=True).order_by(Order.id.desc()).first()
         latest_order_id = latest_order.id if latest_order else 0
         latest_order_number = latest_order.order_id if latest_order else ""
-        total_orders = Order.query.count()
+        total_orders = Order.query.filter_by(is_confirmed=True).count()
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -339,20 +356,22 @@ def dashboard():
     month_start = today_start.replace(day=1)
 
     # Lightweight metric calculations
-    today_orders_count = Order.query.filter(Order.created_at >= today_start).count()
+    today_orders_count = Order.query.filter(Order.is_confirmed.is_(True), Order.created_at >= today_start).count()
     
     today_revenue_res = db.session.query(func.sum(Order.total_amount)).filter(
+        Order.is_confirmed.is_(True),
         Order.created_at >= today_start,
         Order.payment_status == Order.PAYMENT_PAID,
     ).scalar() or Decimal("0.00")
 
     month_revenue_res = db.session.query(func.sum(Order.total_amount)).filter(
+        Order.is_confirmed.is_(True),
         Order.created_at >= month_start,
         Order.payment_status == Order.PAYMENT_PAID,
     ).scalar() or Decimal("0.00")
 
-    pending_orders = Order.query.filter_by(order_status=Order.STATUS_PENDING).count()
-    pending_payments = Order.query.filter_by(payment_status=Order.PAYMENT_PENDING_VERIFICATION).count()
+    pending_orders = Order.query.filter_by(is_confirmed=True, order_status=Order.STATUS_PENDING).count()
+    pending_payments = Order.query.filter_by(is_confirmed=True, payment_status=Order.PAYMENT_PENDING_VERIFICATION).count()
     total_products = Product.query.filter_by(is_deleted=False).count()
     
     low_stock = ProductVariant.query.filter(
@@ -362,7 +381,8 @@ def dashboard():
     ).count()
 
     recent_orders = (
-        Order.query.options(selectinload(Order.customer), selectinload(Order.items))
+        Order.query.filter_by(is_confirmed=True)
+        .options(selectinload(Order.customer), selectinload(Order.items))
         .order_by(Order.created_at.desc())
         .limit(10)
         .all()
@@ -572,7 +592,6 @@ def product_list():
             or_(
                 Product.name.ilike(pattern),
                 Product.slug.ilike(pattern),
-                Product.inspired_by.ilike(pattern),
             )
         )
 
@@ -601,12 +620,15 @@ def product_create():
     """Create a new product with initial variants, primary image, and multiple categories."""
     categories = Category.query.filter_by(is_deleted=False).order_by(Category.display_order.asc(), Category.name.asc()).all()
     if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        slug = request.form.get("slug", "").strip() or re.sub(r"[^\w\-]", "-", name.lower()).strip("-")
+        raw_name = request.form.get("name", "").strip()
+        name = raw_name
+        if name and not name.lower().endswith("inspired perfume"):
+            name = f"{name} Inspired Perfume"
+
+        slug = request.form.get("slug", "").strip() or re.sub(r"[^\w\-]", "-", raw_name.lower()).strip("-")
         category_ids = [int(cid) for cid in request.form.getlist("category_ids") if cid.isdigit()]
         if not category_ids and request.form.get("category_id"):
             category_ids = [request.form.get("category_id", type=int)]
-        inspired_by = request.form.get("inspired_by", "").strip()
         short_desc = request.form.get("short_description", "").strip()
         full_desc = request.form.get("full_description", "").strip()
         usage = request.form.get("usage_instructions", "").strip()
@@ -631,7 +653,7 @@ def product_create():
             category_id=selected_categories[0].id,
             name=name,
             slug=slug,
-            inspired_by=inspired_by,
+            inspired_by=None,
             fragrance_family=None,
             short_description=short_desc,
             full_description=full_desc,
@@ -733,6 +755,11 @@ def product_edit(id):
             flash("Please select at least one valid Category.", "error")
             return render_template("admin/products/form.html", product=product, categories=categories)
 
+        raw_name = request.form.get("name", "").strip()
+        name = raw_name
+        if name and not name.lower().endswith("inspired perfume"):
+            name = f"{name} Inspired Perfume"
+
         # Check slug conflict with other products
         existing = Product.query.filter(Product.slug == slug, Product.id != product.id).first()
         if existing:
@@ -742,8 +769,7 @@ def product_edit(id):
         product.name = name
         product.slug = slug
         product.categories = selected_categories
-        inspired_by = request.form.get("inspired_by", "").strip()
-        product.inspired_by = inspired_by
+        product.inspired_by = None
         product.fragrance_family = None
         product.short_description = request.form.get("short_description", "").strip()
         product.full_description = request.form.get("full_description", "").strip()
@@ -1492,7 +1518,7 @@ def order_list():
     start_date = request.args.get("start_date", "").strip()
     end_date = request.args.get("end_date", "").strip()
 
-    query = Order.query.options(selectinload(Order.customer), selectinload(Order.items), selectinload(Order.payments))
+    query = Order.query.filter(Order.is_confirmed.is_(True)).options(selectinload(Order.customer), selectinload(Order.items), selectinload(Order.payments))
 
     if search:
         search_pattern = f"%{search}%"
@@ -1526,6 +1552,8 @@ def order_list():
 
     pagination = query.order_by(Order.created_at.desc()).paginate(page=page, per_page=15, error_out=False)
 
+    admin_order_statuses = [s for s in Order.ORDER_STATUSES if s != Order.STATUS_AWAITING_PAYMENT]
+
     return render_template(
         "admin/orders/index.html",
         orders=pagination.items,
@@ -1535,7 +1563,7 @@ def order_list():
         selected_payment_status=payment_status,
         start_date=start_date,
         end_date=end_date,
-        order_statuses=Order.ORDER_STATUSES,
+        order_statuses=admin_order_statuses,
         payment_statuses=Order.PAYMENT_STATUSES,
     )
 
@@ -1545,7 +1573,7 @@ def order_list():
 def order_detail(order_id):
     """Detailed view for single order with status transition actions and WhatsApp link."""
     order = (
-        Order.query.filter_by(order_id=order_id)
+        Order.query.filter_by(order_id=order_id, is_confirmed=True)
         .options(selectinload(Order.customer), selectinload(Order.items), selectinload(Order.payments))
         .first_or_404()
     )
@@ -1767,6 +1795,7 @@ def settings():
             "smtp_user",
             "smtp_use_tls",
             "notification_email",
+            "order_notifications_enabled",
         ]
         for k in keys:
             if k in request.form:

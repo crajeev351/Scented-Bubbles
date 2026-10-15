@@ -116,10 +116,12 @@ class Config:
         SQLALCHEMY_ENGINE_OPTIONS["max_overflow"] = 5
 
     # Security & Sessions
+    SESSION_COOKIE_NAME = "scented_bubbles_session"
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False  # Enabled in ProductionConfig
     PERMANENT_SESSION_LIFETIME = 86400 * 30  # 30 days
+    SESSION_REFRESH_EACH_REQUEST = True
     WTF_CSRF_TIME_LIMIT = None  # Prevents token expiration while browser tab stays open
     WTF_CSRF_SSL_STRICT = False  # Compatible with Render reverse proxies
     

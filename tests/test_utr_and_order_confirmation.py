@@ -1,0 +1,163 @@
+from decimal import Decimal
+from unittest.mock import patch
+import pytest
+
+from app.extensions import db
+from app.models.orders import Order
+from app.models.payments import Payment
+from app.models.users import User
+from app.models.settings import Setting
+from app.models.admins import Admin
+from app.services.order_service import create_order
+from app.services.notification_service import NotificationService
+
+
+@pytest.fixture
+def test_admin_user(app):
+    with app.app_context():
+        admin = Admin.query.filter_by(username="confirm_admin").first()
+        if not admin:
+            admin = Admin(username="confirm_admin", email="confirm_admin@scentedbubbles.com", is_active=True, role="superadmin")
+            admin.set_password("AdminPass123!")
+            db.session.add(admin)
+            db.session.commit()
+        return admin.id
+
+
+def test_unconfirmed_order_not_visible_to_admin_until_utr_submitted(client, app, sample_catalog, test_admin_user):
+    """Unless customer clicks confirm order with UTR, admin does not get order details, order registration, or email."""
+    vid = sample_catalog["variant_50ml_id"]
+    phone = "9876541111"
+
+    # Register and login customer
+    client.post("/account/register", data={
+        "name": "Kiran Rao",
+        "phone": phone,
+        "email": "kiran@example.com",
+        "password": "CustomerPass123!",
+        "confirm_password": "CustomerPass123!",
+    }, follow_redirects=True)
+
+    with patch("app.services.notification_service.NotificationService._send_smtp_message") as mock_smtp:
+        # 1. Customer initiates checkout (POST /checkout) without UTR (step 1)
+        res_checkout = client.post("/checkout", data={
+            "name": "Kiran Rao",
+            "phone": phone,
+            "email": "kiran@example.com",
+            "address_line1": "Flat 502, Orchid Towers",
+            "city": "Bengaluru",
+            "state": "Karnataka",
+            "pincode": "560001",
+            "payment_method": "MANUAL_UPI",
+            "items": f'[{{"variant_id": {vid}, "qty": 1}}]',
+        }, follow_redirects=False)
+
+        assert res_checkout.status_code == 302
+        assert "/upi-pay" in res_checkout.headers["Location"]
+        order_id = res_checkout.headers["Location"].split("/")[2]
+
+        # Crucial Requirement: NO email sent on checkout before customer confirms with UTR!
+        assert mock_smtp.call_count == 0
+
+        # Check DB state: Order is in STATUS_AWAITING_PAYMENT and is_confirmed is False
+        with app.app_context():
+            ord_obj = Order.query.filter_by(order_id=order_id).first()
+            assert ord_obj is not None
+            assert ord_obj.is_confirmed is False
+            assert ord_obj.order_status == Order.STATUS_AWAITING_PAYMENT
+
+        # 2. Check Admin view: Admin MUST NOT see this unconfirmed order in order_list or dashboard or detail
+        with client.session_transaction() as sess:
+            sess["admin_id"] = test_admin_user
+            sess["admin_username"] = "confirm_admin"
+
+        # Admin order list must not show it
+        res_admin_list = client.get("/admin/orders")
+        assert res_admin_list.status_code == 200
+        assert order_id.encode() not in res_admin_list.data
+
+        # Admin detail must return 404 for unconfirmed order
+        res_admin_detail = client.get(f"/admin/orders/{order_id}")
+        assert res_admin_detail.status_code == 404
+
+        # Admin live sync must not count it
+        res_sync = client.get("/admin/api/live-sync")
+        data_sync = res_sync.get_json()
+        assert data_sync["latest_order_number"] != order_id
+
+        # 3. Now Customer returns and visits upi_pay
+        with client.session_transaction() as sess:
+            sess.clear()
+            sess["user_id"] = User.query.filter_by(phone=phone).first().id
+            sess["recent_order_id"] = order_id
+
+        # Submitting without UTR or invalid < 6 digits fails and stays on upi_pay
+        res_fail = client.post(f"/orders/{order_id}/upi-pay", data={"utr": "123"}, follow_redirects=True)
+        assert b"Please enter the compulsory last 6 digits" in res_fail.data
+
+        # Submitting full 12-digit UTR automatically extracts last 6 digits and confirms order
+        res_confirm = client.post(f"/orders/{order_id}/upi-pay", data={"utr": "403819823901"}, follow_redirects=True)
+        assert res_confirm.status_code == 200
+        assert b"Payment reference submitted" in res_confirm.data
+        assert order_id.encode() in res_confirm.data
+
+        # Verify DB state: Order is now confirmed and in STATUS_PENDING
+        with app.app_context():
+            refreshed = Order.query.filter_by(order_id=order_id).first()
+            assert refreshed.is_confirmed is True
+            assert refreshed.order_status == Order.STATUS_PENDING
+            assert refreshed.latest_payment.utr == "823901"  # exactly last 6 digits!
+            assert refreshed.notification_sent is True
+
+        # Verify email was dispatched exactly upon confirmation
+        assert mock_smtp.call_count >= 1
+
+        # 4. Now Admin CAN view the order
+        with client.session_transaction() as sess:
+            sess["admin_id"] = test_admin_user
+            sess["admin_username"] = "confirm_admin"
+
+        res_admin_list2 = client.get("/admin/orders")
+        assert order_id.encode() in res_admin_list2.data
+
+        res_admin_detail2 = client.get(f"/admin/orders/{order_id}")
+        assert res_admin_detail2.status_code == 200
+        assert b"823901" in res_admin_detail2.data
+
+
+def test_testing_mode_mutes_order_emails_and_prevents_duplicate_sends(app, sample_catalog):
+    """Store owner can mute emails during testing, and duplicate emails are strictly prevented."""
+    with app.app_context():
+        vid = sample_catalog["variant_50ml_id"]
+        # Enable testing mode (mute emails)
+        Setting.set_value("order_notifications_enabled", "false")
+        Setting.set_value("notification_email", "crajeev351@gmail.com")
+
+        order = create_order(
+            cart_items=[{"variant_id": vid, "qty": 1}],
+            customer_info={"name": "Owner Testing", "phone": "9876543200", "email": "crajeev351@gmail.com"},
+            shipping_info={"name": "Owner Testing", "phone": "9876543200", "address_line1": "Street 1", "city": "City", "state": "State", "pincode": "400001"},
+            payment_method="MANUAL_UPI",
+            utr="999888",
+        )
+
+        with patch("app.services.notification_service.NotificationService._send_smtp_message") as mock_smtp:
+            # Dispatch notifications
+            NotificationService.notify_order_created(order)
+            # Because testing mode is muted, 0 emails are sent
+            assert mock_smtp.call_count == 0
+
+        # Now re-enable live notifications
+        Setting.set_value("order_notifications_enabled", "true")
+        order.notification_sent = False  # Reset flag for test
+
+        with patch("app.services.notification_service.NotificationService._send_smtp_message") as mock_smtp:
+            NotificationService.notify_order_created(order)
+            # Since customer email == owner email (owner testing with own email),
+            # exactly 1 consolidated notification is sent, NOT 2 duplicate emails!
+            assert mock_smtp.call_count == 1
+            assert order.notification_sent is True
+
+            # Attempt duplicate dispatch on same order: must be completely ignored
+            NotificationService.notify_order_created(order)
+            assert mock_smtp.call_count == 1

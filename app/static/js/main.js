@@ -38,7 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
               <img src="${item.thumbnail}" alt="${item.name}">
               <div>
                 <div style="font-weight: 600; font-size: 14px; color: #222;">${item.name}</div>
-                ${item.inspired_by ? `<div style="font-size: 11px; color: #8C6D23; font-weight: 600;">✨ ${item.inspired_by.toLowerCase().startsWith('inspired') ? item.inspired_by : 'Inspired by ' + item.inspired_by}</div>` : ''}
                 <div style="font-size: 13px; color: #C5A059;">₹${item.price.toFixed(2)}</div>
               </div>
             </a>

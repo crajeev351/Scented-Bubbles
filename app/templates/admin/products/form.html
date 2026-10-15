@@ -20,7 +20,10 @@
     <div class="form-row">
       <div class="form-group">
         <label for="name">Product Name *</label>
-        <input type="text" id="name" name="name" value="{{ product.name if product else '' }}" required class="form-control" placeholder="e.g. Royal Amber Diffuser">
+        <input type="text" id="name" name="name" value="{{ product.name if product else '' }}" required class="form-control" placeholder="e.g. Burberry Weekend Inspired Perfume">
+        <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
+          Format: <strong>[Fragrance Name] Inspired Perfume</strong> (prevents trademark/copyright issues).
+        </small>
       </div>
 
       <div class="form-group">
@@ -43,23 +46,12 @@
           {% endif %}
           <label class="category-pill-label" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.85rem; background: {{ 'rgba(197, 160, 89, 0.14)' if is_checked else '#FFFFFF' }}; border: 1.5px solid {{ 'var(--gold-primary, #C5A059)' if is_checked else 'var(--border-light, #E2D9CC)' }}; border-radius: 20px; cursor: pointer; font-size: 0.875rem; font-weight: {{ '600' if is_checked else '500' }}; color: {{ '#2A241E' if is_checked else 'var(--text-main, #333)' }}; transition: all 0.2s ease; user-select: none;">
             <input type="checkbox" name="category_ids" value="{{ cat.id }}" {{ 'checked' if is_checked else '' }} style="accent-color: var(--gold-primary, #C5A059); cursor: pointer; width: 16px; height: 16px;">
-
             <span>{{ cat.name }}</span>
           </label>
         {% endfor %}
       </div>
       <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.35rem; display: block;">
         Tip: Check both <em>Fine Fragrances</em> and <em>For Him</em> so this product appears in both collections.
-      </small>
-    </div>
-
-    <div class="form-group">
-      <label for="inspired_by" style="font-weight: 600; font-size: 0.875rem;">
-        Inspired By <span style="color: var(--gold-primary); font-weight: 500;">(Original Designer Brand / Perfume)</span>
-      </label>
-      <input type="text" id="inspired_by" name="inspired_by" value="{{ product.inspired_by if product and product.inspired_by else '' }}" class="form-control" placeholder="e.g. Gucci Flora, Baccarat Rouge 540, Tom Ford Oud Wood">
-      <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.35rem; display: block;">
-        State which designer fragrance this clone is inspired by (e.g. &ldquo;Gucci Flora&rdquo;, &ldquo;Dior Sauvage&rdquo;). Customers will see this badge and can search products by this brand.
       </small>
     </div>
 

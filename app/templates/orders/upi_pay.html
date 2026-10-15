@@ -44,8 +44,8 @@
       <ol style="padding-left: 1.25rem;">
         <li>Open your preferred UPI app and scan the QR code above or pay to <strong>{{ upi_id }}</strong>.</li>
         <li>Ensure the transfer amount is <strong>exactly {{ order.total_amount | currency }}</strong>.</li>
-        <li>Once transferred, copy the <strong>12-digit UTR / UPI Ref ID / Transaction ID</strong> from your banking app.</li>
-        <li>Enter the reference below to link your payment to order #{{ order.order_id }}.</li>
+        <li>Once transferred, locate the <strong>12-digit UTR / UPI Ref ID / Transaction ID</strong> in your banking app.</li>
+        <li>Enter the <strong>last 6 digits</strong> of the UTR below to confirm and finalize your order.</li>
       </ol>
     </div>
 
@@ -53,33 +53,64 @@
     <form method="POST" action="{{ url_for('orders.upi_pay', order_id=order.order_id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-      <div class="form-group">
-        <label for="utr">Bank Reference / UTR Number *</label>
-        <input type="text" id="utr" name="utr" required placeholder="e.g. 328491823901 (12 digits)" class="form-control" style="font-size: 1.05rem; letter-spacing: 0.05em; font-weight: 600;">
-        <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">
-          You will find this in your bank or UPI transaction confirmation screen.
+      <div class="form-group" style="text-align: center;">
+        <label for="utr" style="font-weight: 700; font-size: 0.95rem; display: block; margin-bottom: 0.35rem;">
+          Last 6 Digits of Bank Reference / UTR Number <span style="color: var(--color-danger, #DC2626);">*</span>
+        </label>
+        <div style="display: flex; justify-content: center;">
+          <input type="text" id="utr" name="utr" required maxlength="6" pattern="^\d{6}$" inputmode="numeric" autocomplete="off"
+                 placeholder="e.g. 823901" class="form-control"
+                 style="font-size: 1.25rem; letter-spacing: 0.15em; font-weight: 700; text-align: center; max-width: 260px; padding: 0.65rem;">
+        </div>
+        <small style="color: var(--text-muted); font-size: 0.8rem; display: block; margin-top: 0.5rem; line-height: 1.4;">
+          Enter only the <strong>last 6 digits</strong> from your UPI payment receipt.<br>
+          <span style="font-size: 0.75rem; color: var(--gold-dark);">(If you copy and paste the full 12 digits, the last 6 digits will be filled automatically)</span>
         </small>
       </div>
 
-      <div style="margin: 1.5rem 0; font-size: 0.875rem;">
-        <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer;">
-          <input type="checkbox" required style="margin-top: 0.25rem;">
-          <span>I have completed the payment of <strong>{{ order.total_amount | currency }}</strong> and verified the UTR number.</span>
+      <div style="margin: 1.75rem 0 1.5rem; font-size: 0.875rem;">
+        <label style="display: flex; align-items: flex-start; gap: 0.6rem; cursor: pointer;">
+          <input type="checkbox" required style="margin-top: 0.25rem; accent-color: var(--gold-primary); width: 17px; height: 17px;">
+          <span>I have completed the payment of <strong>{{ order.total_amount | currency }}</strong> and entered the last 6 digits of UTR.</span>
         </label>
       </div>
 
-      <button type="submit" class="btn btn-primary btn-block" style="padding: 1rem; font-size: 1.05rem;">
+      <button type="submit" class="btn btn-primary btn-block" style="padding: 1rem; font-size: 1.05rem; font-weight: 700;">
         Submit Reference &amp; Confirm Order &rarr;
       </button>
-
-      <div style="text-align: center; margin-top: 1rem;">
-        <a href="{{ url_for('orders.order_success', order_id=order.order_id) }}" style="font-size: 0.8125rem; color: var(--text-muted); text-decoration: underline;">
-          I'll enter the reference later
-        </a>
-      </div>
     </form>
 
   </div>
 
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  (function() {
+    const utrInput = document.getElementById('utr');
+    if (!utrInput) return;
+
+    // Filter out non-digits and keep last 6 if entered
+    utrInput.addEventListener('input', function(e) {
+      let val = e.target.value.replace(/\D/g, '');
+      if (val.length > 6) {
+        val = val.slice(-6);
+      }
+      e.target.value = val;
+    });
+
+    // Auto extract last 6 digits when user pastes full 12-digit UTR
+    utrInput.addEventListener('paste', function(e) {
+      e.preventDefault();
+      const pasteText = (e.clipboardData || window.clipboardData).getData('text') || '';
+      const digits = pasteText.replace(/\D/g, '');
+      if (digits.length >= 6) {
+        utrInput.value = digits.slice(-6);
+      } else {
+        utrInput.value = digits;
+      }
+    });
+  })();
+</script>
 {% endblock %}

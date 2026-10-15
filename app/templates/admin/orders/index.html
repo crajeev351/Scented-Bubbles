@@ -119,7 +119,9 @@
               {{ o.payment_status }}
             </span>
             {% if o.latest_payment and o.latest_payment.utr %}
-              <code style="font-size: 0.7rem; color: var(--text-muted);">UTR: {{ o.latest_payment.utr }}</code>
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem;">
+                UTR (6): <strong style="color: var(--gold-dark); letter-spacing: 0.05em; font-size: 0.82rem;">{{ o.latest_payment.utr }}</strong>
+              </div>
             {% endif %}
           </div>
         </td>

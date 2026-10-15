@@ -53,7 +53,7 @@ class User(db.Model):
             conditions.append(Order.shipping_phone == self.phone)
 
         from sqlalchemy import or_
-        query = query.filter(or_(*conditions))
+        query = query.filter(Order.is_confirmed.is_(True), or_(*conditions))
 
         if current_only:
             query = query.filter(Order.order_status.in_([

@@ -211,6 +211,8 @@ CREATE TABLE IF NOT EXISTS orders (
     order_status VARCHAR(24) NOT NULL DEFAULT 'PENDING',
     payment_status VARCHAR(24) NOT NULL DEFAULT 'PENDING_VERIFICATION',
     payment_method VARCHAR(32) NOT NULL,
+    is_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+    notification_sent BOOLEAN NOT NULL DEFAULT FALSE,
     shipping_name VARCHAR(100) NOT NULL,
     shipping_phone VARCHAR(15) NOT NULL,
     shipping_address_line1 VARCHAR(255) NOT NULL,

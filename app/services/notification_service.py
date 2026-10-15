@@ -14,11 +14,40 @@ class NotificationService:
     def notify_order_created(order, brand_name: str = "Scented Bubbles"):
         """Dispatches notifications. CRITICAL: Notification failure must NEVER fail or roll back an order."""
         try:
-            # 1. Admin badge: automatically reflected in DB queries (order_status == PENDING)
-            # 2. Send email notification to store owner if SMTP is configured
+            # 1. Deduplication Guard: Never send order notifications more than once for the same order
+            if getattr(order, "notification_sent", False):
+                logger.info(f"Order notification already dispatched for {order.order_id}; skipping duplicate dispatch.")
+                return
+
+            # 2. Testing Mode Check: Store owner can mute order notifications in Admin Settings while testing
+            from app.models.settings import Setting
+            order_notifs_enabled = Setting.get_value("order_notifications_enabled", "true")
+            if str(order_notifs_enabled).strip().lower() in ("false", "0", "no", "disabled"):
+                logger.info(f"Order notification emails are muted in Store Settings (Testing Mode). Skipping email for order {order.order_id}.")
+                return
+
+            # 3. Retrieve SMTP config and emails
+            smtp_cfg = NotificationService.get_smtp_config()
+            owner_email = (smtp_cfg.get("notification_email") or smtp_cfg.get("user") or "").strip().lower()
+            customer_email = (order.shipping_phone and (order.customer.email if order.customer else "") or "").strip().lower()
+
+            # 4. Send email notification to store owner if SMTP is configured
             NotificationService._send_email_notification(order, brand_name)
-            # 3. Send customer order confirmation email if customer provided an email address
-            NotificationService.send_customer_order_confirmation(order, brand_name)
+
+            # 5. Send customer order confirmation email ONLY if customer provided an email address
+            # AND if customer email is not the exact same address as the owner alert email.
+            # When owners test orders using their own email address, sending both floods the inbox!
+            if customer_email:
+                if customer_email != owner_email:
+                    NotificationService.send_customer_order_confirmation(order, brand_name)
+                else:
+                    logger.info(f"Customer email is identical to store owner alert email ({customer_email}); sent single owner notification to avoid duplicate testing emails in inbox.")
+
+            # 6. Flag notification as sent and commit to permanently block duplicate sends
+            order.notification_sent = True
+            from app.extensions import db
+            db.session.commit()
+
         except Exception as e:
             # Strictly catch all exceptions, log and proceed
             logger.exception(f"Notification dispatch failed for order {order.order_id}: {e}")
@@ -60,6 +89,9 @@ class NotificationService:
     def test_smtp_connection(test_recipient: str = None) -> tuple[bool, str]:
         """Tests SMTP credentials and optionally sends a verification email."""
         try:
+            if current_app and current_app.config.get("TESTING"):
+                return True, "SMTP test simulated successfully in testing environment."
+
             smtp_cfg = NotificationService.get_smtp_config()
             smtp_host = smtp_cfg["host"]
             smtp_user = smtp_cfg["user"]
@@ -101,6 +133,11 @@ class NotificationService:
     def _send_smtp_message(to_email: str, subject: str, body_text: str):
         """Low-level helper to send an SMTP email using dynamic app configuration."""
         try:
+            # In testing/pytest mode, strictly suppress real SMTP connections and external email delivery
+            if current_app and current_app.config.get("TESTING"):
+                logger.info(f"[TESTING MODE] Suppressed email to {to_email}. Subject: '{subject}'")
+                return True
+
             smtp_cfg = NotificationService.get_smtp_config()
             smtp_host = smtp_cfg["host"]
             smtp_user = smtp_cfg["user"]
@@ -136,23 +173,36 @@ class NotificationService:
             smtp_cfg = NotificationService.get_smtp_config()
             to_email = smtp_cfg.get("notification_email")
             if not to_email:
-                return
+                return False
 
-            subject = f"[{brand_name}] New Order #{order.order_id} Received (₹{order.total_amount})"
+            latest_pay = order.latest_payment
+            utr_line = f"Bank UTR (Last 6 Digits): {latest_pay.utr}\n" if (latest_pay and latest_pay.utr) else ""
+
+            items_lines = []
+            for item in order.items:
+                items_lines.append(f"  • {item.product_name_snapshot} ({item.variant_label_snapshot}) x {item.quantity} - ₹{item.total_price}")
+            items_text = "\n".join(items_lines) if items_lines else "  No line items snapshot."
+
+            subject = f"[{brand_name}] New Confirmed Order #{order.order_id} Received (₹{order.total_amount})"
             body = (
-                f"New Order Received at {brand_name}!\n\n"
+                f"New Confirmed Order Received at {brand_name}!\n\n"
                 f"Order ID: {order.order_id}\n"
                 f"Customer: {order.shipping_name} ({order.shipping_phone})\n"
                 f"Total Amount: ₹{order.total_amount}\n"
-                f"Payment Method: {order.payment_method} ({order.payment_status})\n"
+                f"Payment Method: {order.payment_method}\n"
+                f"{utr_line}"
                 f"Shipping Address:\n"
                 f"{order.shipping_address_line1}, {order.shipping_city}, {order.shipping_state} - {order.shipping_pincode}\n\n"
-                f"Review order in your admin dashboard."
+                f"Ordered Items:\n{items_text}\n\n"
+                f"Review and verify this order in your admin dashboard."
             )
             if NotificationService._send_smtp_message(to_email, subject, body):
                 logger.info(f"Store owner notification email sent for order {order.order_id}")
+                return True
+            return False
         except Exception as e:
             logger.warning(f"Failed to send owner notification email for {order.order_id}: {e}")
+            return False
 
     @staticmethod
     def send_customer_order_confirmation(order, brand_name: str = "Scented Bubbles"):
@@ -160,15 +210,19 @@ class NotificationService:
         try:
             customer_email = order.shipping_email or (order.customer.email if order.customer else None)
             if not customer_email:
-                return
+                return False
+
+            latest_pay = order.latest_payment
+            utr_line = f"Payment Reference (Last 6 Digits): {latest_pay.utr}\n" if (latest_pay and latest_pay.utr) else ""
 
             subject = f"Your Order Confirmation #{order.order_id} - {brand_name}"
             body = (
                 f"Hello {order.shipping_name},\n\n"
-                f"Thank you for shopping with {brand_name}! We have received your order.\n\n"
+                f"Thank you for shopping with {brand_name}! We have received and confirmed your order.\n\n"
                 f"Order ID: {order.order_id}\n"
                 f"Total: ₹{order.total_amount}\n"
                 f"Payment Method: {order.payment_method}\n"
+                f"{utr_line}"
                 f"Shipping Address:\n"
                 f"{order.shipping_address_line1}, {order.shipping_city}, {order.shipping_state} - {order.shipping_pincode}\n\n"
                 f"You can track your order status anytime through your account.\n\n"
@@ -177,8 +231,11 @@ class NotificationService:
             )
             if NotificationService._send_smtp_message(customer_email, subject, body):
                 logger.info(f"Customer confirmation email sent to {customer_email} for order {order.order_id}")
+                return True
+            return False
         except Exception as e:
             logger.warning(f"Failed to send customer order confirmation email: {e}")
+            return False
 
     @staticmethod
     def send_password_reset_email(to_email: str, reset_url: str, brand_name: str = "Scented Bubbles"):

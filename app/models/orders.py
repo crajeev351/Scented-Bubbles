@@ -7,6 +7,7 @@ class Order(db.Model):
     __tablename__ = "orders"
 
     # Status State Machines
+    STATUS_AWAITING_PAYMENT = "AWAITING_PAYMENT"
     STATUS_PENDING = "PENDING"
     STATUS_CONFIRMED = "CONFIRMED"
     STATUS_PACKED = "PACKED"
@@ -14,6 +15,7 @@ class Order(db.Model):
     STATUS_DELIVERED = "DELIVERED"
     STATUS_CANCELLED = "CANCELLED"
     ORDER_STATUSES = [
+        STATUS_AWAITING_PAYMENT,
         STATUS_PENDING,
         STATUS_CONFIRMED,
         STATUS_PACKED,
@@ -47,6 +49,16 @@ class Order(db.Model):
     order_status = db.Column(db.String(24), default=STATUS_PENDING, nullable=False, index=True)
     payment_status = db.Column(db.String(24), default=PAYMENT_PENDING_VERIFICATION, nullable=False, index=True)
     payment_method = db.Column(db.String(32), nullable=False)  # "MANUAL_UPI" or "COD"
+
+    # Order Confirmation & Anti-Notification-Flooding Flags
+    is_confirmed = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    notification_sent = db.Column(db.Boolean, default=False, nullable=False)
+
+    def __init__(self, **kwargs):
+        if "is_confirmed" not in kwargs:
+            st = kwargs.get("order_status", self.STATUS_PENDING)
+            kwargs["is_confirmed"] = (st != self.STATUS_AWAITING_PAYMENT)
+        super().__init__(**kwargs)
 
     # Shipping Address Snapshot
     shipping_name = db.Column(db.String(100), nullable=False)
@@ -109,7 +121,7 @@ class Order(db.Model):
     @property
     def is_cancellable(self) -> bool:
         """Orders can be cancelled before packing/shipping."""
-        return self.order_status in (self.STATUS_PENDING, self.STATUS_CONFIRMED)
+        return self.order_status in (self.STATUS_AWAITING_PAYMENT, self.STATUS_PENDING, self.STATUS_CONFIRMED)
 
     # IST Convenience Properties
     @property

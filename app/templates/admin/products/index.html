@@ -52,7 +52,6 @@
       <tr>
         <th style="width: 50px;">Image</th>
         <th>Product &amp; Category</th>
-        <th style="max-width: 170px;">Inspired By</th>
         <th style="min-width: 290px;">Variants (Quick Price &amp; Stock Edit)</th>
         <th style="text-align: center; width: 90px; white-space: nowrap;">Status</th>
         <th style="text-align: right; width: 140px; white-space: nowrap;">Actions</th>
@@ -84,15 +83,6 @@
             {% if p.featured %}<span class="badge-tag" style="position: static; font-size: 0.65rem; padding: 1px 6px;">Featured</span>{% endif %}
             {% if p.bestseller %}<span class="badge-tag" style="position: static; font-size: 0.65rem; padding: 1px 6px; background: var(--gold-primary); color: #fff;">Bestseller</span>{% endif %}
           </div>
-        </td>
-        <td style="font-size: 0.8125rem; color: var(--text-muted); max-width: 170px;">
-          {% if p.inspired_by %}
-            <span style="display: inline-block; background: rgba(197, 160, 89, 0.12); color: #8C6D23; padding: 0.2rem 0.55rem; border-radius: var(--radius-pill); font-weight: 700; font-size: 0.78rem; border: 1px solid rgba(197, 160, 89, 0.25);">
-              {{ p.inspired_by if 'inspired' in p.inspired_by.lower() else 'Inspired by ' ~ p.inspired_by }}
-            </span>
-          {% else %}
-            <span style="color: var(--text-light); font-style: italic;">—</span>
-          {% endif %}
         </td>
         <td style="min-width: 290px;">
           {# Quick Price & Stock Update Form per variant #}

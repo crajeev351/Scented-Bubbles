@@ -23,6 +23,19 @@ from app.utils.security import get_safe_redirect_url
 
 account_bp = Blueprint("account", __name__, url_prefix="/account")
 
+CUSTOMER_SESSION_KEYS = (
+    "user_id",
+    "user_name",
+    "recent_order_id",
+    "checkout_idempotency_token",
+)
+
+
+def clear_customer_session():
+    """Clears customer session keys without destroying active admin session in another tab."""
+    for key in CUSTOMER_SESSION_KEYS:
+        session.pop(key, None)
+
 
 def customer_required(f):
     """Decorator ensuring request has an authenticated customer session."""
@@ -37,8 +50,7 @@ def customer_required(f):
         
         user = db.session.get(User, session["user_id"])
         if not user or not user.is_active:
-            session.pop("user_id", None)
-            session.pop("user_name", None)
+            clear_customer_session()
             flash("Account session expired or account disabled.", "warning")
             return redirect(url_for("account.login"))
             
@@ -134,8 +146,8 @@ def register():
 
         db.session.commit()
 
-        # Rotate session to prevent session fixation
-        session.clear()
+        # Clear previous customer session while keeping any active admin session intact
+        clear_customer_session()
         session["user_id"] = new_user.id
         session["user_name"] = new_user.name or new_user.phone
         session.permanent = True
@@ -183,8 +195,8 @@ def login():
                 flash("Your account has been deactivated. Please contact customer support.", "error")
                 return render_template("account/login.html", identifier=identifier, brand_name=brand_name, next_url=clean_next)
 
-            # Rotate session to prevent session fixation
-            session.clear()
+            # Clear previous customer session while keeping any active admin session intact
+            clear_customer_session()
             session["user_id"] = user.id
             session["user_name"] = user.name or user.phone or user.email
             session.permanent = True
@@ -200,7 +212,7 @@ def login():
 @account_bp.route("/logout")
 def logout():
     """Customer sign out."""
-    session.clear()
+    clear_customer_session()
     flash("You have been signed out successfully.", "info")
     return redirect(url_for("main.index"))
 
@@ -363,6 +375,7 @@ def quick_signup():
     db.session.commit()
 
     # Log in immediately
+    clear_customer_session()
     session["user_id"] = new_user.id
     session["user_name"] = new_user.name
     session.permanent = True

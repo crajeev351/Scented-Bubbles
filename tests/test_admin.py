@@ -245,7 +245,7 @@ def test_admin_manual_checklist_flow(client, app, sample_catalog):
     assert add_prod_res.status_code == 200
 
     with app.app_context():
-        new_prod = Product.query.filter_by(name="Amber Rose Elixir").first()
+        new_prod = Product.query.filter(Product.name.ilike("%Amber Rose Elixir%")).first()
         assert new_prod is not None
         assert len(new_prod.variants) == 2
         v1 = [v for v in new_prod.variants if v.sku == "ARE-50ML"][0]
@@ -509,85 +509,79 @@ def test_product_multiple_categories_create_and_edit(app, auth_client):
     assert b"Balmain Paris Special" in res_c3_after.data
 
 
-def test_product_inspired_by_field_and_search(app, auth_client):
-    """Test inspired_by field creation, editing, detail view, catalog search and live search."""
+def test_product_inspired_perfume_naming_and_search(app, auth_client):
+    """Test product name automatically ending with 'Inspired Perfume', removal of inspired_by, and name-based search."""
     with app.app_context():
         cat = Category(name="Fine Fragrances", slug="fine-fragrances", active=True)
         db.session.add(cat)
         db.session.commit()
         cat_id = cat.id
 
-    # 1. Create a clone perfume with a creative product name and "inspired by gucci flora"
+    # 1. Create a perfume with a name
     create_res = auth_client.post("/admin/products/new", data={
-        "name": "Gardenia Blossom Luxe",
-        "slug": "gardenia-blossom-luxe",
+        "name": "Burberry Weekend",
+        "slug": "burberry-weekend",
         "category_ids": [str(cat_id)],
-        "inspired_by": "Gucci Flora Gorgeous Gardenia",
-        "short_description": "Delicate white floral clone",
+        "short_description": "Delicate fresh fragrance",
         "active": "1",
         "variant_label[]": ["50ml EDP"],
-        "variant_sku[]": ["GBL-50ML"],
+        "variant_sku[]": ["BW-50ML"],
         "variant_price[]": ["1499.00"],
         "variant_stock[]": ["20"],
     }, follow_redirects=True)
     assert create_res.status_code == 200
 
     with app.app_context():
-        prod = Product.query.filter_by(slug="gardenia-blossom-luxe").first()
+        prod = Product.query.filter_by(slug="burberry-weekend").first()
         assert prod is not None
-        assert prod.inspired_by == "Gucci Flora Gorgeous Gardenia"
+        # Product name must end with 'Inspired Perfume'
+        assert prod.name == "Burberry Weekend Inspired Perfume"
+        assert prod.inspired_by is None
         prod_id = prod.id
 
-    # 2. Search catalog by inspired_by brand "Gucci"
-    search_res = auth_client.get("/products?q=Gucci")
+    # 2. Search catalog by product name "Burberry"
+    search_res = auth_client.get("/products?q=Burberry")
     assert search_res.status_code == 200
-    assert b"Gardenia Blossom Luxe" in search_res.data
-    assert b"Gucci Flora" in search_res.data
+    assert b"Burberry Weekend Inspired Perfume" in search_res.data
 
-    # 3. Live search /search?q=gucci
-    live_res = auth_client.get("/search?q=gucci")
+    # 3. Live search /search?q=burberry
+    live_res = auth_client.get("/search?q=burberry")
     assert live_res.status_code == 200
     live_data = live_res.get_json()
     assert len(live_data) >= 1
-    matched = next((item for item in live_data if item["slug"] == "gardenia-blossom-luxe"), None)
+    matched = next((item for item in live_data if item["slug"] == "burberry-weekend"), None)
     assert matched is not None
-    assert "Gucci Flora" in matched["inspired_by"]
+    assert matched["name"] == "Burberry Weekend Inspired Perfume"
 
-    # 4. View product detail page shows inspired_by badge, no notes breakdown, and no family
-    detail_res = auth_client.get("/products/gardenia-blossom-luxe")
+    # 4. View product detail page shows full name, but NO inspired_by badge
+    detail_res = auth_client.get("/products/burberry-weekend")
     assert detail_res.status_code == 200
-    assert b"Gucci Flora Gorgeous Gardenia" in detail_res.data
-    assert b"Olfactory Structure &amp; Notes" not in detail_res.data
-    assert b"Family:" not in detail_res.data
+    assert b"Burberry Weekend Inspired Perfume" in detail_res.data
+    assert b"Inspired by " not in detail_res.data
 
-    # Check admin edit form: no notes fields or fragrance family
+    # Check admin edit form: no inspired_by input field
     form_res = auth_client.get(f"/admin/products/{prod_id}/edit")
     assert form_res.status_code == 200
-    assert b"Top Notes" not in form_res.data
-    assert b"Heart Notes" not in form_res.data
-    assert b"Base Notes" not in form_res.data
-    assert b"Fragrance Family" not in form_res.data
-    assert b"Inspired By" in form_res.data
+    assert b'id="inspired_by"' not in form_res.data
 
-    # Check admin list: 'Inspired By' header without '/ Notes'
+    # Check admin list: no 'Inspired By' table header
     list_res = auth_client.get("/admin/products")
     assert list_res.status_code == 200
-    assert b"Inspired By</th>" in list_res.data
-    assert b"Inspired By / Notes" not in list_res.data
+    assert b"Inspired By</th>" not in list_res.data
 
-    # 5. Edit inspired_by field
+    # 5. Edit product name
     edit_res = auth_client.post(f"/admin/products/{prod_id}/edit", data={
-        "name": "Gardenia Blossom Luxe",
-        "slug": "gardenia-blossom-luxe",
+        "name": "Burberry Weekend London",
+        "slug": "burberry-weekend",
         "category_ids": [str(cat_id)],
-        "inspired_by": "Gucci Flora Emerald",
         "active": "1",
     }, follow_redirects=True)
     assert edit_res.status_code == 200
 
     with app.app_context():
         updated = db.session.get(Product, prod_id)
-        assert updated.inspired_by == "Gucci Flora Emerald"
+        assert updated.name == "Burberry Weekend London Inspired Perfume"
+        assert updated.inspired_by is None
 
 
 def test_product_low_stock_and_out_of_stock_frontend_alerts(app, auth_client, client):

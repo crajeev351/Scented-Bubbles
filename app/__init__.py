@@ -120,6 +120,36 @@ def create_app(config_name=None, config_override=None):
         except Exception as e:
             app.logger.warning(f"Admin column migration warning: {e}")
 
+    # Auto-migrate orders table for confirmation and notification tracking columns
+    with app.app_context():
+        try:
+            from sqlalchemy import inspect, text
+            inspector = inspect(db.engine)
+            dialect_name = db.engine.dialect.name
+            bool_default = "TRUE" if dialect_name == "postgresql" else "1"
+            if "orders" in inspector.get_table_names():
+                existing_cols = {col["name"] for col in inspector.get_columns("orders")}
+                with db.engine.connect() as conn:
+                    if "is_confirmed" not in existing_cols:
+                        conn.execute(text(f"ALTER TABLE orders ADD COLUMN is_confirmed BOOLEAN NOT NULL DEFAULT {bool_default}"))
+                    if "notification_sent" not in existing_cols:
+                        conn.execute(text(f"ALTER TABLE orders ADD COLUMN notification_sent BOOLEAN NOT NULL DEFAULT {bool_default}"))
+                    conn.commit()
+        except Exception as e:
+            app.logger.warning(f"Orders column migration warning: {e}")
+
+    # Auto-format product names to end with 'Inspired Perfume' and clear inspired_by
+    with app.app_context():
+        try:
+            from app.models.products import Product
+            prods = Product.query.filter(~Product.name.ilike("%inspired perfume")).all()
+            if prods:
+                for p in prods:
+                    p.name = f"{p.name.strip()} Inspired Perfume"
+                db.session.commit()
+        except Exception:
+            pass
+
     # Register CLI commands
     from app.cli import (
         create_admin_command,
@@ -152,6 +182,13 @@ def create_app(config_name=None, config_override=None):
     app.register_blueprint(orders_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(account_bp)
+
+    # Session Lifecycle: Preserve active sessions (admin and customer) with permanent lifetime
+    @app.before_request
+    def ensure_session_permanence():
+        from flask import session
+        if session.get("admin_id") or session.get("user_id"):
+            session.permanent = True
 
     # Global Context Processors
     @app.context_processor

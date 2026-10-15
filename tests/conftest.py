@@ -13,6 +13,9 @@ from app.services.cache_service import cache
 def app():
     """Create and configure a clean testing application instance."""
     app = create_app("testing")
+    app.config["SMTP_HOST"] = ""
+    app.config["SMTP_USER"] = ""
+    app.config["SMTP_PASSWORD"] = ""
     with app.app_context():
         db.create_all()
         # Default store settings
