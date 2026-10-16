@@ -171,6 +171,33 @@ def test_admin_settings_update_brand_name(auth_client, app):
         assert Setting.get_value("free_delivery_threshold") == "799.00"
 
 
+def test_admin_settings_update_homepage_title(auth_client, app):
+    """Admin updates homepage_title; storefront homepage reflects custom title tag immediately."""
+    # 1. Unset initially, defaults to Artisanal Fine Fragrances & Car Perfumes
+    res = auth_client.get("/")
+    assert res.status_code == 200
+    assert b"Artisanal Fine Fragrances" in res.data
+
+    # 2. Update via admin settings
+    res_post = auth_client.post("/admin/settings", data={
+        "company_name": "Scented Bubbles",
+        "homepage_title": "Luxury Eau de Parfums & Car Diffusers",
+        "homepage_meta_description": "Exclusive artisanal fragrances crafted in small batches.",
+        "support_whatsapp": "919999888877",
+        "support_email": "hello@scentedbubbles.com",
+        "delivery_charge": "40.00",
+        "free_delivery_threshold": "799.00",
+        "cod_enabled": "true",
+    }, follow_redirects=True)
+    assert res_post.status_code == 200
+
+    # 3. Storefront homepage now reflects new title
+    res_home = auth_client.get("/")
+    assert res_home.status_code == 200
+    assert b"Luxury Eau de Parfums &amp; Car Diffusers | Scented Bubbles" in res_home.data or b"Luxury Eau de Parfums & Car Diffusers | Scented Bubbles" in res_home.data
+    assert b"Exclusive artisanal fragrances crafted in small batches." in res_home.data
+
+
 def test_login_rate_limiting():
     """Admin login endpoint must enforce rate limiting (5 per minute)."""
     from app import create_app

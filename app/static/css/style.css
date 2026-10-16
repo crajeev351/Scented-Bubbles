@@ -3,27 +3,111 @@
    Palette: Warm Ivory, Champagne Gold, Soft Rose Mist, Refined Charcoal
    ========================================================================== */
 
-/* High-Speed Native Cross-Document View Transitions */
-@view-transition {
-  navigation: auto;
+/* ==========================================================================
+   LUXURY SKELETON LOADING SYSTEM (Web & Mobile)
+   Smooth 60fps shimmer effect matching the champagne/warm ivory luxury theme
+   ========================================================================== */
+@keyframes luxury-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
-::view-transition-old(root) {
-  animation: 140ms cubic-bezier(0.16, 1, 0.3, 1) both fade-out;
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #F4EFEB 0%,
+    #EBE3DB 30%,
+    #F8F4EE 50%,
+    #EBE3DB 70%,
+    #F4EFEB 100%
+  );
+  background-size: 200% 100%;
+  animation: luxury-shimmer 1.6s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+  display: block;
 }
 
-::view-transition-new(root) {
-  animation: 200ms cubic-bezier(0.16, 1, 0.3, 1) both fade-in;
+.skeleton-dark {
+  background: linear-gradient(
+    90deg,
+    #1E1C1A 0%,
+    #2B2825 30%,
+    #383430 50%,
+    #2B2825 70%,
+    #1E1C1A 100%
+  );
+  background-size: 200% 100%;
+  animation: luxury-shimmer 1.6s ease-in-out infinite;
+  border-radius: var(--radius-sm);
 }
 
-@keyframes fade-out {
-  from { opacity: 1; transform: scale(1); }
-  to { opacity: 0; transform: scale(0.998); }
+/* Image skeleton wrapper & smooth fade-in */
+.img-skeleton-wrap,
+.card-img-wrap,
+.gallery-main,
+.cart-item-img {
+  position: relative;
+  overflow: hidden;
+  background-color: #F4EFEB;
 }
 
-@keyframes fade-in {
-  from { opacity: 0; transform: scale(1.002); }
-  to { opacity: 1; transform: scale(1); }
+.card-img-wrap::before,
+.gallery-main::before,
+.cart-item-img::before,
+.img-skeleton-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(244, 239, 235, 0.4) 0%,
+    rgba(255, 255, 255, 0.75) 50%,
+    rgba(244, 239, 235, 0.4) 100%
+  );
+  background-size: 200% 100%;
+  animation: luxury-shimmer 1.5s infinite;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.35s ease;
+}
+
+.card-img-wrap.loaded::before,
+.gallery-main.loaded::before,
+.cart-item-img.loaded::before,
+.img-skeleton-wrap.loaded::before {
+  opacity: 0;
+  animation: none;
+  visibility: hidden;
+}
+
+.card-img-wrap img,
+.gallery-main img,
+.cart-item-img img,
+.img-skeleton-wrap img {
+  opacity: 0;
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s ease;
+}
+
+.card-img-wrap img.loaded,
+.gallery-main img.loaded,
+.cart-item-img img.loaded,
+.img-skeleton-wrap img.loaded,
+.card-img-wrap.loaded img,
+.gallery-main.loaded img,
+.cart-item-img.loaded img,
+.img-skeleton-wrap.loaded img {
+  opacity: 1;
+}
+
+/* 60/120 FPS Mobile Scroll Optimization (Bypasses rendering of off-screen DOM until scrolled) */
+.section-deferred {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 520px;
 }
 
 :root {
@@ -77,7 +161,9 @@
 
 html {
   font-size: 16px;
-  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
@@ -1151,7 +1237,7 @@ body.drawer-open {
   position: relative;
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: var(--bg-surface);
+  background: #181715; /* Luxury obsidian fallback - never flat dull grey */
   border: 1px solid var(--border-light);
   padding: 1.15rem 1.35rem;
   display: flex;
@@ -1163,12 +1249,43 @@ body.drawer-open {
   background-repeat: no-repeat;
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
   text-decoration: none;
+  isolation: isolate;
+  contain: paint;
 }
 
 .category-card:hover {
   transform: translateY(-2px);
   border-color: var(--gold-primary);
   box-shadow: 0 8px 24px rgba(36, 34, 32, 0.1);
+}
+
+.category-card-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.category-card:hover .category-card-bg {
+  transform: scale(1.04);
+}
+
+.category-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(14, 13, 11, 0.82) 0%, rgba(14, 13, 11, 0.48) 60%, rgba(14, 13, 11, 0.22) 100%);
+  pointer-events: none;
+  z-index: 2;
+  border-radius: inherit;
+  transition: background 0.25s ease;
+}
+
+.category-card:hover .category-card-overlay {
+  background: linear-gradient(90deg, rgba(14, 13, 11, 0.88) 0%, rgba(14, 13, 11, 0.55) 60%, rgba(14, 13, 11, 0.28) 100%);
 }
 
 .category-card.has-bg-image {
@@ -1179,20 +1296,20 @@ body.drawer-open {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(14, 13, 11, 0.76) 0%, rgba(14, 13, 11, 0.42) 60%, rgba(14, 13, 11, 0.2) 100%);
+  background: linear-gradient(90deg, rgba(14, 13, 11, 0.82) 0%, rgba(14, 13, 11, 0.48) 60%, rgba(14, 13, 11, 0.22) 100%);
   pointer-events: none;
-  z-index: 1;
+  z-index: 2;
   border-radius: inherit;
   transition: background 0.25s ease;
 }
 
 .category-card:hover.has-bg-image::before {
-  background: linear-gradient(90deg, rgba(14, 13, 11, 0.82) 0%, rgba(14, 13, 11, 0.5) 60%, rgba(14, 13, 11, 0.25) 100%);
+  background: linear-gradient(90deg, rgba(14, 13, 11, 0.88) 0%, rgba(14, 13, 11, 0.55) 60%, rgba(14, 13, 11, 0.28) 100%);
 }
 
 .category-card-inner {
   position: relative;
-  z-index: 2;
+  z-index: 3;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -2667,12 +2784,24 @@ html, body {
   }
 
   .category-card {
-    padding: 1.5rem;
-    min-height: 220px;
+    padding: 1.35rem 1.25rem;
+    min-height: 195px;
   }
 
   .category-card-title {
     font-size: 1.45rem;
+  }
+
+  /* GPU Layer Acceleration for 60/120 FPS Mobile Touch Scrolling */
+  .site-header,
+  .hero-slides-track,
+  .product-card,
+  .category-card,
+  .combo-card {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
   }
 
   .combo-body {

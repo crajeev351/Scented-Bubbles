@@ -34,6 +34,20 @@
 
     <div class="form-row">
       <div class="form-group">
+        <label for="homepage_title">Homepage Title (Browser Tab &amp; URL Title)</label>
+        <input type="text" id="homepage_title" name="homepage_title" value="{{ settings.get('homepage_title', 'Artisanal Fine Fragrances & Car Perfumes') }}" class="form-control" placeholder="e.g. Artisanal Fine Fragrances &amp; Car Perfumes">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Displayed in browser tabs, address bar suggestions, and bookmarks: <code>[Title] | {{ brand_name }}</code></small>
+      </div>
+
+      <div class="form-group">
+        <label for="homepage_meta_description">Homepage Meta Description (SEO)</label>
+        <input type="text" id="homepage_meta_description" name="homepage_meta_description" value="{{ settings.get('homepage_meta_description', '') }}" class="form-control" placeholder="e.g. Experience luxury Eau de Parfums and handcrafted car diffusers...">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Summary snippet shown in Google search results below your link</small>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
         <label for="support_whatsapp">WhatsApp Support Number *</label>
         <input type="text" id="support_whatsapp" name="support_whatsapp" value="{{ settings.get('support_whatsapp', '') }}" required class="form-control" placeholder="e.g. 919876543210 (country code + 10 digits)">
         <small style="color: var(--text-muted); font-size: 0.75rem;">Used for customer click-to-chat links on order success</small>

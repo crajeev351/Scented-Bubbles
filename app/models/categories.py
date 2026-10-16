@@ -32,11 +32,19 @@ class Category(db.Model):
 
     @property
     def display_image_url(self) -> str:
-        """Category card background image URL (medium size 800x450)."""
+        """Category card background image URL (medium size 800x450) with intelligent themed fallbacks."""
         if self.image_url:
             from app.services.image_service import get_image_url
             return get_image_url(self.image_url, size="medium")
-        return ""
+        slug_low = (self.slug or "").lower()
+        name_low = (self.name or "").lower()
+        if "car" in slug_low or "car" in name_low:
+            return "/static/images/car_sample.webp"
+        if "him" in slug_low or "men" in slug_low:
+            return "/static/images/perfume_velvet_oud.webp"
+        if "her" in slug_low or "women" in slug_low:
+            return "/static/images/perfume_iris_musk.webp"
+        return "/static/images/perfume_sample.webp"
 
     def __repr__(self):
         return f"<Category {self.name}>"

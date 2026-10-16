@@ -18,8 +18,8 @@
   <div class="combo-grid">
     {% for combo in combos %}
     <div class="combo-card">
-      <a href="{{ url_for('products.combo_detail', slug=combo.slug) }}" class="card-img-wrap">
-        <img src="{{ combo.thumbnail_url }}" {% if combo.image_srcset %}srcset="{{ combo.image_srcset }}" sizes="(max-width: 768px) 100vw, 400px"{% endif %} alt="{{ combo.name }}" loading="lazy" width="400" height="400">
+      <a href="{{ url_for('products.combo_detail', slug=combo.slug) }}" class="card-img-wrap img-skeleton-wrap">
+        <img src="{{ combo.thumbnail_url }}" {% if combo.image_srcset %}srcset="{{ combo.image_srcset }}" sizes="(max-width: 768px) 100vw, 400px"{% endif %} alt="{{ combo.name }}" loading="lazy" decoding="async" width="400" height="400">
         {% if combo.savings > 0 %}
           <span class="badge-discount">Save {{ combo.savings | currency }}</span>
         {% endif %}

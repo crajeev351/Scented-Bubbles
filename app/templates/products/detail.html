@@ -27,8 +27,8 @@
     
     {# Left: Gallery #}
     <div class="detail-gallery">
-      <div class="gallery-main">
-        <img id="main-product-img" src="{{ product.primary_image_url }}" {% if product.primary_image_srcset %}srcset="{{ product.primary_image_srcset }}" sizes="(max-width: 768px) 100vw, 600px"{% endif %} alt="{{ product.name }}" fetchpriority="high" width="800" height="800">
+      <div class="gallery-main img-skeleton-wrap">
+        <img id="main-product-img" src="{{ product.primary_image_url }}" {% if product.primary_image_srcset %}srcset="{{ product.primary_image_srcset }}" sizes="(max-width: 768px) 100vw, 600px"{% endif %} alt="{{ product.name }}" fetchpriority="high" decoding="async" width="800" height="800">
       </div>
       {% if product.images|length > 1 %}
         <div class="gallery-thumbs-wrapper">
@@ -37,11 +37,11 @@
           </button>
           <div class="gallery-thumbs" id="gallery-thumbs-container">
             {% for img in product.images %}
-              <div class="gallery-thumb-item {% if loop.first %}active{% endif %}"
+              <div class="gallery-thumb-item img-skeleton-wrap {% if loop.first %}active{% endif %}"
                    data-img-url="{{ img.image_url }}"
                    data-img-srcset="{{ img.srcset }}"
                    onclick="selectProductImage(this, '{{ img.image_url }}', '{{ img.srcset }}');">
-                <img src="{{ img.thumbnail_url }}" alt="{{ img.alt_text or product.name }}" loading="lazy" width="72" height="72">
+                <img src="{{ img.thumbnail_url }}" alt="{{ img.alt_text or product.name }}" loading="lazy" decoding="async" width="72" height="72">
               </div>
             {% endfor %}
           </div>
@@ -208,8 +208,8 @@
     <div class="product-grid">
       {% for rel in related_products %}
       <div class="product-card">
-        <a href="{{ url_for('products.product_detail', slug=rel.slug) }}" class="card-img-wrap">
-          <img src="{{ rel.thumbnail_url }}" {% if rel.primary_image_srcset %}srcset="{{ rel.primary_image_srcset }}" sizes="(max-width: 768px) 50vw, 300px"{% endif %} alt="{{ rel.name }}" loading="lazy" width="400" height="400">
+        <a href="{{ url_for('products.product_detail', slug=rel.slug) }}" class="card-img-wrap img-skeleton-wrap">
+          <img src="{{ rel.thumbnail_url }}" {% if rel.primary_image_srcset %}srcset="{{ rel.primary_image_srcset }}" sizes="(max-width: 768px) 50vw, 300px"{% endif %} alt="{{ rel.name }}" loading="lazy" decoding="async" width="400" height="400">
           {% if not rel.in_stock %}
             <span class="badge-tag" style="background: #C62828; color: #fff; font-weight: 700;">Out of Stock</span>
           {% elif rel.default_variant and rel.default_variant.stock <= 5 %}

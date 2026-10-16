@@ -26,22 +26,18 @@
   {# Custom CSS Design System (Zero external frameworks) with asset versioning #}
   <link rel="stylesheet" href="{{ asset_url('css/style.css') }}">
   
-  {# W3C Speculation Rules: Instant native background prefetching for lightning page navigation #}
+  {# Lightweight Speculation Rules: Prefetches on explicit link hover only, protecting mobile bandwidth #}
   <script type="speculationrules">
   {
     "prefetch": [
-      {
-        "source": "list",
-        "urls": ["/products", "/combos", "/orders/track", "/about", "/contact"],
-        "eagerness": "moderate"
-      },
       {
         "where": {
           "and": [
             { "href_matches": "/*" },
             { "not": { "href_matches": "/admin/*" } },
             { "not": { "href_matches": "/checkout/*" } },
-            { "not": { "href_matches": "/account/*" } }
+            { "not": { "href_matches": "/account/*" } },
+            { "not": { "href_matches": "/cart/*" } }
           ]
         },
         "eagerness": "conservative"

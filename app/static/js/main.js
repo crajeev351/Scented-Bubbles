@@ -121,6 +121,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const SCROLL_THRESHOLD = 8; // min delta px to avoid micro-jitter
     const TOP_OFFSET = 60; // offset before hide/reveal activates
 
+    let cachedHeaderHeight = siteHeader.offsetHeight || 64;
+    window.addEventListener('resize', () => {
+      cachedHeaderHeight = siteHeader.offsetHeight || 64;
+    }, { passive: true });
+
     function updateHeaderOnScroll() {
       const currentScrollY = Math.max(0, window.pageYOffset || document.documentElement.scrollTop);
       const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
@@ -156,9 +161,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const delta = currentScrollY - lastScrollY;
 
-      // Lock wrapper height once scrolled to prevent page layout jump
+      // Lock wrapper height once scrolled using cached dimension to avoid layout thrashing
       if (headerWrapper && (!headerWrapper.style.minHeight || headerWrapper.style.minHeight === '0px')) {
-        headerWrapper.style.minHeight = siteHeader.offsetHeight + 'px';
+        headerWrapper.style.minHeight = cachedHeaderHeight + 'px';
       }
 
       // Check threshold to avoid micro-scroll jitter
@@ -535,13 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, { passive: true });
 
-    document.addEventListener('touchstart', (e) => {
-      const anchor = e.target.closest('a[href]');
-      if (anchor) {
-        const href = anchor.getAttribute('href');
-        if (canPrefetch(href)) prefetchUrl(href);
-      }
-    }, { passive: true });
+    // Note: Touchstart prefetch disabled on mobile to prevent network choking during touch scrolling
 
     document.addEventListener('click', (e) => {
       const anchor = e.target.closest('a[href]');
@@ -570,5 +569,39 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   })();
+
+  // =========================================================================
+  // 7. Universal Skeleton Loading & Image Smooth Fade-In System
+  // Eliminates white/grey gaps and sudden layout shifts (CLS) on web & mobile
+  // =========================================================================
+  function initImageSkeletons() {
+    const targets = document.querySelectorAll('.card-img-wrap img, .gallery-main img, .cart-item-img img, .category-card-bg, .detail-gallery img');
+    targets.forEach((img) => {
+      const parent = img.closest('.card-img-wrap, .gallery-main, .cart-item-img, .category-card, .img-skeleton-wrap');
+      
+      function markLoaded() {
+        img.classList.add('loaded');
+        if (parent) parent.classList.add('loaded');
+      }
+
+      if (img.complete && img.naturalWidth > 0) {
+        markLoaded();
+      } else {
+        img.addEventListener('load', markLoaded, { once: true });
+        img.addEventListener('error', markLoaded, { once: true });
+      }
+    });
+
+    // Safety fallback: ensure all skeleton wraps reveal content within 1.2s regardless of slow network
+    setTimeout(() => {
+      document.querySelectorAll('.card-img-wrap, .gallery-main, .cart-item-img, .category-card, .img-skeleton-wrap').forEach(el => {
+        el.classList.add('loaded');
+        const img = el.querySelector('img');
+        if (img) img.classList.add('loaded');
+      });
+    }, 1200);
+  }
+
+  initImageSkeletons();
 });
 

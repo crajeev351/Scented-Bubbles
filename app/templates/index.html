@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}Artisanal Fine Fragrances & Car Perfumes{% endblock %}
-{% block meta_description %}Experience luxury Eau de Parfums and handcrafted car diffusers by {{ brand_name }}. Pure botanical extracts and enduring elegance.{% endblock %}
+{% block title %}{{ store_settings.get('homepage_title') or 'Artisanal Fine Fragrances & Car Perfumes' }}{% endblock %}
+{% block meta_description %}{{ store_settings.get('homepage_meta_description') or ('Experience luxury Eau de Parfums and handcrafted car diffusers by ' ~ brand_name ~ '. Pure botanical extracts and enduring elegance.') }}{% endblock %}
+{% block og_title %}{{ store_settings.get('homepage_title') or 'Artisanal Fine Fragrances & Car Perfumes' }}{% endblock %}
 
 {% block head %}
 {% if banners and banners[0] %}
@@ -86,10 +87,23 @@
     </div>
     <div class="category-grid">
       {% for cat in categories %}
-      {% set bg_img = cat.display_image_url or cat.image_url %}
+      {% set is_car = 'car' in cat.slug or 'car' in cat.name|lower %}
+      {% set is_him = 'him' in cat.slug or 'men' in cat.slug %}
+      {% set is_her = 'her' in cat.slug or 'women' in cat.slug %}
+      {% set fallback_img = '/static/images/car_sample.webp' if is_car else ('/static/images/perfume_velvet_oud.webp' if is_him else ('/static/images/perfume_iris_musk.webp' if is_her else '/static/images/perfume_sample.webp')) %}
+      {% set bg_img = cat.display_image_url or cat.image_url or fallback_img %}
       <a href="{{ url_for('products.category_detail', slug=cat.slug) }}" 
-         class="category-card {{ 'has-bg-image' if bg_img else '' }}" 
-         style="{% if bg_img %}background-image: url('{{ bg_img }}');{% else %}background: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(244,239,235,0.95) 100%);{% endif %}">
+         class="category-card has-bg-image img-skeleton-wrap" 
+         aria-label="{{ cat.name }} - Explore Collection">
+        <img src="{{ bg_img }}" 
+             alt="{{ cat.name }}" 
+             class="category-card-bg"
+             loading="lazy" 
+             decoding="async"
+             width="800"
+             height="450"
+             onerror="if (this.src !== '{{ fallback_img }}') { this.src = '{{ fallback_img }}'; }">
+        <div class="category-card-overlay"></div>
         <div class="category-card-inner">
           <span class="category-card-tag">Curated Range</span>
           <h3 class="category-card-title">{{ cat.name }}</h3>
@@ -106,7 +120,7 @@
 
   {# 3. Featured Products #}
   {% if featured_products %}
-  <section style="margin-bottom: 2.75rem;">
+  <section class="section-deferred" style="margin-bottom: 2.75rem;">
     <div class="section-header">
       <span class="section-tag">Artisanal Blends</span>
       <h2 class="section-title">Featured Creations</h2>
@@ -116,7 +130,7 @@
       {% for prod in featured_products %}
       <div class="product-card">
         <a href="{{ url_for('products.product_detail', slug=prod.slug) }}" class="card-img-wrap">
-          <img src="{{ prod.thumbnail_url }}" {% if prod.primary_image_srcset %}srcset="{{ prod.primary_image_srcset }}" sizes="(max-width: 768px) 50vw, 300px"{% endif %} alt="{{ prod.name }}" loading="lazy" width="400" height="400">
+          <img src="{{ prod.thumbnail_url }}" {% if prod.primary_image_srcset %}srcset="{{ prod.primary_image_srcset }}" sizes="(max-width: 768px) 50vw, 300px"{% endif %} alt="{{ prod.name }}" loading="lazy" decoding="async" width="400" height="400">
           {% if not prod.in_stock %}
             <span class="badge-tag" style="background: #C62828; color: #fff; font-weight: 700;">Out of Stock</span>
           {% elif prod.default_variant and prod.default_variant.stock <= 5 %}
@@ -169,7 +183,7 @@
 
   {# 4. Curated Combos #}
   {% if combos %}
-  <section style="margin-bottom: 2.75rem;">
+  <section class="section-deferred" style="margin-bottom: 2.75rem;">
     <div class="section-header">
       <span class="section-tag">Value Sets</span>
       <h2 class="section-title">Curated Gift Combos</h2>
@@ -179,7 +193,7 @@
       {% for combo in combos %}
       <div class="combo-card">
         <a href="{{ url_for('products.combo_detail', slug=combo.slug) }}" class="card-img-wrap">
-          <img src="{{ combo.thumbnail_url }}" {% if combo.image_srcset %}srcset="{{ combo.image_srcset }}" sizes="(max-width: 768px) 100vw, 400px"{% endif %} alt="{{ combo.name }}" loading="lazy" width="400" height="400">
+          <img src="{{ combo.thumbnail_url }}" {% if combo.image_srcset %}srcset="{{ combo.image_srcset }}" sizes="(max-width: 768px) 100vw, 400px"{% endif %} alt="{{ combo.name }}" loading="lazy" decoding="async" width="400" height="400">
           {% if combo.savings > 0 %}
             <span class="badge-discount">Save {{ combo.savings | currency }}</span>
           {% endif %}
@@ -214,7 +228,7 @@
 
   {# 5. Best Sellers #}
   {% if bestsellers %}
-  <section style="margin-bottom: 2.75rem;">
+  <section class="section-deferred" style="margin-bottom: 2.75rem;">
     <div class="section-header">
       <span class="section-tag">Customer Favorites</span>
       <h2 class="section-title">Most Loved Scents</h2>
@@ -224,7 +238,7 @@
       {% for prod in bestsellers %}
       <div class="product-card">
         <a href="{{ url_for('products.product_detail', slug=prod.slug) }}" class="card-img-wrap">
-          <img src="{{ prod.thumbnail_url }}" {% if prod.primary_image_srcset %}srcset="{{ prod.primary_image_srcset }}" sizes="(max-width: 768px) 50vw, 300px"{% endif %} alt="{{ prod.name }}" loading="lazy" width="400" height="400">
+          <img src="{{ prod.thumbnail_url }}" {% if prod.primary_image_srcset %}srcset="{{ prod.primary_image_srcset }}" sizes="(max-width: 768px) 50vw, 300px"{% endif %} alt="{{ prod.name }}" loading="lazy" decoding="async" width="400" height="400">
           {% if not prod.in_stock %}
             <span class="badge-tag" style="background: #C62828; color: #fff; font-weight: 700;">Out of Stock</span>
           {% elif prod.default_variant and prod.default_variant.stock <= 5 %}

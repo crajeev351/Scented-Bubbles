@@ -1778,6 +1778,8 @@ def settings():
         keys = [
             "company_name",
             "tagline",
+            "homepage_title",
+            "homepage_meta_description",
             "support_phone",
             "support_whatsapp",
             "support_email",

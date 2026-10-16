@@ -57,8 +57,8 @@
     <div class="product-grid">
       {% for prod in products %}
       <div class="product-card">
-        <a href="{{ url_for('products.product_detail', slug=prod.slug) }}" class="card-img-wrap">
-          <img src="{{ prod.thumbnail_url }}" {% if prod.primary_image_srcset %}srcset="{{ prod.primary_image_srcset }}" sizes="(max-width: 768px) 50vw, 300px"{% endif %} alt="{{ prod.name }}" loading="lazy" width="400" height="400">
+        <a href="{{ url_for('products.product_detail', slug=prod.slug) }}" class="card-img-wrap img-skeleton-wrap">
+          <img src="{{ prod.thumbnail_url }}" {% if prod.primary_image_srcset %}srcset="{{ prod.primary_image_srcset }}" sizes="(max-width: 768px) 50vw, 300px"{% endif %} alt="{{ prod.name }}" loading="lazy" decoding="async" width="400" height="400">
           {% if not prod.in_stock %}
             <span class="badge-tag" style="background: #C62828; color: #fff; font-weight: 700;">Out of Stock</span>
           {% elif prod.default_variant and prod.default_variant.stock <= 5 %}
