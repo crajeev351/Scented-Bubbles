@@ -15,21 +15,45 @@
       </p>
     </div>
 
-    {# 1-Tap Mobile UPI Intent Payment Button (Seamless on iPhone & Android) #}
-    <div class="mobile-upi-intent-card" style="background: linear-gradient(135deg, rgba(197, 160, 89, 0.12) 0%, rgba(197, 160, 89, 0.04) 100%); border: 1.5px solid var(--gold-primary); border-radius: var(--radius-md); padding: 1.25rem 1.5rem; margin-bottom: 2rem; text-align: center;">
-      <div style="font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold-dark); margin-bottom: 0.5rem;">
-        ⚡ Instant 1-Tap Mobile Checkout
+    {# 1-Tap Mobile UPI Intent Payment (Targeting Google Pay directly) #}
+    <div class="mobile-upi-intent-card" style="background: linear-gradient(135deg, rgba(197, 160, 89, 0.12) 0%, rgba(255, 255, 255, 0.95) 100%); border: 1.5px solid var(--gold-primary); border-radius: var(--radius-md); padding: 1.5rem 1.25rem; margin-bottom: 2rem; text-align: center; box-shadow: 0 4px 20px rgba(197, 160, 89, 0.12);">
+      <div style="font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold-dark); margin-bottom: 0.75rem;">
+        ⚡ Instant 1-Tap Mobile Payment
       </div>
-      <a href="{{ upi_intent_url }}" class="btn btn-primary btn-block mobile-pay-btn" style="padding: 1rem 1.5rem; font-size: 1.05rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 0.65rem; border-radius: 9999px; box-shadow: 0 4px 18px rgba(197, 160, 89, 0.4); text-decoration: none;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+      
+      {# Primary Direct Button: Google Pay (uses tez:// scheme so it goes straight to Google Pay, never WhatsApp) #}
+      <a href="{{ gpay_intent_url }}" id="btn-pay-gpay" class="btn btn-block" style="background: #141312; color: #FFFFFF; border: 1.5px solid #2B2825; padding: 0.95rem 1.25rem; font-size: 1.05rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 0.75rem; border-radius: 9999px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18); text-decoration: none; margin-bottom: 0.75rem; width: 100%;">
+        <svg width="22" height="22" viewBox="0 0 48 48">
+          <path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.55 10.78l7.98-6.19z"/>
+          <path fill="#EA4335" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
         </svg>
-        <span>Open UPI App to Pay {{ order.total_amount | currency }}</span>
+        <span>Pay {{ order.total_amount | currency }} with Google Pay</span>
       </a>
-      <div style="font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.65rem; line-height: 1.45;">
-        Tap above to open <strong>Google Pay, PhonePe, Paytm, CRED or BHIM</strong> with amount pre-filled.<br>
+
+      {# Secondary Options: PhonePe, Paytm, Other UPI Apps #}
+      <div style="display: flex; gap: 0.45rem; justify-content: center; flex-wrap: wrap; margin-bottom: 0.85rem;">
+        <a href="{{ phonepe_intent_url }}" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; border-radius: var(--radius-pill); text-decoration: none;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; background: #5f259f; color: #fff; border-radius: 50%; font-size: 10px; font-weight: 800;">पे</span>
+          <span>PhonePe</span>
+        </a>
+
+        <a href="{{ paytm_intent_url }}" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; border-radius: var(--radius-pill); text-decoration: none;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; background: #00baf2; color: #002970; border-radius: 4px; font-size: 9px; font-weight: 900;">PT</span>
+          <span>Paytm</span>
+        </a>
+
+        <a href="{{ upi_intent_url }}" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; border-radius: var(--radius-pill); text-decoration: none;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          <span>Other UPI</span>
+        </a>
+      </div>
+
+      <div style="font-size: 0.8125rem; color: var(--text-muted); line-height: 1.45;">
+        Opens <strong>Google Pay</strong> with amount <strong>{{ order.total_amount | currency }}</strong> pre-filled.<br>
         <span style="display: inline-block; margin-top: 0.35rem; color: var(--text-main); font-weight: 600;">
-          📲 After paying, simply switch back to this browser tab to enter the 6-digit UTR below!
+          📲 After payment, return to this tab to submit your 6-digit UTR below.
         </span>
       </div>
     </div>
