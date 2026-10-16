@@ -15,40 +15,83 @@
       </p>
     </div>
 
-    {# 1-Tap Mobile UPI Intent Payment (Targeting Google Pay directly) #}
+    {# 1-Tap Mobile UPI Intent Payment (Targeting Google Pay directly with smart App Store fallback) #}
+    <style>
+      .upi-app-trigger {
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: pointer;
+        transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.15s ease, filter 0.15s ease;
+      }
+      .upi-app-trigger:hover {
+        filter: brightness(1.05);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+      }
+      .upi-app-trigger:active, .upi-app-trigger.is-pressed {
+        transform: scale(0.95) !important;
+        filter: brightness(0.9);
+      }
+      @keyframes upi-spin-fast {
+        to { transform: rotate(360deg); }
+      }
+      .upi-spin-icon {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(0,0,0,0.15);
+        border-top-color: currentColor;
+        border-radius: 50%;
+        animation: upi-spin-fast 0.5s linear infinite;
+        vertical-align: middle;
+      }
+    </style>
+
     <div class="mobile-upi-intent-card" style="background: linear-gradient(135deg, rgba(197, 160, 89, 0.12) 0%, rgba(255, 255, 255, 0.95) 100%); border: 1.5px solid var(--gold-primary); border-radius: var(--radius-md); padding: 1.5rem 1.25rem; margin-bottom: 2rem; text-align: center; box-shadow: 0 4px 20px rgba(197, 160, 89, 0.12);">
       <div style="font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold-dark); margin-bottom: 0.75rem;">
         ⚡ Instant 1-Tap Mobile Payment
       </div>
       
       {# Primary Direct Button: Google Pay (uses tez:// scheme so it goes straight to Google Pay, never WhatsApp) #}
-      <a href="{{ gpay_intent_url }}" id="btn-pay-gpay" class="btn btn-block" style="background: #141312; color: #FFFFFF; border: 1.5px solid #2B2825; padding: 0.95rem 1.25rem; font-size: 1.05rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 0.75rem; border-radius: 9999px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18); text-decoration: none; margin-bottom: 0.75rem; width: 100%;">
+      <button type="button" id="btn-pay-gpay" class="btn btn-block upi-app-trigger" 
+              onclick="openUpiAppWithFallback(this, 'gpay', '{{ gpay_intent_url }}');"
+              style="background: #141312; color: #FFFFFF; border: 1.5px solid #2B2825; padding: 0.95rem 1.25rem; font-size: 1.05rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 0.75rem; border-radius: 9999px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18); text-decoration: none; margin-bottom: 0.75rem; width: 100%;">
         <svg width="22" height="22" viewBox="0 0 48 48">
           <path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
           <path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
           <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.55 10.78l7.98-6.19z"/>
           <path fill="#EA4335" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
         </svg>
-        <span>Pay {{ order.total_amount | currency }} with Google Pay</span>
-      </a>
+        <span class="upi-btn-text">Pay {{ order.total_amount | currency }} with Google Pay</span>
+      </button>
 
-      {# Secondary Options: PhonePe, Paytm, Other UPI Apps #}
-      <div style="display: flex; gap: 0.45rem; justify-content: center; flex-wrap: wrap; margin-bottom: 0.85rem;">
-        <a href="{{ phonepe_intent_url }}" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; border-radius: var(--radius-pill); text-decoration: none;">
+      {# Secondary Options: PhonePe, Paytm, Other UPI Apps with App Store Fallback #}
+      <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 0.65rem;">
+        <button type="button" class="btn btn-secondary btn-sm upi-app-trigger" 
+                onclick="openUpiAppWithFallback(this, 'phonepe', '{{ phonepe_intent_url }}');"
+                style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; border-radius: var(--radius-pill);">
           <span style="display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; background: #5f259f; color: #fff; border-radius: 50%; font-size: 10px; font-weight: 800;">पे</span>
-          <span>PhonePe</span>
-        </a>
+          <span class="upi-btn-text">PhonePe</span>
+        </button>
 
-        <a href="{{ paytm_intent_url }}" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; border-radius: var(--radius-pill); text-decoration: none;">
+        <button type="button" class="btn btn-secondary btn-sm upi-app-trigger" 
+                onclick="openUpiAppWithFallback(this, 'paytm', '{{ paytm_intent_url }}');"
+                style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; border-radius: var(--radius-pill);">
           <span style="display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; background: #00baf2; color: #002970; border-radius: 4px; font-size: 9px; font-weight: 900;">PT</span>
-          <span>Paytm</span>
-        </a>
+          <span class="upi-btn-text">Paytm</span>
+        </button>
 
-        <a href="{{ upi_intent_url }}" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; border-radius: var(--radius-pill); text-decoration: none;">
+        <button type="button" class="btn btn-secondary btn-sm upi-app-trigger" 
+                onclick="openUpiAppWithFallback(this, 'other', '{{ upi_intent_url }}');"
+                style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; border-radius: var(--radius-pill);">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-          <span>Other UPI</span>
-        </a>
+          <span class="upi-btn-text">Other UPI</span>
+        </button>
       </div>
+
+      {# Interactive App Launch Status & Fallback Toast #}
+      <div id="upi-launch-status" style="display: none; margin: 0.75rem auto; padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.8125rem; font-weight: 600; line-height: 1.45; max-width: 480px; text-align: center; transition: all 0.2s ease;"></div>
 
       <div style="font-size: 0.8125rem; color: var(--text-muted); line-height: 1.45;">
         Opens <strong>Google Pay</strong> with amount <strong>{{ order.total_amount | currency }}</strong> pre-filled.<br>
@@ -148,6 +191,155 @@
 <script src="{{ asset_url('js/qr-generator.js') }}"></script>
 <script>
   (function() {
+    // Device detection
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    const APP_CONFIG = {
+      gpay: {
+        name: 'Google Pay',
+        iosStore: 'https://apps.apple.com/in/app/google-pay-save-pay-with-upi/id1193357041',
+        androidStore: 'https://play.google.com/store/apps/details?id=com.google.android.apps.nbu.paisa.user'
+      },
+      phonepe: {
+        name: 'PhonePe',
+        iosStore: 'https://apps.apple.com/in/app/phonepe-payments-recharge/id1170055821',
+        androidStore: 'https://play.google.com/store/apps/details?id=com.phonepe.app'
+      },
+      paytm: {
+        name: 'Paytm',
+        iosStore: 'https://apps.apple.com/in/app/paytm-payments-upi-cards/id473941634',
+        androidStore: 'https://play.google.com/store/apps/details?id=net.one97.paytm'
+      },
+      other: {
+        name: 'UPI App',
+        iosStore: 'https://apps.apple.com/in/app/google-pay-save-pay-with-upi/id1193357041',
+        androidStore: 'https://play.google.com/store/apps/details?id=com.google.android.apps.nbu.paisa.user'
+      }
+    };
+
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    // Responsive 1-Tap App Launcher with Instant Tactile Feedback & Automatic App Store Fallback
+    window.openUpiAppWithFallback = function(btnEl, appKey, intentUrl) {
+      const config = APP_CONFIG[appKey] || APP_CONFIG.other;
+      const storeUrl = isIOS ? config.iosStore : config.androidStore;
+      const storeName = isIOS ? 'Apple App Store' : 'Google Play Store';
+      const statusBox = document.getElementById('upi-launch-status');
+
+      // 1. Instant tactile feedback animation on the clicked button
+      if (btnEl) {
+        btnEl.classList.add('is-pressed');
+        const textSpan = btnEl.querySelector('.upi-btn-text');
+        const originalText = textSpan ? textSpan.innerHTML : '';
+        if (textSpan && !btnEl.dataset.original) {
+          btnEl.dataset.original = originalText;
+          textSpan.innerHTML = `<span class="upi-spin-icon"></span> Opening ${config.name}...`;
+        }
+        setTimeout(() => {
+          btnEl.classList.remove('is-pressed');
+          if (textSpan && btnEl.dataset.original) {
+            textSpan.innerHTML = btnEl.dataset.original;
+            delete btnEl.dataset.original;
+          }
+        }, 3200);
+      }
+
+      // 2. Desktop handling: Notify user to scan the QR code
+      if (!isMobile) {
+        if (statusBox) {
+          statusBox.style.display = 'block';
+          statusBox.style.background = '#EFF6FF';
+          statusBox.style.border = '1px solid #BFDBFE';
+          statusBox.style.color = '#1E40AF';
+          statusBox.innerHTML = `💻 You are browsing on desktop. Please <strong>scan the QR code below</strong> using <strong>${config.name}</strong> or any UPI app on your phone.`;
+          const qrFrame = document.getElementById('upi-qr-frame');
+          if (qrFrame) qrFrame.scrollIntoView({ behavior: 'smooth' });
+        }
+        return;
+      }
+
+      // 3. Mobile handling: Display instant launch feedback
+      if (statusBox) {
+        statusBox.style.display = 'block';
+        statusBox.style.background = 'rgba(197, 160, 89, 0.15)';
+        statusBox.style.border = '1px solid rgba(197, 160, 89, 0.4)';
+        statusBox.style.color = 'var(--text-main)';
+        statusBox.innerHTML = `<span class="upi-spin-icon"></span> Opening <strong>${config.name}</strong>...`;
+      }
+
+      let pageHidden = false;
+      const startTime = Date.now();
+
+      function onPageLeave() {
+        pageHidden = true;
+        if (statusBox) {
+          statusBox.style.background = '#F0FDF4';
+          statusBox.style.border = '1px solid #BBF7D0';
+          statusBox.style.color = '#166534';
+          statusBox.innerHTML = `✅ <strong>${config.name}</strong> opened! After payment, return here to submit your UTR.`;
+        }
+      }
+
+      function onPageReturn() {
+        if (pageHidden && statusBox) {
+          statusBox.style.background = '#F0FDF4';
+          statusBox.style.border = '1px solid #BBF7D0';
+          statusBox.style.color = '#166534';
+          statusBox.innerHTML = `🎉 <strong>Welcome back!</strong> If your payment was completed in ${config.name}, please enter the 6-digit UTR below:`;
+          const utrField = document.getElementById('utr');
+          if (utrField) {
+            utrField.focus();
+            utrField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+      }
+
+      window.addEventListener('blur', onPageLeave, { once: true });
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          onPageLeave();
+        } else if (pageHidden) {
+          onPageReturn();
+        }
+      });
+      window.addEventListener('pageshow', onPageReturn);
+      window.addEventListener('focus', onPageReturn);
+
+      // 4. Trigger native deep link to app
+      window.location.href = intentUrl;
+
+      // 5. Fallback check: If the page didn't blur/hide within 1.25s, the app is not installed
+      setTimeout(() => {
+        if (!pageHidden && (Date.now() - startTime < 3000)) {
+          if (statusBox) {
+            statusBox.style.background = '#FFFBEB';
+            statusBox.style.border = '1px solid #FDE68A';
+            statusBox.style.color = '#92400E';
+            statusBox.innerHTML = `
+              <div style="margin-bottom: 0.45rem;">
+                📲 <strong>${config.name}</strong> is not detected on your device.
+              </div>
+              <div style="display: flex; gap: 0.5rem; justify-content: center; align-items: center; flex-wrap: wrap;">
+                <a href="${storeUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="background: var(--gold-dark); color: #fff; padding: 0.4rem 0.95rem; font-size: 0.8rem; font-weight: 700; text-decoration: none; border-radius: 9999px;">
+                  Download on ${storeName} &rarr;
+                </a>
+                <button type="button" onclick="document.getElementById('upi-qr-frame')?.scrollIntoView({behavior:'smooth'});" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.85rem; font-size: 0.8rem; border-radius: 9999px;">
+                  Or Scan QR Code
+                </button>
+              </div>
+            `;
+          }
+
+          // Automatically redirect to the store
+          setTimeout(() => {
+            if (!pageHidden) {
+              window.location.href = storeUrl;
+            }
+          }, 600);
+        }
+      }, 1250);
+    };
+
     // 1. Render Instant Native Vector SVG QR Code (Zero network latency, 100% fail-proof)
     const qrBox = document.getElementById('upi-qr-dynamic');
     const skeleton = document.getElementById('upi-qr-skeleton');
