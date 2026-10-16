@@ -56,15 +56,17 @@ def upi_pay(order_id):
     upi_qr_url = get_image_url(raw_qr, size="medium") if raw_qr else "/static/images/placeholder_upi_qr.png"
     brand_name = Setting.get_value("company_name", "Scented Bubbles")
 
-    # Generate standard UPI intent URL with pre-filled amount and order ref
+    # Generate standard UPI intent URL with pre-filled amount, order ref, and callback return url
     from urllib.parse import quote_plus
     clean_brand = re.sub(r"[^\w\s]", "", brand_name).strip() or "Scented Bubbles"
+    return_url = url_for("orders.upi_pay", order_id=order.order_id, _external=True)
     upi_intent_url = (
         f"upi://pay?pa={upi_id}"
         f"&pn={quote_plus(clean_brand)}"
         f"&am={order.total_amount:.2f}"
         f"&cu=INR"
         f"&tn={quote_plus(f'Order {order.order_id}')}"
+        f"&url={quote_plus(return_url)}"
     )
 
     if request.method == "POST":
