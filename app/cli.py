@@ -74,35 +74,66 @@ def seed_demo_command():
     # 2. Policy & Informational Pages
     default_pages = {
         "about-us": (
-            "About Scented Bubbles",
+            "The Story of Scented Bubbles",
+            "Our Heritage",
+            "Softness, freshness, and quiet luxury handcrafted for your body and your vehicle.",
             "<p>At <strong>Scented Bubbles</strong>, we believe every space and moment deserves an aura of quiet luxury. Born from a devotion to artisanal perfumery, our creations balance French perfumery heritage with contemporary refinement.</p><p>From long-lasting Eau de Parfums to slow-evaporating wooden car diffusers, every batch of Scented Bubbles is hand-blended with IFRA-compliant fragrance oils, pure essential extracts, and cosmetic-grade carriers.</p>",
+            {
+                "feature1_title": "Pure Formulations",
+                "feature1_desc": "Zero parabens, cosmetic-grade carriers, skin-safe and phthalate-free.",
+                "feature2_title": "Enduring Diffusion",
+                "feature2_desc": "Engineered with porous beechwood caps for consistent, non-overpowering sillage.",
+                "show_features": "true",
+            },
         ),
         "shipping-policy": (
             "Shipping Policy | Scented Bubbles",
+            "Shipping & Logistics",
+            "Orders dispatched within 24-48 business hours. Express pan-India delivery.",
             "<p>Orders placed at <strong>Scented Bubbles</strong> are dispatched within 24 to 48 business hours. We deliver across India with premium courier partners including Blue Dart, Delhivery, and DTDC.</p><p>Standard delivery takes 3 to 6 business days. Free shipping is automatically applied to all orders above ₹999.</p>",
+            None,
         ),
         "refund-policy": (
             "Returns & Refunds | Scented Bubbles",
+            "Returns & Replacements",
+            "Easy replacements for damaged or transit-affected deliveries within 48 hours.",
             "<p>Due to the personal nature of fine fragrances, <strong>Scented Bubbles</strong> cannot accept returns on opened perfume bottles or car diffusers. However, if your package arrives damaged, leaked, or incorrect, please reach out to care@scentedbubbles.com or message us on WhatsApp with an unboxing video within 48 hours for an instant replacement or refund.</p>",
+            None,
         ),
         "terms-conditions": (
             "Terms & Conditions | Scented Bubbles",
+            "Terms & Conditions",
+            "Guidelines and terms governing your shopping experience.",
             "<p>Welcome to <strong>Scented Bubbles</strong>. By accessing or shopping on our website, you agree to these terms. All products, imagery, and formulas are proprietary to Scented Bubbles. Prices and product availability are subject to change without prior notice.</p>",
+            None,
         ),
         "privacy-policy": (
             "Privacy Policy | Scented Bubbles",
+            "Privacy & Security",
+            "Your personal information and privacy are strictly safeguarded.",
             "<p>Your privacy is paramount at <strong>Scented Bubbles</strong>. We collect customer name, phone number, and delivery address solely for fulfilling orders, tracking packages, and providing customer care. We never sell or lease your personal information to third parties.</p>",
+            None,
         ),
     }
 
-    for slug, (title, content) in default_pages.items():
+    for slug, (title, badge, sub, content, extras) in default_pages.items():
         page = Page.query.filter_by(slug=slug).first()
         if not page:
-            page = Page(slug=slug, title=title, content=content, is_active=True)
+            page = Page(slug=slug, title=title, badge_tag=badge, subtitle=sub, content=content, is_active=True)
+            if extras:
+                page.set_extras(extras)
             db.session.add(page)
         else:
-            page.title = title
-            page.content = content
+            if not page.title:
+                page.title = title
+            if not page.badge_tag:
+                page.badge_tag = badge
+            if not page.subtitle:
+                page.subtitle = sub
+            if not page.content:
+                page.content = content
+            if extras and not page.extra_data:
+                page.set_extras(extras)
 
     # 3. Categories (2 main categories: Fine Fragrances & Luxury Car Diffusers)
     cat_fine = Category.query.filter_by(slug="fine-fragrances").first()

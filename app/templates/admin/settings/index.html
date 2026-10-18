@@ -126,17 +126,57 @@
     </div>
 
     <h3 style="font-size: 1.15rem; margin: 2.5rem 0 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
-      4. Social &amp; Footer Text
+      4. Social &amp; Footer Configuration
     </h3>
 
-    <div class="form-group">
-      <label for="instagram_url">Instagram Profile Link</label>
-      <input type="url" id="instagram_url" name="instagram_url" value="{{ settings.get('instagram_url', '') }}" class="form-control" placeholder="https://instagram.com/scentedbubbles">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="instagram_url">Instagram Profile Link</label>
+        <input type="url" id="instagram_url" name="instagram_url" value="{{ settings.get('instagram_url', '') }}" class="form-control" placeholder="https://instagram.com/scentedbubbles">
+      </div>
+
+      <div class="form-group">
+        <label for="business_hours">Studio Business Hours</label>
+        <input type="text" id="business_hours" name="business_hours" value="{{ settings.get('business_hours', 'Monday – Saturday, 10:00 AM – 7:00 PM IST') }}" class="form-control" placeholder="e.g. Monday – Saturday, 10:00 AM – 7:00 PM IST">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Shown on the Contact Concierge page and in store communications</small>
+      </div>
     </div>
 
     <div class="form-group">
-      <label for="footer_text">Footer Summary Text</label>
-      <textarea id="footer_text" name="footer_text" rows="2" class="form-control">{{ settings.get('footer_text', '') }}</textarea>
+      <label for="footer_text">Footer Brand Summary Text</label>
+      <textarea id="footer_text" name="footer_text" rows="2" class="form-control" placeholder="e.g. Handcrafted fine fragrances and artisanal car diffusers designed to refresh your world.">{{ settings.get('footer_text', 'Handcrafted fine fragrances and artisanal car diffusers designed to refresh your world.') }}</textarea>
+      <small style="color: var(--text-muted); font-size: 0.75rem;">Displayed in the left column under the brand name across all website pages</small>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="footer_tagline">Footer Bottom Tagline</label>
+        <input type="text" id="footer_tagline" name="footer_tagline" value="{{ settings.get('footer_tagline', 'Curated Luxury Perfumes & Automotive Fragrances') }}" class="form-control" placeholder="e.g. Curated Luxury Perfumes &amp; Automotive Fragrances">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Displayed at the bottom right bar of the footer</small>
+      </div>
+
+      <div class="form-group">
+        <label for="footer_copyright">Footer Copyright Notice</label>
+        <input type="text" id="footer_copyright" name="footer_copyright" value="{{ settings.get('footer_copyright', '') }}" class="form-control" placeholder="Leave empty for default: &copy; [Brand Name]. All rights reserved.">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Custom copyright text (GSTIN is appended automatically if set)</small>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="footer_col1_title">Footer Column 1 Title</label>
+        <input type="text" id="footer_col1_title" name="footer_col1_title" value="{{ settings.get('footer_col1_title', 'Explore') }}" class="form-control" placeholder="Explore">
+      </div>
+
+      <div class="form-group">
+        <label for="footer_col2_title">Footer Column 2 Title</label>
+        <input type="text" id="footer_col2_title" name="footer_col2_title" value="{{ settings.get('footer_col2_title', 'Customer Care') }}" class="form-control" placeholder="Customer Care">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="footer_col3_title">Footer Column 3 Title</label>
+      <input type="text" id="footer_col3_title" name="footer_col3_title" value="{{ settings.get('footer_col3_title', 'Company') }}" class="form-control" placeholder="Company">
     </div>
 
     <h3 style="font-size: 1.15rem; margin: 2.5rem 0 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between;">

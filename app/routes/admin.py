@@ -1754,9 +1754,21 @@ def page_edit(slug):
     page = Page.query.filter_by(slug=slug).first_or_404()
     if request.method == "POST":
         page.title = request.form.get("title", "").strip()
+        page.badge_tag = request.form.get("badge_tag", "").strip() or None
+        page.subtitle = request.form.get("subtitle", "").strip() or None
         raw_content = request.form.get("content", "").strip()
         page.content = format_page_content(raw_content)
         page.is_active = bool(request.form.get("is_active"))
+
+        # Extra dynamic fields (e.g. highlight cards on About page)
+        extras = page.extras or {}
+        if page.slug == "about-us":
+            extras["feature1_title"] = request.form.get("feature1_title", "").strip()
+            extras["feature1_desc"] = request.form.get("feature1_desc", "").strip()
+            extras["feature2_title"] = request.form.get("feature2_title", "").strip()
+            extras["feature2_desc"] = request.form.get("feature2_desc", "").strip()
+            extras["show_features"] = "true" if request.form.get("show_features") else "false"
+            page.set_extras(extras)
 
         db.session.commit()
         cache.invalidate_all()
@@ -1785,6 +1797,7 @@ def settings():
             "support_whatsapp",
             "support_email",
             "store_address",
+            "business_hours",
             "upi_id",
             "delivery_charge",
             "free_delivery_threshold",
@@ -1792,6 +1805,11 @@ def settings():
             "gst_number",
             "instagram_url",
             "footer_text",
+            "footer_tagline",
+            "footer_copyright",
+            "footer_col1_title",
+            "footer_col2_title",
+            "footer_col3_title",
             "admin_secret_slug",
             "smtp_host",
             "smtp_port",

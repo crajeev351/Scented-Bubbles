@@ -251,15 +251,18 @@
       <div class="footer-grid">
         <div class="footer-brand">
           <h3>{{ brand_name }}</h3>
-          <p>{{ store_settings.get('footer_text', 'Handcrafted fine fragrances and artisanal car diffusers designed to refresh your world.') }}</p>
+          <p>{{ store_settings.get('footer_text') or 'Handcrafted fine fragrances and artisanal car diffusers designed to refresh your world.' }}</p>
           <div style="margin-top: 1.25rem; font-size: 0.875rem; color: #A39D94;">
             <p><strong>WhatsApp:</strong> +{{ store_settings.get('support_whatsapp', '919876543210') }}</p>
             <p><strong>Email:</strong> {{ store_settings.get('support_email', 'care@scentedbubbles.com') }}</p>
+            {% if store_settings.get('business_hours') %}
+              <p><strong>Hours:</strong> {{ store_settings.get('business_hours') }}</p>
+            {% endif %}
           </div>
         </div>
 
         <div class="footer-col">
-          <h4>Explore</h4>
+          <h4>{{ store_settings.get('footer_col1_title') or 'Explore' }}</h4>
           <ul>
             <li><a href="{{ url_for('products.product_list') }}">All Perfumes</a></li>
             {% for cat in nav_categories %}
@@ -270,7 +273,7 @@
         </div>
 
         <div class="footer-col">
-          <h4>Customer Care</h4>
+          <h4>{{ store_settings.get('footer_col2_title') or 'Customer Care' }}</h4>
           <ul>
             <li><a href="{{ url_for('account.orders') }}">My Account &amp; Orders</a></li>
             <li><a href="{{ url_for('orders.track_order') }}">Track Your Order</a></li>
@@ -282,7 +285,7 @@
         </div>
 
         <div class="footer-col">
-          <h4>Company</h4>
+          <h4>{{ store_settings.get('footer_col3_title') or 'Company' }}</h4>
           <ul>
             <li><a href="{{ url_for('main.about') }}">About {{ brand_name }}</a></li>
             <li><a href="{{ url_for('main.contact') }}">Contact Us</a></li>
@@ -292,8 +295,8 @@
       </div>
 
       <div class="footer-bottom">
-        <div>&copy; {{ brand_name }}. All rights reserved. GSTIN: {{ store_settings.get('gst_number', '36AABCS1234F1Z5') }}</div>
-        <div>Curated Luxury Perfumes & Automotive Fragrances</div>
+        <div>{{ store_settings.get('footer_copyright') or ('&copy; ' ~ brand_name ~ '. All rights reserved.') }}{% if store_settings.get('gst_number') %} &bull; GSTIN: {{ store_settings.get('gst_number') }}{% endif %}</div>
+        <div>{{ store_settings.get('footer_tagline') or 'Curated Luxury Perfumes & Automotive Fragrances' }}</div>
       </div>
     </div>
   </footer>

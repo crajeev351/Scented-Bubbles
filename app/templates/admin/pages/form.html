@@ -18,19 +18,35 @@
   <form method="POST" id="pageEditForm" class="admin-card">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-    <div class="form-group">
-      <label for="title">Page Title *</label>
-      <input type="text" id="title" name="title" value="{{ page.title }}" required class="form-control">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="title">Page Title *</label>
+        <input type="text" id="title" name="title" value="{{ page.title }}" required class="form-control">
+      </div>
+
+      <div class="form-group">
+        <label for="slug">Page URL Slug (Fixed)</label>
+        <input type="text" id="slug" value="{{ page.slug }}" disabled class="form-control" style="background: var(--bg-subtle);">
+      </div>
     </div>
 
-    <div class="form-group">
-      <label for="slug">Page URL Slug (Fixed)</label>
-      <input type="text" id="slug" value="{{ page.slug }}" disabled class="form-control" style="background: var(--bg-subtle);">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="badge_tag">Header Badge / Tag</label>
+        <input type="text" id="badge_tag" name="badge_tag" value="{{ page.badge_tag or '' }}" class="form-control" placeholder="e.g. Our Heritage, Shipping &amp; Logistics, Legal &amp; Policies">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Small gold category badge displayed above the title</small>
+      </div>
+
+      <div class="form-group">
+        <label for="subtitle">Header Subtitle / Tagline</label>
+        <input type="text" id="subtitle" name="subtitle" value="{{ page.subtitle or '' }}" class="form-control" placeholder="e.g. Softness, freshness, and quiet luxury handcrafted for your body and your vehicle.">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Descriptive subtitle displayed directly underneath the main heading</small>
+      </div>
     </div>
 
     <div class="form-group">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
-        <label for="content" style="margin: 0; font-weight: 600;">Page Content *</label>
+        <label for="content" style="margin: 0; font-weight: 600;">Page Body Content *</label>
         <div class="editor-view-toggle">
           <button type="button" id="btnVisualView" class="editor-toggle-btn active" title="Visual Word-style editor">👁️ Visual View</button>
           <button type="button" id="btnCodeView" class="editor-toggle-btn" title="View or edit raw HTML">HTML Source</button>
@@ -61,6 +77,43 @@
       <!-- Hidden / Raw Textarea for Form Submission & Source View -->
       <textarea id="content" name="content" rows="14" class="form-control wysiwyg-raw-textarea" style="display: none; font-family: monospace; font-size: 0.875rem; line-height: 1.5;">{{ page.content }}</textarea>
     </div>
+
+    {% if page.slug == 'about-us' %}
+      <div class="admin-card" style="background: var(--bg-subtle, #FAF8F5); border: 1px solid var(--border-light); margin: 1.5rem 0; padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.75rem;">
+          <div>
+            <h4 style="margin: 0; font-size: 1rem; color: var(--gold-dark);">Bottom Feature Highlights (About Page)</h4>
+            <p style="margin: 0.2rem 0 0; font-size: 0.78rem; color: var(--text-muted);">Customize or disable the two highlight cards displayed at the bottom of the About page.</p>
+          </div>
+          <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.84rem; font-weight: 600;">
+            <input type="checkbox" name="show_features" value="1" {{ 'checked' if page.extras.get('show_features', 'true') == 'true' else '' }}>
+            <span>Show Highlight Cards</span>
+          </label>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="feature1_title">Card 1 Title</label>
+            <input type="text" id="feature1_title" name="feature1_title" value="{{ page.extras.get('feature1_title', 'Pure Formulations') }}" class="form-control" placeholder="e.g. Pure Formulations">
+          </div>
+          <div class="form-group">
+            <label for="feature1_desc">Card 1 Description</label>
+            <input type="text" id="feature1_desc" name="feature1_desc" value="{{ page.extras.get('feature1_desc', 'Zero parabens, cosmetic-grade carriers, skin-safe and phthalate-free.') }}" class="form-control" placeholder="e.g. Zero parabens, cosmetic-grade carriers...">
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-top: 0.5rem;">
+          <div class="form-group">
+            <label for="feature2_title">Card 2 Title</label>
+            <input type="text" id="feature2_title" name="feature2_title" value="{{ page.extras.get('feature2_title', 'Enduring Diffusion') }}" class="form-control" placeholder="e.g. Enduring Diffusion">
+          </div>
+          <div class="form-group">
+            <label for="feature2_desc">Card 2 Description</label>
+            <input type="text" id="feature2_desc" name="feature2_desc" value="{{ page.extras.get('feature2_desc', 'Engineered with porous beechwood caps for consistent, non-overpowering sillage.') }}" class="form-control" placeholder="e.g. Engineered with porous beechwood caps...">
+          </div>
+        </div>
+      </div>
+    {% endif %}
 
     <div style="margin: 1.5rem 0;">
       <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">

@@ -138,6 +138,14 @@ def create_app(config_name=None, config_override=None):
         except Exception as e:
             app.logger.warning(f"Orders column migration warning: {e}")
 
+    # Auto-migrate pages table for badge_tag, subtitle, and extra_data
+    with app.app_context():
+        try:
+            from app.models.pages import ensure_page_columns
+            ensure_page_columns(db.engine)
+        except Exception as e:
+            app.logger.warning(f"Pages column migration warning: {e}")
+
     # Auto-format product names to end with 'Inspired Perfume' and clear inspired_by
     with app.app_context():
         try:

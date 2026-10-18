@@ -49,7 +49,7 @@
       </div>
       <div class="contact-info-block" style="margin-top: 0.85rem;">
         <strong>🕒 Business Hours:</strong>
-        <p>Monday – Saturday, 10:00 AM – 7:00 PM IST</p>
+        <p>{{ store_settings.get('business_hours') or 'Monday – Saturday, 10:00 AM – 7:00 PM IST' }}</p>
       </div>
     </div>
 

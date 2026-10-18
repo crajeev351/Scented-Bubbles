@@ -1,4 +1,5 @@
 import html
+import json
 import re
 from datetime import datetime, timezone
 from app.extensions import db
@@ -77,6 +78,25 @@ def format_page_content(text: str) -> str:
     return "\n".join(output_blocks)
 
 
+def ensure_page_columns(engine):
+    """Ensures badge_tag, subtitle, and extra_data columns exist across SQLite and PostgreSQL."""
+    from sqlalchemy import inspect, text
+    try:
+        inspector = inspect(engine)
+        if "pages" in inspector.get_table_names():
+            cols = {c["name"] for c in inspector.get_columns("pages")}
+            with engine.connect() as conn:
+                if "badge_tag" not in cols:
+                    conn.execute(text("ALTER TABLE pages ADD COLUMN badge_tag VARCHAR(100)"))
+                if "subtitle" not in cols:
+                    conn.execute(text("ALTER TABLE pages ADD COLUMN subtitle VARCHAR(255)"))
+                if "extra_data" not in cols:
+                    conn.execute(text("ALTER TABLE pages ADD COLUMN extra_data TEXT"))
+                conn.commit()
+    except Exception:
+        pass
+
+
 class Page(db.Model):
     """Editable informational and policy pages (Privacy, Terms, Shipping, Refund, About)."""
     __tablename__ = "pages"
@@ -84,7 +104,10 @@ class Page(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     slug = db.Column(db.String(80), unique=True, nullable=False, index=True)
     title = db.Column(db.String(150), nullable=False)
+    badge_tag = db.Column(db.String(100), nullable=True)
+    subtitle = db.Column(db.String(255), nullable=True)
     content = db.Column(db.Text, nullable=False)
+    extra_data = db.Column(db.Text, nullable=True)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = db.Column(
@@ -98,6 +121,20 @@ class Page(db.Model):
     def formatted_content(self) -> str:
         """Returns auto-formatted HTML content whether entered as HTML or plain copy-pasted text."""
         return format_page_content(self.content)
+
+    @property
+    def extras(self) -> dict:
+        """Parse extra_data JSON or return empty dict."""
+        if not self.extra_data:
+            return {}
+        try:
+            return json.loads(self.extra_data)
+        except Exception:
+            return {}
+
+    def set_extras(self, data: dict):
+        """Serialize dict to extra_data JSON."""
+        self.extra_data = json.dumps(data) if data else None
 
     def __repr__(self):
         return f"<Page {self.slug} - {self.title}>"
