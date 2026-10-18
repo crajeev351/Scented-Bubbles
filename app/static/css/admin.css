@@ -4,6 +4,10 @@
   min-height: 100vh;
   background: #F4EFEB;
   position: relative;
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 .admin-sidebar {
   width: 250px;
@@ -95,6 +99,8 @@ body.admin-drawer-open {
   flex-direction: column;
   min-width: 0;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   overflow-x: hidden;
 }
 .admin-topbar {
@@ -105,11 +111,27 @@ body.admin-drawer-open {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .admin-body {
   padding: 1.5rem 2rem;
   flex: 1;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.admin-body img {
+  max-width: 100%;
+  height: auto;
+}
+.admin-body input,
+.admin-body select,
+.admin-body textarea {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .admin-card {
   background: #FFFFFF;
@@ -118,12 +140,20 @@ body.admin-drawer-open {
   box-shadow: var(--shadow-sm);
   padding: 1.75rem;
   margin-bottom: 2rem;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .table-responsive {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   display: block;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .table-responsive::-webkit-scrollbar {
   height: 6px;
@@ -205,27 +235,132 @@ body.admin-drawer-open {
 }
 .admin-two-col {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1.5rem;
   align-items: flex-start;
+  width: 100%;
+  max-width: 100%;
+}
+.admin-two-col > * {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .order-detail-layout {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 2rem;
   align-items: start;
+  width: 100%;
+  max-width: 100%;
+}
+.order-detail-layout > * {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .order-two-col {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1.5rem;
   font-size: 0.875rem;
+  width: 100%;
+  max-width: 100%;
+}
+.order-two-col > * {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 .order-dispatch-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
   gap: 0.75rem;
   align-items: end;
+  width: 100%;
+  max-width: 100%;
+}
+.order-dispatch-grid > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Order Detail Responsive Components */
+.order-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+  width: 100%;
+  max-width: 100%;
+}
+.order-header-title {
+  font-size: 1.45rem;
+  margin: 0;
+  font-family: var(--font-sans);
+  word-break: break-word;
+  line-height: 1.25;
+}
+.order-header-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.order-workflow-bar {
+  background: var(--bg-subtle);
+  padding: 1.25rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border-light);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+}
+.order-workflow-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 0.75rem;
+}
+.order-workflow-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+}
+.order-totals-box {
+  max-width: 320px;
+  width: 100%;
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+}
+.order-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.table-scroll-hint {
+  display: none;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  align-items: center;
+  gap: 0.35rem;
+  user-select: none;
 }
 .admin-variant-row {
   display: grid;
@@ -331,7 +466,7 @@ body.admin-drawer-open {
     padding: 0.75rem 1.25rem 0 !important;
   }
   .order-detail-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1.5rem;
   }
   .admin-variant-row,
@@ -371,6 +506,24 @@ body.admin-drawer-open {
   .admin-table th, .admin-table td {
     padding: 0.55rem 0.65rem;
     font-size: 0.8rem;
+  }
+  .table-scroll-hint {
+    display: inline-flex;
+  }
+  .order-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .order-header-title {
+    font-size: 1.25rem;
+  }
+  .order-totals-box {
+    max-width: 100%;
+    margin-left: 0;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--border-light);
   }
   .admin-quick-actions {
     padding: 1rem;
@@ -425,8 +578,8 @@ body.admin-drawer-open {
     gap: 1rem;
   }
   .combo-item-row {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: column !important;
+    align-items: stretch !important;
     gap: 0.6rem;
   }
   .combo-item-row .combo-variant-select {
@@ -446,6 +599,36 @@ body.admin-drawer-open {
   }
 }
 
+/* Compact Mobile Breakpoint (<= 600px) */
+@media (max-width: 600px) {
+  .order-workflow-bar {
+    padding: 0.85rem !important;
+  }
+  .order-workflow-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.6rem !important;
+  }
+  .order-workflow-actions form {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+  .order-workflow-actions .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    white-space: normal !important;
+    text-align: center !important;
+    padding: 0.6rem 0.85rem !important;
+  }
+  .order-items-table {
+    min-width: 440px;
+  }
+  .order-utr-code {
+    font-size: 1.15rem !important;
+    letter-spacing: 0.08em !important;
+  }
+}
+
 /* Compact Mobile Phones (<= 540px) */
 @media (max-width: 540px) {
   .admin-metrics-grid {
@@ -455,6 +638,7 @@ body.admin-drawer-open {
   }
   .admin-topbar-title {
     max-width: 140px;
+    font-size: 1rem !important;
   }
   .admin-header-row {
     flex-direction: column;
@@ -473,6 +657,10 @@ body.admin-drawer-open {
 
 /* Smallest Mobile Phones (<= 380px) */
 @media (max-width: 380px) {
+  .admin-topbar-title {
+    max-width: 110px;
+    font-size: 0.9rem !important;
+  }
   .admin-body {
     padding: 0.75rem 0.5rem;
   }

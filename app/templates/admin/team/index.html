@@ -32,7 +32,8 @@
 
   {# Admin list #}
   <div class="admin-card" style="padding: 0; overflow: hidden;">
-    <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+    <div class="table-responsive">
+    <table class="admin-table" style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
       <thead>
         <tr style="background: var(--bg-subtle); border-bottom: 2px solid var(--border-light);">
           <th style="padding: 0.9rem 1.25rem; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted);">Admin</th>
@@ -140,6 +141,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
 
   <p style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted);">
