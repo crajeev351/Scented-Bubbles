@@ -33,7 +33,7 @@ from app.models.order_items import OrderItem
 from app.models.payments import Payment
 from app.models.customers import Customer
 from app.models.settings import Setting
-from app.models.pages import Page
+from app.models.pages import Page, format_page_content
 from app.services.cache_service import cache
 from app.services.storage import get_storage
 from app.services.order_service import (
@@ -1754,7 +1754,8 @@ def page_edit(slug):
     page = Page.query.filter_by(slug=slug).first_or_404()
     if request.method == "POST":
         page.title = request.form.get("title", "").strip()
-        page.content = request.form.get("content", "").strip()
+        raw_content = request.form.get("content", "").strip()
+        page.content = format_page_content(raw_content)
         page.is_active = bool(request.form.get("is_active"))
 
         db.session.commit()

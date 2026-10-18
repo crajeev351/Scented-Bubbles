@@ -3152,3 +3152,50 @@ html, body {
   background: var(--gold-light);
 }
 
+/* ================= Policy & Informational Page Body ================= */
+.policy-page-body {
+  font-size: 1rem;
+  line-height: 1.85;
+  color: #38332E;
+}
+
+.policy-page-body p {
+  margin: 0 0 1.35rem 0;
+}
+
+.policy-page-body p:last-child {
+  margin-bottom: 0;
+}
+
+.policy-page-body h2,
+.policy-page-body h3,
+.policy-page-body h4 {
+  font-family: var(--font-serif, "Playfair Display", Georgia, serif);
+  color: var(--text-main, #1F1D1A);
+  margin: 2rem 0 0.85rem 0;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.policy-page-body h2 { font-size: 1.45rem; }
+.policy-page-body h3 { font-size: 1.25rem; }
+.policy-page-body h4 { font-size: 1.1rem; }
+
+.policy-page-body ul,
+.policy-page-body ol {
+  margin: 0 0 1.35rem 0;
+  padding-left: 1.6rem;
+}
+
+.policy-page-body li {
+  margin-bottom: 0.5rem;
+  line-height: 1.75;
+}
+
+.policy-page-body strong,
+.policy-page-body b {
+  font-weight: 600;
+  color: #1A1816;
+}
+
+

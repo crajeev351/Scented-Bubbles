@@ -15,9 +15,9 @@
       </p>
     </div>
 
-    <div style="font-size: 1.02rem; line-height: 1.85; color: #3A3632; margin-bottom: 2.5rem;">
+    <div class="policy-page-body" style="font-size: 1.02rem; line-height: 1.85; color: #3A3632; margin-bottom: 2.5rem;">
       {% if page and page.content %}
-        {{ page.content | safe }}
+        {{ page.formatted_content | safe }}
       {% else %}
         <p>
           At <strong>{{ brand_name }}</strong>, our mission began with a simple philosophy: scent is the invisible architecture of emotion. A gentle whiff of saffron, sea salt, or bourbon vanilla can elevate an ordinary commute or an evening gathering into an unforgettable sanctuary.

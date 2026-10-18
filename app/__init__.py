@@ -294,6 +294,13 @@ def create_app(config_name=None, config_override=None):
         """Converts UTC datetime to IST and formats cleanly."""
         return format_ist(dt, fmt)
 
+    from app.models.pages import format_page_content
+
+    @app.template_filter("format_page_content")
+    def format_page_content_filter(text):
+        """Converts plain text with line breaks/paragraphs into clean HTML if non-HTML."""
+        return format_page_content(text)
+
     # Asset Versioning Helper with Auto Cache-Busting (Content-hash based, no epoch timestamps)
     import hashlib
 

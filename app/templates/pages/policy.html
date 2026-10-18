@@ -13,8 +13,8 @@
       <span style="font-size: 0.8125rem; color: var(--text-light);">Last updated: {{ (page.updated_at | ist).strftime('%B %d, %Y') }}</span>
     </div>
 
-    <div style="font-size: 0.95rem; line-height: 1.8; color: #3C3834;">
-      {{ page.content | safe }}
+    <div class="policy-page-body">
+      {{ page.formatted_content | safe }}
     </div>
 
   </div>
