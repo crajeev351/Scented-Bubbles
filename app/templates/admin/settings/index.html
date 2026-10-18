@@ -180,7 +180,90 @@
     </div>
 
     <h3 style="font-size: 1.15rem; margin: 2.5rem 0 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between;">
-      <span>5. Email &amp; SMTP Configuration (Password Resets &amp; Order Alerts)</span>
+      <span>5. Homepage Value Highlights (4 Why Choose Us Cards)</span>
+    </h3>
+
+    <div class="form-group" style="margin-bottom: 1.5rem;">
+      <label for="show_home_features" style="font-weight: 700;">Section Visibility</label>
+      <select id="show_home_features" name="show_home_features" class="form-control" style="font-weight: 600;">
+        <option value="true" {{ 'selected' if settings.get('show_home_features', 'true')|lower in ['true', '1', 'yes'] else '' }}>🟢 Visible &ndash; Show 4 feature highlight cards on homepage</option>
+        <option value="false" {{ 'selected' if settings.get('show_home_features', 'true')|lower not in ['true', '1', 'yes'] else '' }}>⚪ Hidden &ndash; Hide feature highlight cards</option>
+      </select>
+    </div>
+
+    <!-- Highlight Card 1 -->
+    <div style="background: var(--bg-subtle, #FAF8F5); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 1.25rem; margin-bottom: 1.25rem;">
+      <h4 style="margin: 0 0 0.85rem; font-size: 0.95rem; color: var(--gold-dark); display: flex; align-items: center; gap: 0.5rem;">
+        <span>💧</span> Card 1 (Default: High Oil Concentration)
+      </h4>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="feature_card_1_title">Card 1 Title</label>
+          <input type="text" id="feature_card_1_title" name="feature_card_1_title" value="{{ settings.get('feature_card_1_title', 'High Oil Concentration') }}" class="form-control" placeholder="High Oil Concentration">
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="feature_card_1_desc">Card 1 Description</label>
+          <input type="text" id="feature_card_1_desc" name="feature_card_1_desc" value="{{ settings.get('feature_card_1_desc', 'Pure Eau de Parfum formulations yielding 12+ hours of lingering sillage and projection.') }}" class="form-control" placeholder="Pure Eau de Parfum formulations yielding 12+ hours of lingering sillage and projection.">
+        </div>
+      </div>
+    </div>
+
+    <!-- Highlight Card 2 -->
+    <div style="background: var(--bg-subtle, #FAF8F5); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 1.25rem; margin-bottom: 1.25rem;">
+      <h4 style="margin: 0 0 0.85rem; font-size: 0.95rem; color: var(--gold-dark); display: flex; align-items: center; gap: 0.5rem;">
+        <span>⭐</span> Card 2 (Default: Handcrafted In India)
+      </h4>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="feature_card_2_title">Card 2 Title</label>
+          <input type="text" id="feature_card_2_title" name="feature_card_2_title" value="{{ settings.get('feature_card_2_title', 'Handcrafted In India') }}" class="form-control" placeholder="Handcrafted In India">
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="feature_card_2_desc">Card 2 Description</label>
+          <input type="text" id="feature_card_2_desc" name="feature_card_2_desc" value="{{ settings.get('feature_card_2_desc', 'Blended in artisanal small batches using IFRA certified oils and sustainably sourced woods.') }}" class="form-control" placeholder="Blended in artisanal small batches using IFRA certified oils and sustainably sourced woods.">
+        </div>
+      </div>
+    </div>
+
+    <!-- Highlight Card 3 -->
+    <div style="background: var(--bg-subtle, #FAF8F5); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 1.25rem; margin-bottom: 1.25rem;">
+      <h4 style="margin: 0 0 0.85rem; font-size: 0.95rem; color: var(--gold-dark); display: flex; align-items: center; gap: 0.5rem;">
+        <span>🚚</span> Card 3 (Default: Complimentary Delivery)
+      </h4>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="feature_card_3_title">Card 3 Title</label>
+          <input type="text" id="feature_card_3_title" name="feature_card_3_title" value="{{ settings.get('feature_card_3_title', 'Complimentary Delivery') }}" class="form-control" placeholder="Complimentary Delivery">
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="feature_card_3_desc">Card 3 Description</label>
+          <input type="text" id="feature_card_3_desc" name="feature_card_3_desc" value="{{ settings.get('feature_card_3_desc', '') }}" class="form-control" placeholder="Leave empty to auto-use threshold: Free express courier across India on all orders exceeding ₹{{ settings.get('free_delivery_threshold', '999') }}.">
+        </div>
+      </div>
+      <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.4rem;">
+        💡 Tip: If you leave description empty, it automatically displays your current free shipping threshold (₹{{ settings.get('free_delivery_threshold', '999') }}). Or enter your own custom text.
+      </small>
+    </div>
+
+    <!-- Highlight Card 4 -->
+    <div style="background: var(--bg-subtle, #FAF8F5); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 1.25rem; margin-bottom: 1.5rem;">
+      <h4 style="margin: 0 0 0.85rem; font-size: 0.95rem; color: var(--gold-dark); display: flex; align-items: center; gap: 0.5rem;">
+        <span>💬</span> Card 4 (Default: Direct WhatsApp Support)
+      </h4>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="feature_card_4_title">Card 4 Title</label>
+          <input type="text" id="feature_card_4_title" name="feature_card_4_title" value="{{ settings.get('feature_card_4_title', 'Direct WhatsApp Support') }}" class="form-control" placeholder="Direct WhatsApp Support">
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="feature_card_4_desc">Card 4 Description</label>
+          <input type="text" id="feature_card_4_desc" name="feature_card_4_desc" value="{{ settings.get('feature_card_4_desc', 'Instant personal assistance directly with our fragrance concierge via WhatsApp.') }}" class="form-control" placeholder="Instant personal assistance directly with our fragrance concierge via WhatsApp.">
+        </div>
+      </div>
+    </div>
+
+    <h3 style="font-size: 1.15rem; margin: 2.5rem 0 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between;">
+      <span>6. Email &amp; SMTP Configuration (Password Resets &amp; Order Alerts)</span>
       <span style="font-size: 0.75rem; background: var(--bg-surface); padding: 0.2rem 0.6rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); font-weight: 600; color: var(--gold-dark);">
         {% if active_smtp.user and active_smtp.password %}🟢 Active &amp; Connected{% else %}⚪ Not Configured{% endif %}
       </span>

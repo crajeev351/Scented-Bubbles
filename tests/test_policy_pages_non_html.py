@@ -284,3 +284,61 @@ def test_footer_dynamic_settings(client, app):
     assert res_contact.status_code == 200
     contact_html = res_contact.get_data(as_text=True)
     assert "Monday – Friday, 9:00 AM – 8:00 PM IST" in contact_html
+
+
+def test_homepage_4_features_dynamic_editing(client, app):
+    with app.app_context():
+        admin = Admin.query.filter_by(username="admin").first()
+        if not admin:
+            admin = Admin(username="admin", email="admin@scentedbubbles.com", is_active=True, role="superadmin")
+            admin.set_password("AdminSecurePassword123!")
+            db.session.add(admin)
+            db.session.commit()
+        admin_id = admin.id
+
+        with client.session_transaction() as sess:
+            sess["admin_id"] = admin_id
+            sess["admin_username"] = "admin"
+            sess["admin_role"] = "superadmin"
+
+        # Edit all 4 feature cards in settings
+        res = client.post(
+            "/admin/settings",
+            data={
+                "company_name": "Scented Bubbles",
+                "show_home_features": "true",
+                "feature_card_1_title": "30% Premium Concentration",
+                "feature_card_1_desc": "Highest extract ratio for 16+ hour longevity.",
+                "feature_card_2_title": "Artisanal Heritage Studio",
+                "feature_card_2_desc": "Hand-poured in micro batches in Hyderabad.",
+                "feature_card_3_title": "Express Air Courier",
+                "feature_card_3_desc": "Priority safe shipping with tamper-proof packaging.",
+                "feature_card_4_title": "Direct VIP WhatsApp Concierge",
+                "feature_card_4_desc": "Instant personal styling advice directly via WhatsApp.",
+                "support_whatsapp": "919876543210",
+                "support_email": "care@scentedbubbles.com",
+                "delivery_charge": "50.00",
+                "free_delivery_threshold": "999.00",
+                "cod_enabled": "false",
+                "upi_id": "scentedbubbles@okaxis",
+                "smtp_host": "smtp.gmail.com",
+                "smtp_port": "587",
+                "smtp_user": "test@gmail.com",
+            },
+            follow_redirects=True,
+        )
+        assert res.status_code == 200
+
+    # Verify public homepage renders all 4 customized cards
+    res_home = client.get("/")
+    assert res_home.status_code == 200
+    home_html = res_home.get_data(as_text=True)
+    assert "30% Premium Concentration" in home_html
+    assert "Highest extract ratio for 16+ hour longevity." in home_html
+    assert "Artisanal Heritage Studio" in home_html
+    assert "Hand-poured in micro batches in Hyderabad." in home_html
+    assert "Express Air Courier" in home_html
+    assert "Priority safe shipping with tamper-proof packaging." in home_html
+    assert "Direct VIP WhatsApp Concierge" in home_html
+    assert "Instant personal styling advice directly via WhatsApp." in home_html
+
