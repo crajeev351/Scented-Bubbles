@@ -105,18 +105,19 @@ class NotificationService:
 
     @staticmethod
     def _execute_notification_send(order, brand_name: str):
-        """Executes the email deliveries to store owner and customer."""
+        """Executes the email deliveries: sends new order alert to store owner only (customer emails skipped)."""
         try:
-            customer_email = NotificationService.get_customer_email(order)
-
-            # 1. Send store owner alert email
+            # 1. Send store owner alert email ONLY
             NotificationService._send_email_notification(order, brand_name)
 
-            # 2. Send customer confirmation email with full order details IF registered
-            if customer_email:
-                NotificationService.send_customer_order_confirmation(order, brand_name, customer_email=customer_email)
+            # 2. Customer emails skipped per store owner preference
+            from app.models.settings import Setting
+            if str(Setting.get_value("customer_emails_enabled", "false")).strip().lower() in ("true", "1", "yes"):
+                customer_email = NotificationService.get_customer_email(order)
+                if customer_email:
+                    NotificationService.send_customer_order_confirmation(order, brand_name, customer_email=customer_email)
             else:
-                logger.info(f"Order #{order.order_id}: Customer does not have a registered email address; skipping customer order email.")
+                logger.info(f"Order #{order.order_id}: Customer emails are disabled; only store owner notified.")
 
         except Exception as e:
             logger.exception(f"Error executing email send for order #{order.order_id}: {e}")
@@ -273,7 +274,23 @@ class NotificationService:
                     return True, f"Resend HTTP API verified successfully! Test email delivered to {target} via HTTPS (Port 443)."
                 return False, "Resend HTTP API test failed. Please verify your Resend API key."
 
-            # 3. Test SMTP
+            # 3. Test Webhook if configured
+            webhook_url = (Setting.get_value("email_webhook_url") or current_app.config.get("EMAIL_WEBHOOK_URL") or "").strip()
+            if webhook_url:
+                try:
+                    import requests
+                    resp = requests.post(
+                        webhook_url,
+                        json={"to": target, "subject": test_subject, "body": test_body, "html": test_html},
+                        timeout=10,
+                    )
+                    if resp.status_code in (200, 201, 202):
+                        return True, f"Email Webhook verified successfully! Test payload dispatched via HTTPS (Port 443)."
+                    return False, f"Email Webhook returned status {resp.status_code}: {resp.text}"
+                except Exception as we:
+                    return False, f"Email Webhook request failed: {we}"
+
+            # 4. Test SMTP
             smtp_host = smtp_cfg["host"]
             smtp_user = smtp_cfg["user"]
             smtp_pass = smtp_cfg["password"]
@@ -332,7 +349,30 @@ class NotificationService:
                     return True
                 logger.warning("Resend API send failed; falling back to alternative dispatch methods.")
 
-            # 3. Standard SMTP Fallback (Port 587)
+            # 3. Check for Email Webhook URL (Google Apps Script / Webhook - Port 443 HTTPS)
+            webhook_url = (Setting.get_value("email_webhook_url") or current_app.config.get("EMAIL_WEBHOOK_URL") or "").strip()
+            if webhook_url:
+                try:
+                    import requests
+                    resp = requests.post(
+                        webhook_url,
+                        json={
+                            "to": to_email,
+                            "subject": subject,
+                            "body": body_text,
+                            "html": html_body or f"<pre>{body_text}</pre>",
+                        },
+                        timeout=10,
+                    )
+                    if resp.status_code in (200, 201, 202):
+                        logger.info(f"Email successfully delivered via Webhook to {to_email}")
+                        return True
+                    else:
+                        logger.warning(f"Email webhook returned status {resp.status_code}: {resp.text}")
+                except Exception as we:
+                    logger.warning(f"Email webhook delivery failed: {we}")
+
+            # 4. Standard SMTP Fallback (Port 587)
             smtp_cfg = NotificationService.get_smtp_config()
             smtp_host = smtp_cfg["host"]
             smtp_user = smtp_cfg["user"]
@@ -763,9 +803,14 @@ class NotificationService:
 
     @staticmethod
     def notify_order_status_updated(order, new_status: str, brand_name: str = "Scented Bubbles", async_mode: bool = True):
-        """Dispatches milestone emails to customer for CONFIRMED, PACKED, SHIPPED, DELIVERED, and CANCELLED."""
+        """Dispatches milestone emails to customer for CONFIRMED, PACKED, SHIPPED, DELIVERED, and CANCELLED (if enabled)."""
         try:
             from app.models.settings import Setting
+            # Customer emails are skipped per user preference unless explicitly enabled
+            if str(Setting.get_value("customer_emails_enabled", "false")).strip().lower() not in ("true", "1", "yes"):
+                logger.info(f"Customer milestone emails disabled; skipping {new_status} status email for order {order.order_id}.")
+                return
+
             order_notifs_enabled = Setting.get_value("order_notifications_enabled", "true")
             if str(order_notifs_enabled).strip().lower() in ("false", "0", "no", "disabled"):
                 logger.info(f"Order notification emails are muted in Store Settings. Skipping milestone email for order {order.order_id}.")

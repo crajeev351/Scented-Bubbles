@@ -1836,6 +1836,8 @@ def settings():
             "brevo_api_key",
             "resend_api_key",
             "resend_from_email",
+            "email_webhook_url",
+            "customer_emails_enabled",
             "smtp_host",
             "smtp_port",
             "smtp_user",

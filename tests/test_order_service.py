@@ -398,6 +398,10 @@ def test_milestone_email_notifications_registered_customer(app, sample_catalog):
             sent_messages.append({"to": to_email, "subject": subject, "body": body_text, "html": html_body})
             return True
 
+        from app.models.settings import Setting
+        Setting.set_value("customer_emails_enabled", "true")
+        db.session.commit()
+
         with patch.object(NotificationService, "_send_smtp_message", side_effect=fake_send_smtp):
             # 1. Order placed upfront with UTR
             order = create_order(
@@ -512,6 +516,10 @@ def test_cancellation_email_notification(app, sample_catalog):
             sent_messages.append({"to": to_email, "subject": subject, "body": body_text, "html": html_body})
             return True
 
+        from app.models.settings import Setting
+        Setting.set_value("customer_emails_enabled", "true")
+        db.session.commit()
+
         with patch.object(NotificationService, "_send_smtp_message", side_effect=fake_send_smtp):
             order = create_order(
                 cart_items=cart_items,
@@ -605,6 +613,61 @@ def test_resend_http_api_dispatch(app):
                 app.config["TESTING"] = True
                 Setting.set_value("resend_api_key", "")
                 db.session.commit()
+
+
+def test_owner_only_notified_and_customer_email_skipped(app, sample_catalog):
+    """Verifies user requirement: customer emails are completely skipped, owner receives order notification."""
+    with app.app_context():
+        from app.services.notification_service import NotificationService
+        from app.models.settings import Setting
+        Setting.set_value("customer_emails_enabled", "false")
+        db.session.commit()
+
+        vid = sample_catalog["variant_50ml_id"]
+        cart_items = [{"variant_id": vid, "qty": 1}]
+        customer = {"phone": "9876543219", "name": "Deepak Mehta", "email": "deepak@example.com"}
+        shipping = {
+            "name": "Deepak Mehta",
+            "phone": "9876543219",
+            "address_line1": "Marine Drive",
+            "city": "Mumbai",
+            "state": "Maharashtra",
+            "pincode": "400020",
+        }
+
+        sent_messages = []
+
+        def fake_send_smtp(to_email, subject, body_text, html_body=None):
+            sent_messages.append({"to": to_email, "subject": subject, "body": body_text, "html": html_body})
+            return True
+
+        with patch.object(NotificationService, "_send_smtp_message", side_effect=fake_send_smtp):
+            order = create_order(
+                cart_items=cart_items,
+                customer_info=customer,
+                shipping_info=shipping,
+                payment_method="MANUAL_UPI",
+                utr="987654",
+            )
+            # Owner receives email
+            owner_emails = [m for m in sent_messages if "New Confirmed Order" in m["subject"]]
+            assert len(owner_emails) == 1
+            assert "Deepak Mehta" in owner_emails[0]["body"]
+
+            # Customer received 0 emails
+            customer_emails = [m for m in sent_messages if m["to"] == "deepak@example.com"]
+            assert len(customer_emails) == 0
+
+            # Advance order milestones (CONFIRMED, PACKED, SHIPPED, DELIVERED)
+            sent_messages.clear()
+            update_order_status(order.order_id, "CONFIRMED")
+            update_order_status(order.order_id, "PACKED")
+            update_order_status(order.order_id, "SHIPPED", courier_name="Blue Dart", tracking_number="BD123")
+            update_order_status(order.order_id, "DELIVERED")
+
+            # Customer still receives 0 emails across all stages
+            assert len(sent_messages) == 0
+
 
 
 
