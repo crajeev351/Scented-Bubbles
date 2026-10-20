@@ -155,58 +155,184 @@ class NotificationService:
         }
 
     @staticmethod
+    def _send_brevo_message(api_key: str, to_email: str, subject: str, body_text: str, html_body: str = None) -> bool:
+        """Sends email via Brevo (Sendinblue) HTTPS API (Port 443). 100% bypasses Render Free SMTP blocks."""
+        try:
+            import requests
+            from app.models.settings import Setting
+            brand_name = Setting.get_value("company_name", "Scented Bubbles")
+            sender_email = Setting.get_value("smtp_user", "crajeev351@gmail.com")
+
+            payload = {
+                "sender": {"name": brand_name, "email": sender_email},
+                "to": [{"email": to_email}],
+                "subject": subject,
+                "htmlContent": html_body if html_body else f"<p>{body_text}</p>",
+                "textContent": body_text,
+            }
+            resp = requests.post(
+                "https://api.brevo.com/v3/smtp/email",
+                headers={
+                    "api-key": api_key.strip(),
+                    "content-type": "application/json",
+                    "accept": "application/json",
+                },
+                json=payload,
+                timeout=12,
+            )
+            if resp.status_code in (200, 201, 202):
+                msg_id = resp.json().get("messageId", "")
+                logger.info(f"Email successfully delivered via Brevo HTTPS API to {to_email} (MsgID: {msg_id})")
+                return True
+            else:
+                logger.warning(f"Brevo API error ({resp.status_code}): {resp.text}")
+                return False
+        except Exception as e:
+            logger.warning(f"Brevo API request failed to {to_email}: {e}")
+            return False
+
+    @staticmethod
+    def _send_resend_message(api_key: str, to_email: str, subject: str, body_text: str, html_body: str = None) -> bool:
+        """Sends email via Resend HTTPS API (Port 443). 100% bypasses Render Free SMTP blocks."""
+        try:
+            import requests
+            from app.models.settings import Setting
+            brand_name = Setting.get_value("company_name", "Scented Bubbles")
+            from_sender = Setting.get_value("resend_from_email") or f"{brand_name} <onboarding@resend.dev>"
+
+            payload = {
+                "from": from_sender,
+                "to": [to_email],
+                "subject": subject,
+                "html": html_body if html_body else f"<p>{body_text}</p>",
+                "text": body_text,
+            }
+            resp = requests.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {api_key.strip()}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+                timeout=12,
+            )
+            if resp.status_code in (200, 201, 202):
+                res_id = resp.json().get("id", "")
+                logger.info(f"Email successfully delivered via Resend HTTPS API to {to_email} (ID: {res_id})")
+                return True
+            else:
+                logger.warning(f"Resend API error ({resp.status_code}): {resp.text}")
+                return False
+        except Exception as e:
+            logger.warning(f"Resend API request failed to {to_email}: {e}")
+            return False
+
+    @staticmethod
     def test_smtp_connection(test_recipient: str = None) -> tuple[bool, str]:
-        """Tests SMTP credentials and optionally sends a verification email."""
+        """Tests active email dispatch method (Brevo HTTPS API, Resend HTTPS API, or SMTP) and sends a verification email."""
         try:
             if current_app and current_app.config.get("TESTING"):
-                return True, "SMTP test simulated successfully in testing environment."
+                return True, "Email test simulated successfully in testing environment."
 
+            from app.models.settings import Setting
             smtp_cfg = NotificationService.get_smtp_config()
+            target = test_recipient or smtp_cfg["notification_email"] or smtp_cfg["user"]
+            brand_name = Setting.get_value("company_name", "Scented Bubbles")
+
+            if not target:
+                return False, "Please specify a recipient email address to test."
+
+            test_subject = f"[{brand_name}] Email Test — Verified Successfully! 🚀"
+            test_body = (
+                f"Congratulations!\n\n"
+                f"Your email configuration for {brand_name} is active and working properly.\n"
+                f"Customer order receipts, fulfillment milestone updates, and owner alerts will now be delivered reliably.\n\n"
+                f"Delivered to: {target}"
+            )
+            test_html = f"""<div style="font-family: sans-serif; padding: 20px; background: #FAF8F5; border-radius: 8px;">
+                <h2 style="color: #166534; margin-top: 0;">✅ Email Delivery Test Succeeded!</h2>
+                <p style="color: #333; font-size: 14px; line-height: 1.6;">Your email configuration for <strong>{brand_name}</strong> is active and delivering properly.</p>
+                <div style="background: #FFFFFF; padding: 12px; border-radius: 6px; border: 1px solid #E5E7EB; font-size: 13px;">
+                    <strong>Recipient:</strong> {target}
+                </div>
+            </div>"""
+
+            # 1. Test Brevo if configured
+            brevo_key = (Setting.get_value("brevo_api_key") or current_app.config.get("BREVO_API_KEY") or "").strip()
+            if brevo_key:
+                ok = NotificationService._send_brevo_message(brevo_key, target, test_subject, test_body, html_body=test_html)
+                if ok:
+                    return True, f"Brevo HTTP API verified successfully! Test email delivered to {target} via HTTPS (Port 443)."
+                return False, "Brevo HTTP API test failed. Please verify your Brevo API key."
+
+            # 2. Test Resend if configured
+            resend_key = (Setting.get_value("resend_api_key") or current_app.config.get("RESEND_API_KEY") or "").strip()
+            if resend_key:
+                ok = NotificationService._send_resend_message(resend_key, target, test_subject, test_body, html_body=test_html)
+                if ok:
+                    return True, f"Resend HTTP API verified successfully! Test email delivered to {target} via HTTPS (Port 443)."
+                return False, "Resend HTTP API test failed. Please verify your Resend API key."
+
+            # 3. Test SMTP
             smtp_host = smtp_cfg["host"]
             smtp_user = smtp_cfg["user"]
             smtp_pass = smtp_cfg["password"]
             port = smtp_cfg["port"]
             use_tls = smtp_cfg["use_tls"]
-            target = test_recipient or smtp_cfg["notification_email"] or smtp_user
 
             if not (smtp_host and smtp_user and smtp_pass):
-                return False, "SMTP Host, Username, and Password must be filled."
+                return False, "SMTP Host, Username, and Password must be filled (or enter a Brevo API Key)."
 
             server = smtplib.SMTP(smtp_host, port, timeout=10)
             if use_tls:
                 server.starttls()
             server.login(smtp_user, smtp_pass)
 
-            if target:
-                brand_name = "Scented Bubbles"
-                msg = MIMEMultipart()
-                msg["Subject"] = f"[{brand_name}] SMTP Test Email — Verified Successfully! ✅"
-                msg["From"] = smtp_user
-                msg["To"] = target
-                msg.attach(MIMEText(
-                    f"Congratulations!\n\n"
-                    f"Your SMTP email configuration for {brand_name} is active and working properly.\n"
-                    f"Customer password resets and new order notifications will now be delivered reliably.\n\n"
-                    f"Sent via: {smtp_host}:{port} ({smtp_user})",
-                    "plain"
-                ))
-                server.send_message(msg)
-
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = test_subject
+            msg["From"] = f"{brand_name} <{smtp_user}>"
+            msg["To"] = target
+            msg.attach(MIMEText(test_body, "plain", "utf-8"))
+            msg.attach(MIMEText(test_html, "html", "utf-8"))
+            server.send_message(msg)
             server.quit()
-            return True, f"SMTP verified successfully! Test email delivered to {target}."
+
+            return True, f"SMTP verified successfully! Test email delivered to {target} via {smtp_host}:{port}."
         except Exception as e:
-            logger.exception("SMTP test probe failed")
-            return False, f"SMTP connection failed: {str(e)}"
+            logger.exception("Email test probe failed")
+            return False, f"Email test failed: {str(e)}"
 
     @staticmethod
     def _send_smtp_message(to_email: str, subject: str, body_text: str, html_body: str = None):
-        """Low-level helper to send an SMTP email using dynamic app configuration."""
+        """Universal email sender: automatically prefers HTTPS API (Brevo / Resend) over Port 443,
+        falling back to SMTP (Port 587) for local testing and paid hosting.
+        """
         try:
             # In testing/pytest mode, strictly suppress real SMTP connections and external email delivery
             if current_app and current_app.config.get("TESTING"):
                 logger.info(f"[TESTING MODE] Suppressed email to {to_email}. Subject: '{subject}'")
                 return True
 
+            if not to_email or "@" not in to_email:
+                return False
+
+            from app.models.settings import Setting
+
+            # 1. Check for Brevo API Key (Recommended for Render Free Tier - Port 443 HTTPS)
+            brevo_key = (Setting.get_value("brevo_api_key") or current_app.config.get("BREVO_API_KEY") or "").strip()
+            if brevo_key:
+                if NotificationService._send_brevo_message(brevo_key, to_email, subject, body_text, html_body=html_body):
+                    return True
+                logger.warning("Brevo API send failed; falling back to alternative dispatch methods.")
+
+            # 2. Check for Resend API Key (Port 443 HTTPS)
+            resend_key = (Setting.get_value("resend_api_key") or current_app.config.get("RESEND_API_KEY") or "").strip()
+            if resend_key:
+                if NotificationService._send_resend_message(resend_key, to_email, subject, body_text, html_body=html_body):
+                    return True
+                logger.warning("Resend API send failed; falling back to alternative dispatch methods.")
+
+            # 3. Standard SMTP Fallback (Port 587)
             smtp_cfg = NotificationService.get_smtp_config()
             smtp_host = smtp_cfg["host"]
             smtp_user = smtp_cfg["user"]
@@ -218,7 +344,6 @@ class NotificationService:
                 logger.debug(f"SMTP not configured or recipient empty; skipping email to {to_email}.")
                 return False
 
-            from app.models.settings import Setting
             brand_name = Setting.get_value("company_name", "Scented Bubbles")
 
             msg = MIMEMultipart("alternative")

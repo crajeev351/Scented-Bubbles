@@ -528,4 +528,84 @@ def test_cancellation_email_notification(app, sample_catalog):
             assert "Customer requested address modification" in cancel_emails[0]["html"]
 
 
+def test_brevo_http_api_dispatch(app):
+    """Verifies that when brevo_api_key is set, emails dispatch via Brevo HTTPS API (Port 443)."""
+    with app.app_context():
+        from app.services.notification_service import NotificationService
+        from app.models.settings import Setting
+        Setting.set_value("brevo_api_key", "xkeysib-fake-test-key-12345")
+        db.session.commit()
+
+        captured_requests = []
+
+        class MockResponse:
+            status_code = 201
+            def json(self):
+                return {"messageId": "<test-msg-id-123@brevo>"}
+
+        def mock_post(url, headers=None, json=None, timeout=None):
+            captured_requests.append({"url": url, "headers": headers, "json": json})
+            return MockResponse()
+
+        with patch("requests.post", side_effect=mock_post):
+            # Temporarily turn off TESTING flag in config to test the live dispatch logic
+            app.config["TESTING"] = False
+            try:
+                ok = NotificationService._send_smtp_message(
+                    to_email="test@example.com",
+                    subject="Order Confirmed",
+                    body_text="Your order has been confirmed.",
+                    html_body="<p>Your order has been confirmed.</p>",
+                )
+                assert ok is True
+                assert len(captured_requests) == 1
+                assert "api.brevo.com" in captured_requests[0]["url"]
+                assert captured_requests[0]["headers"]["api-key"] == "xkeysib-fake-test-key-12345"
+                assert captured_requests[0]["json"]["to"][0]["email"] == "test@example.com"
+            finally:
+                app.config["TESTING"] = True
+                Setting.set_value("brevo_api_key", "")
+                db.session.commit()
+
+
+def test_resend_http_api_dispatch(app):
+    """Verifies that when resend_api_key is set, emails dispatch via Resend HTTPS API (Port 443)."""
+    with app.app_context():
+        from app.services.notification_service import NotificationService
+        from app.models.settings import Setting
+        Setting.set_value("resend_api_key", "re_fake_resend_key_999")
+        db.session.commit()
+
+        captured_requests = []
+
+        class MockResponse:
+            status_code = 200
+            def json(self):
+                return {"id": "resend_msg_test_id"}
+
+        def mock_post(url, headers=None, json=None, timeout=None):
+            captured_requests.append({"url": url, "headers": headers, "json": json})
+            return MockResponse()
+
+        with patch("requests.post", side_effect=mock_post):
+            app.config["TESTING"] = False
+            try:
+                ok = NotificationService._send_smtp_message(
+                    to_email="customer@example.com",
+                    subject="Shipping Update",
+                    body_text="Your order has shipped.",
+                    html_body="<p>Your order has shipped.</p>",
+                )
+                assert ok is True
+                assert len(captured_requests) == 1
+                assert "api.resend.com" in captured_requests[0]["url"]
+                assert "Bearer re_fake_resend_key_999" == captured_requests[0]["headers"]["Authorization"]
+                assert captured_requests[0]["json"]["to"] == ["customer@example.com"]
+            finally:
+                app.config["TESTING"] = True
+                Setting.set_value("resend_api_key", "")
+                db.session.commit()
+
+
+
 
