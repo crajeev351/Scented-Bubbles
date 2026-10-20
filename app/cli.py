@@ -523,4 +523,13 @@ def migrate_to_supabase_command(target):
     run_migration(target_url)
 
 
+@click.command("enable-rls")
+@click.option("--target", default=None, help="Supabase PostgreSQL connection string (or uses DATABASE_URL env var)")
+def enable_rls_command(target):
+    """Enables Row Level Security (RLS) on all public tables in Supabase PostgreSQL."""
+    from scripts.enable_rls import enable_rls
+    enable_rls(target)
+
+
+
 

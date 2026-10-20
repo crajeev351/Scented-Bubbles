@@ -166,6 +166,7 @@ def create_app(config_name=None, config_override=None):
         seed_load_test_command,
         export_data_command,
         migrate_to_supabase_command,
+        enable_rls_command,
     )
     app.cli.add_command(create_admin_command)
     app.cli.add_command(seed_demo_command)
@@ -173,6 +174,7 @@ def create_app(config_name=None, config_override=None):
     app.cli.add_command(seed_load_test_command)
     app.cli.add_command(export_data_command)
     app.cli.add_command(migrate_to_supabase_command)
+    app.cli.add_command(enable_rls_command)
 
     # Register Blueprints
     from app.routes.main import main_bp

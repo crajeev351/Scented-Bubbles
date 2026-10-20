@@ -46,9 +46,16 @@ python -m flask migrate-to-supabase --target "postgresql://postgres.[REF]:[PASSW
 
 **What this script does:**
 * Creates all relational tables on Supabase automatically.
+* Automatically enforces Row Level Security (RLS) on all tables to protect against PostgREST unauthorized data access.
 * Copies all records across all tables (Admins, Products, Variants, Images, Combos, Banners, Customers, Orders, Payments, History).
 * Automatically syncs and advances PostgreSQL auto-increment sequences (`setval`) so future orders and products never clash with existing IDs.
 * Verifies row counts table-by-table.
+
+To manually verify or re-enforce Row Level Security (RLS) at any time:
+```bash
+python -m flask enable-rls
+```
+*(Or execute `supabase_enable_rls.sql` directly inside the Supabase SQL Editor).*
 
 ---
 

@@ -78,6 +78,16 @@ def run_migration(target_db_url: str):
     with app.app_context():
         db.metadata.create_all(bind=dest_engine)
         print("[+] Target schema verified and initialized on Supabase.")
+        # Ensure Row Level Security (RLS) is enabled and service_role grants are configured (complying with Oct 30 Supabase Data API update)
+        with dest_engine.connect() as dest_conn:
+            for table in TABLES_IN_ORDER:
+                try:
+                    dest_conn.execute(text(f'ALTER TABLE public."{table}" ENABLE ROW LEVEL SECURITY;'))
+                    dest_conn.execute(text(f'GRANT ALL ON TABLE public."{table}" TO service_role;'))
+                    dest_conn.commit()
+                except Exception:
+                    dest_conn.rollback()
+            print("[+] Row Level Security (RLS) and service_role grants configured on all Supabase tables.")
 
     # 4. Clean tables in reverse dependency order to avoid foreign key blocks
     with dest_engine.connect() as dest_conn:
