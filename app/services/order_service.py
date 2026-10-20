@@ -336,6 +336,16 @@ def cancel_order(order_id: str, reason: Optional[str] = None) -> Order:
 
     db.session.commit()
     logger.info(f"Order {order.order_id} cancelled and stock restored.")
+
+    # Dispatch status notification to customer if registered
+    try:
+        from app.services.notification_service import NotificationService
+        from app.models.settings import Setting
+        brand_name = Setting.get_value("company_name", "Scented Bubbles")
+        NotificationService.notify_order_status_updated(order, Order.STATUS_CANCELLED, brand_name=brand_name)
+    except Exception as notif_err:
+        logger.warning(f"Notification error for cancelled order {order.order_id}: {notif_err}")
+
     return order
 
 
@@ -412,6 +422,19 @@ def update_payment_status(order_id: str, new_status: str, admin_notes: Optional[
 
     db.session.commit()
     logger.info(f"Payment status for order {order.order_id} updated from {old_status} to {new_status}.")
+
+    # Dispatch milestone notifications on payment status changes
+    try:
+        from app.services.notification_service import NotificationService
+        from app.models.settings import Setting
+        brand_name = Setting.get_value("company_name", "Scented Bubbles")
+        if order.order_status == Order.STATUS_CONFIRMED and old_status != Order.PAYMENT_PAID:
+            NotificationService.notify_order_status_updated(order, Order.STATUS_CONFIRMED, brand_name=brand_name)
+        elif new_status == Order.PAYMENT_FAILED:
+            NotificationService.notify_order_status_updated(order, Order.STATUS_CANCELLED, brand_name=brand_name)
+    except Exception as notif_err:
+        logger.warning(f"Notification error during payment update for order {order.order_id}: {notif_err}")
+
     return order
 
 
@@ -499,4 +522,14 @@ def update_order_status(
 
     db.session.commit()
     logger.info(f"Order {order.order_id} advanced to {new_status} at {now.isoformat()}.")
+
+    # Dispatch milestone notification to customer (CONFIRMED, PACKED, SHIPPED, DELIVERED)
+    try:
+        from app.services.notification_service import NotificationService
+        from app.models.settings import Setting
+        brand_name = Setting.get_value("company_name", "Scented Bubbles")
+        NotificationService.notify_order_status_updated(order, new_status, brand_name=brand_name)
+    except Exception as notif_err:
+        logger.warning(f"Notification error advancing order {order.order_id} to {new_status}: {notif_err}")
+
     return order

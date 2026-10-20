@@ -376,3 +376,156 @@ def test_timezone_conversion_ist(app):
     assert format_ist(naive_time, "%d %b %Y at %I:%M %p") == "05 Oct 2026 at 11:19 AM"
 
 
+def test_milestone_email_notifications_registered_customer(app, sample_catalog):
+    """Verifies customer receives emails across all order stages: CONFIRMED, PACKED, SHIPPED, DELIVERED."""
+    with app.app_context():
+        from app.services.notification_service import NotificationService
+        vid = sample_catalog["variant_50ml_id"]
+        cart_items = [{"variant_id": vid, "qty": 1}]
+        customer = {"phone": "9876543299", "name": "Ananya Roy", "email": "ananya@example.com"}
+        shipping = {
+            "name": "Ananya Roy",
+            "phone": "9876543299",
+            "address_line1": "Flat 4B, Park Street",
+            "city": "Kolkata",
+            "state": "West Bengal",
+            "pincode": "700016",
+        }
+
+        sent_messages = []
+
+        def fake_send_smtp(to_email, subject, body_text, html_body=None):
+            sent_messages.append({"to": to_email, "subject": subject, "body": body_text, "html": html_body})
+            return True
+
+        with patch.object(NotificationService, "_send_smtp_message", side_effect=fake_send_smtp):
+            # 1. Order placed upfront with UTR
+            order = create_order(
+                cart_items=cart_items,
+                customer_info=customer,
+                shipping_info=shipping,
+                payment_method="MANUAL_UPI",
+                utr="891023",
+            )
+            # Owner gets new order alert, customer gets order receipt
+            owner_emails = [m for m in sent_messages if "New Confirmed Order" in m["subject"]]
+            cust_receipts = [m for m in sent_messages if "Order Confirmation" in m["subject"] and m["to"] == "ananya@example.com"]
+            assert len(owner_emails) >= 1
+            assert len(cust_receipts) >= 1
+
+            # 2. Advance to CONFIRMED
+            sent_messages.clear()
+            update_order_status(order.order_id, "CONFIRMED")
+            confirmed_emails = [m for m in sent_messages if "Confirmed" in m["subject"] and m["to"] == "ananya@example.com"]
+            assert len(confirmed_emails) == 1
+            assert "Your Order is Confirmed!" in confirmed_emails[0]["html"]
+
+            # 3. Advance to PACKED
+            sent_messages.clear()
+            update_order_status(order.order_id, "PACKED")
+            packed_emails = [m for m in sent_messages if "Packed" in m["subject"] and m["to"] == "ananya@example.com"]
+            assert len(packed_emails) == 1
+            assert "Packed & Ready" in packed_emails[0]["html"]
+
+            # 4. Advance to SHIPPED with courier tracking
+            sent_messages.clear()
+            update_order_status(
+                order.order_id,
+                "SHIPPED",
+                courier_name="Blue Dart",
+                tracking_number="BD789123456",
+                tracking_url="https://bluedart.com/track/BD789123456",
+            )
+            shipped_emails = [m for m in sent_messages if "Shipped" in m["subject"] and m["to"] == "ananya@example.com"]
+            assert len(shipped_emails) == 1
+            assert "Blue Dart" in shipped_emails[0]["html"]
+            assert "BD789123456" in shipped_emails[0]["html"]
+
+            # 5. Advance to DELIVERED
+            sent_messages.clear()
+            update_order_status(order.order_id, "DELIVERED")
+            delivered_emails = [m for m in sent_messages if "Delivered" in m["subject"] and m["to"] == "ananya@example.com"]
+            assert len(delivered_emails) == 1
+            assert "Delivered" in delivered_emails[0]["html"]
+
+
+def test_milestone_email_suppressed_for_unregistered_email(app, sample_catalog):
+    """Verifies that if customer has no registered email, emails are strictly suppressed without crashing."""
+    with app.app_context():
+        from app.services.notification_service import NotificationService
+        vid = sample_catalog["variant_50ml_id"]
+        cart_items = [{"variant_id": vid, "qty": 1}]
+        # Phone only, no email registered
+        customer = {"phone": "9876543288", "name": "Rahul Verma", "email": ""}
+        shipping = {
+            "name": "Rahul Verma",
+            "phone": "9876543288",
+            "address_line1": "Civil Lines",
+            "city": "Nagpur",
+            "state": "Maharashtra",
+            "pincode": "440001",
+        }
+
+        sent_to_customer = []
+
+        def fake_send_smtp(to_email, subject, body_text, html_body=None):
+            if "rahul" in to_email.lower():
+                sent_to_customer.append(to_email)
+            return True
+
+        with patch.object(NotificationService, "_send_smtp_message", side_effect=fake_send_smtp):
+            order = create_order(
+                cart_items=cart_items,
+                customer_info=customer,
+                shipping_info=shipping,
+                payment_method="MANUAL_UPI",
+                utr="991023",
+            )
+            update_order_status(order.order_id, "CONFIRMED")
+            update_order_status(order.order_id, "PACKED")
+            update_order_status(order.order_id, "SHIPPED", courier_name="Delhivery", tracking_number="DEL123")
+            update_order_status(order.order_id, "DELIVERED")
+
+            # Customer received 0 emails because email is not registered
+            assert len(sent_to_customer) == 0
+
+
+def test_cancellation_email_notification(app, sample_catalog):
+    """Verifies cancellation notification is dispatched with cancellation reason."""
+    with app.app_context():
+        from app.services.notification_service import NotificationService
+        vid = sample_catalog["variant_50ml_id"]
+        cart_items = [{"variant_id": vid, "qty": 1}]
+        customer = {"phone": "9876543277", "name": "Kavita Sen", "email": "kavita@example.com"}
+        shipping = {
+            "name": "Kavita Sen",
+            "phone": "9876543277",
+            "address_line1": "Salt Lake",
+            "city": "Kolkata",
+            "state": "West Bengal",
+            "pincode": "700091",
+        }
+
+        sent_messages = []
+
+        def fake_send_smtp(to_email, subject, body_text, html_body=None):
+            sent_messages.append({"to": to_email, "subject": subject, "body": body_text, "html": html_body})
+            return True
+
+        with patch.object(NotificationService, "_send_smtp_message", side_effect=fake_send_smtp):
+            order = create_order(
+                cart_items=cart_items,
+                customer_info=customer,
+                shipping_info=shipping,
+                payment_method="MANUAL_UPI",
+                utr="771023",
+            )
+            sent_messages.clear()
+            cancel_order(order.order_id, reason="Customer requested address modification")
+
+            cancel_emails = [m for m in sent_messages if "Cancellation" in m["subject"] and m["to"] == "kavita@example.com"]
+            assert len(cancel_emails) == 1
+            assert "Customer requested address modification" in cancel_emails[0]["html"]
+
+
+

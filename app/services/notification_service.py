@@ -251,27 +251,123 @@ class NotificationService:
 
             latest_pay = order.latest_payment
             utr_line = f"Bank UTR (Last 6 Digits): {latest_pay.utr}\n" if (latest_pay and latest_pay.utr) else ""
+            utr_html = f"<div style='margin-bottom: 4px;'><strong>Bank UTR (Last 6 Digits):</strong> <span style='font-family: monospace; font-size: 14px; font-weight: 700; color: #1E40AF;'>{latest_pay.utr}</span></div>" if (latest_pay and latest_pay.utr) else ""
 
             items_lines = []
+            items_html_rows = []
             for item in order.items:
-                items_lines.append(f"  • {item.product_name_snapshot} ({item.variant_label_snapshot}) x {item.quantity} - ₹{item.total_price}")
-            items_text = "\n".join(items_lines) if items_lines else "  No line items snapshot."
+                v_label = f" ({item.variant_label_snapshot})" if item.variant_label_snapshot else ""
+                items_lines.append(f"  • {item.product_name_snapshot}{v_label} x {item.quantity} - ₹{item.total_price:,.2f}")
+                items_html_rows.append(f"""
+                <tr>
+                    <td style='padding: 8px 12px; border-bottom: 1px solid #ECE7DF; font-size: 13px; color: #1A1A1A;'>
+                        <strong>{item.product_name_snapshot}</strong>{v_label}
+                    </td>
+                    <td style='padding: 8px 12px; border-bottom: 1px solid #ECE7DF; font-size: 13px; text-align: center; color: #555555;'>
+                        &times; {item.quantity}
+                    </td>
+                    <td style='padding: 8px 12px; border-bottom: 1px solid #ECE7DF; font-size: 13px; text-align: right; font-weight: 600; color: #1A1A1A;'>
+                        ₹{item.total_price:,.2f}
+                    </td>
+                </tr>
+                """)
 
-            subject = f"[{brand_name}] New Confirmed Order #{order.order_id} Received (₹{order.total_amount})"
+            items_text = "\n".join(items_lines) if items_lines else "  No line items snapshot."
+            items_html_table = "".join(items_html_rows)
+            customer_email = NotificationService.get_customer_email(order) or "Not registered (Phone only)"
+            admin_url = f"https://scentedbubble.in/admin/orders/{order.order_id}"
+
+            subject = f"[{brand_name}] New Confirmed Order #{order.order_id} Received (₹{order.total_amount:,.2f})"
             body = (
                 f"New Confirmed Order Received at {brand_name}!\n\n"
-                f"Order ID: {order.order_id}\n"
-                f"Customer: {order.shipping_name} ({order.shipping_phone})\n"
-                f"Total Amount: ₹{order.total_amount}\n"
+                f"Order ID: #{order.order_id}\n"
+                f"Customer: {order.shipping_name}\n"
+                f"Phone: {order.shipping_phone}\n"
+                f"Email: {customer_email}\n"
+                f"Total Amount: ₹{order.total_amount:,.2f}\n"
                 f"Payment Method: {order.payment_method}\n"
                 f"{utr_line}"
                 f"Shipping Address:\n"
                 f"{order.shipping_address_line1}, {order.shipping_city}, {order.shipping_state} - {order.shipping_pincode}\n\n"
                 f"Ordered Items:\n{items_text}\n\n"
-                f"Review and verify this order in your admin dashboard."
+                f"Review order in admin portal: {admin_url}"
             )
-            if NotificationService._send_smtp_message(to_email, subject, body):
-                logger.info(f"Store owner notification email sent for order {order.order_id}")
+
+            html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>New Confirmed Order #{order.order_id}</title></head>
+<body style="margin: 0; padding: 20px 0; background-color: #FAF8F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1A1A1A;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #FAF8F5; padding: 20px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%; background: #FFFFFF; border-radius: 12px; border: 1px solid #EAE5DC; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
+          <tr>
+            <td style="background: #1A1A1A; padding: 24px 32px; text-align: center;">
+              <h1 style="margin: 0; color: #C5A880; font-family: Georgia, serif; font-size: 24px; letter-spacing: 0.05em; font-weight: normal;">{brand_name}</h1>
+              <p style="margin: 4px 0 0; color: #A6998A; font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em;">Store Admin Alert</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 32px 32px 24px;">
+              <div style="display: inline-block; background: #ECFDF5; color: #065F46; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 99px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">
+                🎉 New Confirmed Order Received
+              </div>
+              <h2 style="margin: 0 0 10px; color: #1A1A1A; font-size: 22px; font-weight: 700;">Order #{order.order_id}</h2>
+              <p style="margin: 0 0 16px; color: #555555; font-size: 15px; line-height: 1.5;">
+                A new order has been placed by <strong>{order.shipping_name}</strong> for a total of <strong>₹{order.total_amount:,.2f}</strong>.
+              </p>
+
+              <div style="background: #FAF8F5; padding: 16px 20px; border-radius: 8px; border: 1px solid #ECE7DF; margin: 16px 0; font-size: 13px; line-height: 1.6;">
+                <div style="margin-bottom: 4px;"><strong>Customer:</strong> {order.shipping_name} (<a href="tel:{order.shipping_phone}" style="color: #713F12; text-decoration: none; font-weight: 600;">{order.shipping_phone}</a>)</div>
+                <div style="margin-bottom: 4px;"><strong>Email:</strong> {customer_email}</div>
+                <div style="margin-bottom: 4px;"><strong>Payment Method:</strong> {order.payment_method}</div>
+                {utr_html}
+                <div style="margin-bottom: 4px;"><strong>Destination:</strong> {order.shipping_address_line1}, {order.shipping_city}, {order.shipping_state} - {order.shipping_pincode}</div>
+              </div>
+
+              <div style="margin: 20px 0;">
+                <div style="font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #713F12; margin-bottom: 8px;">Order Line Items</div>
+                <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; background: #FAF8F5; border-radius: 8px; overflow: hidden; border: 1px solid #ECE7DF;">
+                  <thead>
+                    <tr style="background: #F3EFEA; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #8C827A;">
+                      <th style="padding: 8px 12px; text-align: left;">Product</th>
+                      <th style="padding: 8px 12px; text-align: center;">Qty</th>
+                      <th style="padding: 8px 12px; text-align: right;">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items_html_table}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colspan="2" style="padding: 10px 12px; font-weight: 700; font-size: 14px; text-align: right; color: #1A1A1A;">Total Amount:</td>
+                      <td style="padding: 10px 12px; font-weight: 700; font-size: 15px; text-align: right; color: #713F12;">₹{order.total_amount:,.2f}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <div style="text-align: center; margin-top: 24px;">
+                <a href="{admin_url}" style="background: #1A1A1A; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;">
+                  Open Order in Admin Panel &rarr;
+                </a>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background: #FAF8F5; padding: 16px 32px; border-top: 1px solid #EAE5DC; text-align: center; font-size: 11px; color: #A6998A;">
+              © {brand_name} Store Admin Notification System
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+            if NotificationService._send_smtp_message(to_email, subject, body, html_body=html_body):
+                logger.info(f"Store owner notification email sent for order {order.order_id} to {to_email}")
                 return True
             return False
         except Exception as e:
@@ -538,5 +634,222 @@ class NotificationService:
             return NotificationService._send_smtp_message(to_email, subject, body)
         except Exception as e:
             logger.warning(f"Failed to send password reset email to {to_email}: {e}")
+            return False
+
+    @staticmethod
+    def notify_order_status_updated(order, new_status: str, brand_name: str = "Scented Bubbles", async_mode: bool = True):
+        """Dispatches milestone emails to customer for CONFIRMED, PACKED, SHIPPED, DELIVERED, and CANCELLED."""
+        try:
+            from app.models.settings import Setting
+            order_notifs_enabled = Setting.get_value("order_notifications_enabled", "true")
+            if str(order_notifs_enabled).strip().lower() in ("false", "0", "no", "disabled"):
+                logger.info(f"Order notification emails are muted in Store Settings. Skipping milestone email for order {order.order_id}.")
+                return
+
+            customer_email = NotificationService.get_customer_email(order)
+            if not customer_email:
+                logger.info(f"Order #{order.order_id}: Customer does not have a registered email; skipping {new_status} status email.")
+                return
+
+            is_testing = current_app and current_app.config.get("TESTING")
+            if is_testing or not async_mode:
+                NotificationService._send_order_status_email(order, new_status, customer_email, brand_name)
+                return
+
+            import threading
+            app = current_app._get_current_object()
+            order_id = order.id
+            thread = threading.Thread(
+                target=NotificationService._async_status_worker,
+                args=(app, order_id, new_status, customer_email, brand_name),
+                daemon=True,
+                name=f"StatusNotif-{order.order_id}-{new_status}",
+            )
+            thread.start()
+            logger.info(f"Spawned background status notification worker for order #{order.order_id} -> {new_status}")
+
+        except Exception as e:
+            logger.exception(f"Failed to dispatch order status notification for {order.order_id}: {e}")
+
+    @staticmethod
+    def _async_status_worker(app, order_id: int, new_status: str, customer_email: str, brand_name: str):
+        """Background worker thread executing milestone status email delivery."""
+        with app.app_context():
+            try:
+                from app.models.orders import Order
+                from app.extensions import db
+                order = db.session.get(Order, order_id)
+                if not order:
+                    return
+                NotificationService._send_order_status_email(order, new_status, customer_email, brand_name)
+            except Exception as e:
+                logger.exception(f"Background status notification failed for order ID {order_id}: {e}")
+
+    @staticmethod
+    def _send_order_status_email(order, new_status: str, customer_email: str, brand_name: str):
+        """Formats and sends the milestone update email (CONFIRMED, PACKED, SHIPPED, DELIVERED, CANCELLED)."""
+        try:
+            from app.models.settings import Setting
+
+            status_configs = {
+                "CONFIRMED": {
+                    "badge": "✓ Order Confirmed",
+                    "badge_bg": "#ECFDF5",
+                    "badge_color": "#065F46",
+                    "title": "Your Order is Confirmed!",
+                    "message": "We have verified your payment and confirmed your order. Our team is now carefully blending and preparing your artisanal fragrances for fulfillment.",
+                    "subject": f"Your Order #{order.order_id} is Confirmed! — {brand_name}",
+                },
+                "PACKED": {
+                    "badge": "📦 Order Packed",
+                    "badge_bg": "#FEF3C7",
+                    "badge_color": "#92400E",
+                    "title": "Your Order is Packed & Ready!",
+                    "message": "Every bottle in your order has been hand-inspected, wrapped in our protective luxury packaging, and securely sealed for courier handover.",
+                    "subject": f"Your Order #{order.order_id} is Packed & Ready — {brand_name}",
+                },
+                "SHIPPED": {
+                    "badge": "🚚 Dispatched & In Transit",
+                    "badge_bg": "#EFF6FF",
+                    "badge_color": "#1E40AF",
+                    "title": "Your Order is On the Way!",
+                    "message": "Great news! Your package has been handed over to our courier partner and is traveling to your doorstep.",
+                    "subject": f"Your Order #{order.order_id} has been Shipped — {brand_name}",
+                },
+                "DELIVERED": {
+                    "badge": "✨ Delivered",
+                    "badge_bg": "#F3E8FF",
+                    "badge_color": "#6B21A8",
+                    "title": "Your Fragrance Package has Arrived!",
+                    "message": "Your order has been delivered to your doorstep. We hope you love your new signature fragrances! Thank you for choosing Scented Bubbles.",
+                    "subject": f"Your Order #{order.order_id} has been Delivered — {brand_name}",
+                },
+                "CANCELLED": {
+                    "badge": "✕ Order Cancelled",
+                    "badge_bg": "#FEE2E2",
+                    "badge_color": "#991B1B",
+                    "title": "Order Cancellation Notice",
+                    "message": f"Your order #{order.order_id} has been cancelled." + (f" Reason: {order.cancellation_reason}" if order.cancellation_reason else ""),
+                    "subject": f"Order #{order.order_id} Cancellation Update — {brand_name}",
+                },
+            }
+
+            cfg = status_configs.get(new_status.upper())
+            if not cfg:
+                return False
+
+            # Courier block for SHIPPED status
+            courier_html = ""
+            courier_text = ""
+            if new_status.upper() == "SHIPPED":
+                c_name = order.courier_name or "Express Courier Partner"
+                t_num = order.tracking_number or "In Transit"
+                t_url = order.tracking_url or "https://scentedbubble.in/track-order"
+                courier_text = f"\nCOURIER DETAILS:\nCourier Partner: {c_name}\nTracking Number / AWB: {t_num}\nTrack URL: {t_url}\n"
+                courier_html = f"""
+                <div style="margin: 20px 0; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 16px;">
+                    <div style="font-weight: 700; color: #1E40AF; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">🚚 Shipping &amp; Courier Details</div>
+                    <div style="font-size: 14px; color: #1E3A8A; line-height: 1.6;">
+                        <div><strong>Courier:</strong> {c_name}</div>
+                        <div><strong>Tracking / AWB:</strong> {t_num}</div>
+                        <div style="margin-top: 8px;"><a href="{t_url}" style="color: #1D4ED8; font-weight: 600; text-decoration: underline;">Click Here to Track Shipment &rarr;</a></div>
+                    </div>
+                </div>
+                """
+
+            # Items summary
+            items_lines = []
+            items_list_html = []
+            for item in order.items:
+                variant_info = f" ({item.variant_label_snapshot})" if item.variant_label_snapshot else ""
+                items_lines.append(f"  • {item.product_name_snapshot}{variant_info} x {item.quantity}")
+                items_list_html.append(f"<li style='margin-bottom: 4px;'><strong>{item.product_name_snapshot}</strong>{variant_info} &times; {item.quantity}</li>")
+            items_text = "\n".join(items_lines) if items_lines else "  Items confirmed."
+            items_html_block = f"<ul style='margin: 6px 0 0 16px; padding: 0; color: #555555; font-size: 13px;'>{''.join(items_list_html)}</ul>" if items_list_html else ""
+
+            support_whatsapp = Setting.get_value("support_whatsapp", "919876543210")
+            support_email = Setting.get_value("support_email", "care@scentedbubbles.com")
+            track_url = "https://scentedbubble.in/track-order"
+
+            body_text = (
+                f"Hello {order.shipping_name},\n\n"
+                f"{cfg['message']}\n\n"
+                f"Order ID: #{order.order_id}\n"
+                f"Status: {new_status}\n"
+                f"{courier_text}\n"
+                f"Items:\n{items_text}\n\n"
+                f"Track status anytime: {track_url}\n\n"
+                f"If you have any questions, reach out to us at {support_email} or WhatsApp +{support_whatsapp}.\n\n"
+                f"Warm regards,\n"
+                f"The {brand_name} Team"
+            )
+
+            html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>{cfg['title']}</title></head>
+<body style="margin: 0; padding: 20px 0; background-color: #FAF8F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1A1A1A;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #FAF8F5; padding: 20px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%; background: #FFFFFF; border-radius: 12px; border: 1px solid #EAE5DC; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: #1A1A1A; padding: 24px 32px; text-align: center;">
+              <h1 style="margin: 0; color: #C5A880; font-family: Georgia, serif; font-size: 24px; letter-spacing: 0.05em; font-weight: normal;">{brand_name}</h1>
+              <p style="margin: 4px 0 0; color: #A6998A; font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em;">Order Status Update</p>
+            </td>
+          </tr>
+
+          <!-- Message Card -->
+          <tr>
+            <td style="padding: 32px 32px 24px;">
+              <div style="display: inline-block; background: {cfg['badge_bg']}; color: {cfg['badge_color']}; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 99px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">
+                {cfg['badge']}
+              </div>
+              <h2 style="margin: 0 0 10px; color: #1A1A1A; font-size: 22px; font-weight: 700;">{cfg['title']}</h2>
+              <p style="margin: 0 0 16px; color: #555555; font-size: 15px; line-height: 1.6;">
+                {cfg['message']}
+              </p>
+
+              {courier_html}
+
+              <div style="background: #FAF8F5; padding: 14px 18px; border-radius: 8px; border: 1px solid #ECE7DF; margin: 20px 0; font-size: 13px;">
+                <div style="margin-bottom: 4px;"><strong>Order ID:</strong> <span style="color: #713F12; font-weight: 700;">#{order.order_id}</span></div>
+                <div style="margin-bottom: 6px;"><strong>Recipient:</strong> {order.shipping_name} ({order.shipping_city}, {order.shipping_state})</div>
+                <div style="border-top: 1px dashed #E5DFD5; padding-top: 8px; margin-top: 6px;">
+                  <strong style="color: #1A1A1A;">Ordered Fragrances:</strong>
+                  {items_html_block}
+                </div>
+              </div>
+
+              <!-- Button -->
+              <div style="text-align: center; margin-top: 24px;">
+                <a href="{track_url}" style="background: #1A1A1A; color: #FFFFFF; text-decoration: none; padding: 12px 26px; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;">
+                  Track Order Online &rarr;
+                </a>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background: #FAF8F5; padding: 20px 32px; border-top: 1px solid #EAE5DC; text-align: center; font-size: 12px; color: #8C827A; line-height: 1.5;">
+              <p style="margin: 0 0 6px;">Questions? WhatsApp: <a href="https://wa.me/{support_whatsapp}" style="color: #713F12; font-weight: 600; text-decoration: none;">+{support_whatsapp}</a> | Email: <a href="mailto:{support_email}" style="color: #713F12; font-weight: 600; text-decoration: none;">{support_email}</a></p>
+              <p style="margin: 0; font-size: 11px; color: #A6998A;">© {brand_name} • Handcrafted French Heritage Perfumes</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+            return NotificationService._send_smtp_message(customer_email, cfg["subject"], body_text, html_body=html_body)
+
+        except Exception as e:
+            logger.warning(f"Failed to send milestone update email for {order.order_id}: {e}")
             return False
 
