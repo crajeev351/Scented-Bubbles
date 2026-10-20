@@ -153,11 +153,69 @@ def test_testing_mode_mutes_order_emails_and_prevents_duplicate_sends(app, sampl
 
         with patch("app.services.notification_service.NotificationService._send_smtp_message") as mock_smtp:
             NotificationService.notify_order_created(order)
-            # Since customer email == owner email (owner testing with own email),
-            # exactly 1 consolidated notification is sent, NOT 2 duplicate emails!
-            assert mock_smtp.call_count == 1
+            # Both store owner alert AND customer order details receipt are dispatched
+            assert mock_smtp.call_count == 2
             assert order.notification_sent is True
 
             # Attempt duplicate dispatch on same order: must be completely ignored
             NotificationService.notify_order_created(order)
+            assert mock_smtp.call_count == 2
+
+
+def test_customer_order_details_email_sent_only_when_registered(app, sample_catalog):
+    """Verifies that customer receives rich order details email when email is registered, and skipped when no email."""
+    vid = sample_catalog["variant_50ml_id"]
+
+    with app.app_context():
+        Setting.set_value("order_notifications_enabled", "true")
+        Setting.set_value("notification_email", "store_owner@scentedbubbles.com")
+
+        # 1. Customer with registered email
+        with patch("app.services.notification_service.NotificationService._send_smtp_message") as mock_smtp:
+            order_with_email = create_order(
+                cart_items=[{"variant_id": vid, "qty": 2}],
+                customer_info={"name": "Siddharth Jain", "phone": "9876543210", "email": "siddharth@example.com"},
+                shipping_info={"name": "Siddharth Jain", "phone": "9876543210", "address_line1": "Road 36, Jubilee Hills", "city": "Hyderabad", "state": "Telangana", "pincode": "500033"},
+                payment_method="MANUAL_UPI",
+                utr="112233",
+            )
+            # Expect 2 emails: 1 to store owner, 1 to customer with order details
+            assert mock_smtp.call_count == 2
+
+            # Check calls
+            recipients = [call.args[0] for call in mock_smtp.call_args_list]
+            assert "store_owner@scentedbubbles.com" in recipients
+            assert "siddharth@example.com" in recipients
+
+            # Find customer call
+            cust_call = [call for call in mock_smtp.call_args_list if call.args[0] == "siddharth@example.com"][0]
+            to_email, subject, body_text = cust_call.args[0], cust_call.args[1], cust_call.args[2]
+            html_body = cust_call.kwargs.get("html_body")
+
+            assert f"#{order_with_email.order_id}" in subject
+            # Plain text must contain order details
+            assert order_with_email.order_id in body_text
+            assert "ITEMS IN YOUR ORDER:" in body_text
+            assert "Road 36, Jubilee Hills" in body_text
+            assert "₹" in body_text
+
+            # HTML body must contain rich table and styling
+            assert html_body is not None
+            assert order_with_email.order_id in html_body
+            assert "Jubilee Hills" in html_body
+
+        # 2. Customer without registered email (guest checkout without email)
+        with patch("app.services.notification_service.NotificationService._send_smtp_message") as mock_smtp:
+            order_without_email = create_order(
+                cart_items=[{"variant_id": vid, "qty": 1}],
+                customer_info={"name": "Phone Only User", "phone": "9988776655", "email": ""},
+                shipping_info={"name": "Phone Only User", "phone": "9988776655", "address_line1": "MG Road", "city": "Bengaluru", "state": "Karnataka", "pincode": "560001"},
+                payment_method="MANUAL_UPI",
+                utr="445566",
+            )
+            # Only 1 email (to store owner), customer email is strictly skipped
             assert mock_smtp.call_count == 1
+            recipients = [call.args[0] for call in mock_smtp.call_args_list]
+            assert "store_owner@scentedbubbles.com" in recipients
+            assert "" not in recipients
+

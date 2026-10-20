@@ -11,6 +11,38 @@ class NotificationService:
     """Orchestrates notifications for new orders across admin badge, email, and WhatsApp."""
 
     @staticmethod
+    def get_customer_email(order) -> str:
+        """Safely extracts and validates the customer's registered email address."""
+        if not order:
+            return ""
+
+        email = None
+        # 1. From linked customer profile
+        if getattr(order, "customer", None):
+            if order.customer.email:
+                email = str(order.customer.email).strip()
+            elif getattr(order.customer, "user", None) and order.customer.user.email:
+                email = str(order.customer.user.email).strip()
+
+        # 2. From database query if relationship is detached or not loaded
+        if not email and getattr(order, "customer_id", None):
+            try:
+                from app.models.customers import Customer
+                from app.extensions import db
+                cust = db.session.get(Customer, order.customer_id)
+                if cust:
+                    if cust.email:
+                        email = str(cust.email).strip()
+                    elif getattr(cust, "user", None) and cust.user.email:
+                        email = str(cust.user.email).strip()
+            except Exception:
+                pass
+
+        if email and "@" in email and "." in email:
+            return email.lower()
+        return ""
+
+    @staticmethod
     def notify_order_created(order, brand_name: str = "Scented Bubbles"):
         """Dispatches notifications. CRITICAL: Notification failure must NEVER fail or roll back an order."""
         try:
@@ -26,22 +58,17 @@ class NotificationService:
                 logger.info(f"Order notification emails are muted in Store Settings (Testing Mode). Skipping email for order {order.order_id}.")
                 return
 
-            # 3. Retrieve SMTP config and emails
-            smtp_cfg = NotificationService.get_smtp_config()
-            owner_email = (smtp_cfg.get("notification_email") or smtp_cfg.get("user") or "").strip().lower()
-            customer_email = (order.shipping_phone and (order.customer.email if order.customer else "") or "").strip().lower()
+            # 3. Retrieve customer email (if registered)
+            customer_email = NotificationService.get_customer_email(order)
 
             # 4. Send email notification to store owner if SMTP is configured
             NotificationService._send_email_notification(order, brand_name)
 
-            # 5. Send customer order confirmation email ONLY if customer provided an email address
-            # AND if customer email is not the exact same address as the owner alert email.
-            # When owners test orders using their own email address, sending both floods the inbox!
+            # 5. Send customer order confirmation email ONLY if customer has a registered email address
             if customer_email:
-                if customer_email != owner_email:
-                    NotificationService.send_customer_order_confirmation(order, brand_name)
-                else:
-                    logger.info(f"Customer email is identical to store owner alert email ({customer_email}); sent single owner notification to avoid duplicate testing emails in inbox.")
+                NotificationService.send_customer_order_confirmation(order, brand_name, customer_email=customer_email)
+            else:
+                logger.info(f"Order #{order.order_id}: Customer does not have a registered email address; skipping customer order email.")
 
             # 6. Flag notification as sent and commit to permanently block duplicate sends
             order.notification_sent = True
@@ -130,7 +157,7 @@ class NotificationService:
             return False, f"SMTP connection failed: {str(e)}"
 
     @staticmethod
-    def _send_smtp_message(to_email: str, subject: str, body_text: str):
+    def _send_smtp_message(to_email: str, subject: str, body_text: str, html_body: str = None):
         """Low-level helper to send an SMTP email using dynamic app configuration."""
         try:
             # In testing/pytest mode, strictly suppress real SMTP connections and external email delivery
@@ -149,13 +176,18 @@ class NotificationService:
                 logger.debug(f"SMTP not configured or recipient empty; skipping email to {to_email}.")
                 return False
 
-            msg = MIMEMultipart()
-            msg["Subject"] = subject
-            msg["From"] = smtp_user
-            msg["To"] = to_email
-            msg.attach(MIMEText(body_text, "plain"))
+            from app.models.settings import Setting
+            brand_name = Setting.get_value("company_name", "Scented Bubbles")
 
-            server = smtplib.SMTP(smtp_host, port, timeout=10)
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = f"{brand_name} <{smtp_user}>"
+            msg["To"] = to_email
+            msg.attach(MIMEText(body_text, "plain", "utf-8"))
+            if html_body:
+                msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+            server = smtplib.SMTP(smtp_host, port, timeout=12)
             if use_tls:
                 server.starttls()
             server.login(smtp_user, smtp_pass)
@@ -205,34 +237,243 @@ class NotificationService:
             return False
 
     @staticmethod
-    def send_customer_order_confirmation(order, brand_name: str = "Scented Bubbles"):
-        """Sends order confirmation receipt to customer if customer email was provided."""
+    def send_customer_order_confirmation(order, brand_name: str = "Scented Bubbles", customer_email: str = None):
+        """Sends rich itemized order confirmation receipt to customer if customer email is registered."""
         try:
-            customer_email = order.shipping_email or (order.customer.email if order.customer else None)
             if not customer_email:
+                customer_email = NotificationService.get_customer_email(order)
+
+            # Strictly enforce: if no registered email, do not send!
+            if not customer_email:
+                logger.info(f"Order #{order.order_id}: No registered customer email found; skipping customer confirmation email.")
                 return False
 
+            from app.models.settings import Setting
+            from datetime import timezone, timedelta
+
+            # Formatting Date in IST
+            ist_tz = timezone(timedelta(hours=5, minutes=30))
+            order_dt = getattr(order, "confirmed_at", None) or getattr(order, "created_at", None)
+            if order_dt:
+                if order_dt.tzinfo is None:
+                    order_dt = order_dt.replace(tzinfo=timezone.utc)
+                date_str = order_dt.astimezone(ist_tz).strftime("%d %b %Y, %I:%M %p IST")
+            else:
+                date_str = "Recently Placed"
+
+            # Payment details
             latest_pay = order.latest_payment
-            utr_line = f"Payment Reference (Last 6 Digits): {latest_pay.utr}\n" if (latest_pay and latest_pay.utr) else ""
+            utr_val = latest_pay.utr if (latest_pay and latest_pay.utr) else ""
+            utr_text_line = f"Payment Reference / UTR: {utr_val}\n" if utr_val else ""
+            utr_html_line = f"<div style='margin-top: 4px; color: #555555; font-size: 13px;'><strong>Payment Ref / UTR:</strong> {utr_val}</div>" if utr_val else ""
+
+            pay_method_label = "UPI (Instant Scan & Pay)" if order.payment_method == "MANUAL_UPI" else (order.payment_method or "Online")
+            pay_status_label = "Payment Verified & Confirmed" if order.payment_status == "PAID" else "Payment Reference Submitted (Under Verification)"
+
+            # Delivery Fee
+            delivery_charge_val = float(order.delivery_charge or 0)
+            delivery_fee_str = "FREE (Pan-India Express)" if delivery_charge_val == 0 else f"₹{delivery_charge_val:,.2f}"
+
+            # Items formatting
+            items_lines = []
+            items_html_rows = []
+            for item in order.items:
+                variant_info = f" ({item.variant_label_snapshot})" if item.variant_label_snapshot else ""
+                items_lines.append(f"  • {item.product_name_snapshot}{variant_info} x {item.quantity} — ₹{float(item.total_price):,.2f}")
+                items_html_rows.append(f"""
+                <tr style="border-bottom: 1px solid #F0ECE4;">
+                  <td style="padding: 12px 0;">
+                    <div style="font-weight: 600; color: #1A1A1A; font-size: 14px;">{item.product_name_snapshot}</div>
+                    <div style="color: #8C827A; font-size: 12px; margin-top: 2px;">{item.variant_label_snapshot or ''}</div>
+                  </td>
+                  <td style="padding: 12px 8px; text-align: center; color: #555555; font-size: 14px;">{item.quantity}</td>
+                  <td style="padding: 12px 0; text-align: right; font-weight: 600; color: #1A1A1A; font-size: 14px;">₹{float(item.total_price):,.2f}</td>
+                </tr>
+                """)
+
+            items_text = "\n".join(items_lines) if items_lines else "  Items confirmed."
+            items_html = "".join(items_html_rows) if items_html_rows else "<tr><td colspan='3' style='padding: 10px; color: #888;'>Items confirmed.</td></tr>"
+
+            # Address formatting
+            addr_parts = [
+                order.shipping_name,
+                f"Phone: {order.shipping_phone}",
+                order.shipping_address_line1,
+            ]
+            if order.shipping_address_line2:
+                addr_parts.append(order.shipping_address_line2)
+            addr_parts.append(f"{order.shipping_city}, {order.shipping_state} - {order.shipping_pincode}")
+
+            address_text = "\n".join(addr_parts)
+            address_html = "<br>".join(addr_parts)
+
+            # Store info
+            support_whatsapp = Setting.get_value("support_whatsapp", "919876543210")
+            support_email = Setting.get_value("support_email", "care@scentedbubbles.com")
+            track_url = "https://scentedbubble.in/track-order"
 
             subject = f"Your Order Confirmation #{order.order_id} - {brand_name}"
-            body = (
+
+            # Plain text body
+            body_text = (
                 f"Hello {order.shipping_name},\n\n"
                 f"Thank you for shopping with {brand_name}! We have received and confirmed your order.\n\n"
-                f"Order ID: {order.order_id}\n"
-                f"Total: ₹{order.total_amount}\n"
-                f"Payment Method: {order.payment_method}\n"
-                f"{utr_line}"
-                f"Shipping Address:\n"
-                f"{order.shipping_address_line1}, {order.shipping_city}, {order.shipping_state} - {order.shipping_pincode}\n\n"
-                f"You can track your order status anytime through your account.\n\n"
+                f"==================================================\n"
+                f"ORDER CONFIRMATION: #{order.order_id}\n"
+                f"==================================================\n"
+                f"Order Date: {date_str}\n"
+                f"Payment Method: {pay_method_label}\n"
+                f"Payment Status: {pay_status_label}\n"
+                f"{utr_text_line}\n"
+                f"ITEMS IN YOUR ORDER:\n"
+                f"{items_text}\n\n"
+                f"--------------------------------------------------\n"
+                f"PRICE BREAKDOWN:\n"
+                f"Subtotal: ₹{float(order.subtotal):,.2f}\n"
+                f"Delivery Fee: {delivery_fee_str}\n"
+                f"Total Amount: ₹{float(order.total_amount):,.2f}\n"
+                f"--------------------------------------------------\n\n"
+                f"SHIPPING ADDRESS:\n"
+                f"{address_text}\n\n"
+                f"Track your order anytime online at:\n"
+                f"{track_url}\n\n"
+                f"Need help with your order? Reach out on WhatsApp (+{support_whatsapp}) or email ({support_email}).\n\n"
                 f"Warm regards,\n"
-                f"{brand_name} Team"
+                f"The {brand_name} Team"
             )
-            if NotificationService._send_smtp_message(customer_email, subject, body):
-                logger.info(f"Customer confirmation email sent to {customer_email} for order {order.order_id}")
+
+            # HTML body
+            html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Order Confirmation #{order.order_id}</title>
+</head>
+<body style="margin: 0; padding: 20px 0; background-color: #FAF8F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1A1A1A;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #FAF8F5; padding: 20px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%; background: #FFFFFF; border-radius: 12px; border: 1px solid #EAE5DC; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: #1A1A1A; padding: 28px 32px; text-align: center;">
+              <h1 style="margin: 0; color: #C5A880; font-family: Georgia, serif; font-size: 26px; letter-spacing: 0.05em; font-weight: normal;">{brand_name}</h1>
+              <p style="margin: 4px 0 0; color: #A6998A; font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em;">Artisanal Fragrance & Luxury Diffusers</p>
+            </td>
+          </tr>
+
+          <!-- Banner / Greeting -->
+          <tr>
+            <td style="padding: 32px 32px 20px; border-bottom: 1px solid #F0ECE4;">
+              <div style="display: inline-block; background: #ECFDF5; color: #065F46; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 99px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">
+                ✓ Order Confirmed
+              </div>
+              <h2 style="margin: 0 0 8px; color: #1A1A1A; font-size: 22px; font-weight: 700;">Thank You for Your Order, {order.shipping_name}!</h2>
+              <p style="margin: 0; color: #666666; font-size: 14px; line-height: 1.5;">
+                We have received and confirmed your order. Our team is carefully preparing your artisanal perfumes for courier dispatch.
+              </p>
+              
+              <div style="margin-top: 18px; padding: 12px 16px; background: #FAF8F5; border-radius: 8px; border: 1px solid #ECE7DF; font-size: 13px;">
+                <div style="margin-bottom: 4px;"><strong>Order ID:</strong> <span style="color: #713F12; font-weight: 700;">#{order.order_id}</span></div>
+                <div style="color: #777777;">Placed on {date_str}</div>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Items Table -->
+          <tr>
+            <td style="padding: 24px 32px 16px;">
+              <h3 style="margin: 0 0 12px; color: #1A1A1A; font-size: 15px; text-transform: uppercase; letter-spacing: 0.08em;">Items in Your Order</h3>
+              <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
+                <thead>
+                  <tr style="border-bottom: 2px solid #EAE5DC; text-align: left; font-size: 11px; color: #8C827A; text-transform: uppercase; letter-spacing: 0.05em;">
+                    <th style="padding-bottom: 8px;">Product</th>
+                    <th style="padding-bottom: 8px; text-align: center;">Qty</th>
+                    <th style="padding-bottom: 8px; text-align: right;">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items_html}
+                </tbody>
+              </table>
+
+              <!-- Financial Summary -->
+              <table width="100%" cellspacing="0" cellpadding="0" style="margin-top: 16px; border-top: 1px solid #EAE5DC; font-size: 14px;">
+                <tr>
+                  <td style="padding: 8px 0; color: #666666;">Subtotal</td>
+                  <td style="padding: 8px 0; text-align: right; color: #1A1A1A; font-weight: 500;">₹{float(order.subtotal):,.2f}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #666666;">Delivery Fee</td>
+                  <td style="padding: 8px 0; text-align: right; color: #047857; font-weight: 600;">{delivery_fee_str}</td>
+                </tr>
+                <tr style="border-top: 2px solid #1A1A1A; font-size: 16px;">
+                  <td style="padding: 12px 0; font-weight: 700; color: #1A1A1A;">Total Paid</td>
+                  <td style="padding: 12px 0; text-align: right; font-weight: 700; color: #713F12; font-size: 18px;">₹{float(order.total_amount):,.2f}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Delivery & Payment Information Grid -->
+          <tr>
+            <td style="padding: 16px 32px 28px;">
+              <table width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td width="48%" valign="top" style="background: #FAF8F5; padding: 16px; border-radius: 8px; border: 1px solid #ECE7DF;">
+                    <div style="font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #713F12; margin-bottom: 8px;">📍 Delivery Address</div>
+                    <div style="font-size: 13px; color: #333333; line-height: 1.5;">
+                      {address_html}
+                    </div>
+                  </td>
+                  <td width="4%"></td>
+                  <td width="48%" valign="top" style="background: #FAF8F5; padding: 16px; border-radius: 8px; border: 1px solid #ECE7DF;">
+                    <div style="font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #713F12; margin-bottom: 8px;">💳 Payment Details</div>
+                    <div style="font-size: 13px; color: #333333; line-height: 1.5;">
+                      <div><strong>Method:</strong> {pay_method_label}</div>
+                      <div style="margin-top: 4px;"><strong>Status:</strong> {pay_status_label}</div>
+                      {utr_html_line}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <div style="text-align: center; margin-top: 28px;">
+                <a href="{track_url}" style="background: #1A1A1A; color: #FFFFFF; text-decoration: none; padding: 13px 28px; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block; letter-spacing: 0.02em;">
+                  Track Your Order Online →
+                </a>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background: #FAF8F5; padding: 24px 32px; border-top: 1px solid #EAE5DC; text-align: center; font-size: 12px; color: #8C827A; line-height: 1.5;">
+              <p style="margin: 0 0 6px;">Questions regarding your order? We are here to help!</p>
+              <p style="margin: 0 0 10px;">
+                WhatsApp: <a href="https://wa.me/{support_whatsapp}" style="color: #713F12; font-weight: 600; text-decoration: none;">+{support_whatsapp}</a> &nbsp;|&nbsp; 
+                Email: <a href="mailto:{support_email}" style="color: #713F12; font-weight: 600; text-decoration: none;">{support_email}</a>
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #A6998A;">
+                © {brand_name} • Handcrafted French Heritage Perfumes
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+            if NotificationService._send_smtp_message(customer_email, subject, body_text, html_body=html_body):
+                logger.info(f"Customer confirmation email with order details sent to {customer_email} for order #{order.order_id}")
                 return True
             return False
+
         except Exception as e:
             logger.warning(f"Failed to send customer order confirmation email: {e}")
             return False
