@@ -152,7 +152,7 @@
     </div>
 
     {# UTR Submission Form #}
-    <form method="POST" action="{{ url_for('orders.upi_pay', order_id=order.order_id) }}">
+    <form id="utr-form" method="POST" action="{{ url_for('orders.upi_pay', order_id=order.order_id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
       <div class="form-group" style="text-align: center;">
@@ -177,7 +177,7 @@
         </label>
       </div>
 
-      <button type="submit" class="btn btn-primary btn-block" style="padding: 1rem; font-size: 1.05rem; font-weight: 700;">
+      <button id="utr-submit-btn" type="submit" class="btn btn-primary btn-block" style="padding: 1rem; font-size: 1.05rem; font-weight: 700; transition: all 0.2s ease;">
         Submit Reference &amp; Confirm Order &rarr;
       </button>
     </form>
@@ -379,6 +379,18 @@
         utrInput.value = digits;
       }
     });
+
+    // 3. Instant Visual Feedback on Form Submission
+    const utrForm = document.getElementById('utr-form');
+    const utrBtn = document.getElementById('utr-submit-btn');
+    if (utrForm && utrBtn) {
+      utrForm.addEventListener('submit', function() {
+        utrBtn.disabled = true;
+        utrBtn.innerHTML = 'Confirming Order &amp; Reference...';
+        utrBtn.style.opacity = '0.75';
+        utrBtn.style.cursor = 'not-allowed';
+      });
+    }
   })();
 </script>
 {% endblock %}

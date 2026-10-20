@@ -43,13 +43,18 @@ class NotificationService:
         return ""
 
     @staticmethod
-    def notify_order_created(order, brand_name: str = "Scented Bubbles"):
-        """Dispatches notifications. CRITICAL: Notification failure must NEVER fail or roll back an order."""
+    def notify_order_created(order, brand_name: str = "Scented Bubbles", async_mode: bool = True):
+        """Dispatches notifications. Asynchronous by default in web requests so HTTP redirect is instantaneous."""
         try:
             # 1. Deduplication Guard: Never send order notifications more than once for the same order
             if getattr(order, "notification_sent", False):
                 logger.info(f"Order notification already dispatched for {order.order_id}; skipping duplicate dispatch.")
                 return
+
+            # Mark notification_sent upfront and commit to database to eliminate race conditions
+            order.notification_sent = True
+            from app.extensions import db
+            db.session.commit()
 
             # 2. Testing Mode Check: Store owner can mute order notifications in Admin Settings while testing
             from app.models.settings import Setting
@@ -58,26 +63,63 @@ class NotificationService:
                 logger.info(f"Order notification emails are muted in Store Settings (Testing Mode). Skipping email for order {order.order_id}.")
                 return
 
-            # 3. Retrieve customer email (if registered)
+            # In unit testing / pytest mode, execute synchronously so test assertions succeed immediately
+            is_testing = current_app and current_app.config.get("TESTING")
+            if is_testing or not async_mode:
+                NotificationService._execute_notification_send(order, brand_name)
+                return
+
+            # In production web requests, dispatch in a non-blocking background daemon thread
+            import threading
+            app = current_app._get_current_object()
+            order_id = order.id
+            thread = threading.Thread(
+                target=NotificationService._async_notification_worker,
+                args=(app, order_id, brand_name),
+                daemon=True,
+                name=f"OrderNotif-{order.order_id}",
+            )
+            thread.start()
+            logger.info(f"Spawned background notification worker for order #{order.order_id}")
+
+        except Exception as e:
+            # Strictly catch all exceptions, log and proceed
+            logger.exception(f"Notification dispatch failed for order {order.order_id}: {e}")
+
+    @staticmethod
+    def _async_notification_worker(app, order_id: int, brand_name: str):
+        """Background worker thread executing email deliveries with full application context."""
+        with app.app_context():
+            try:
+                from app.models.orders import Order
+                from app.extensions import db
+                order = db.session.get(Order, order_id)
+                if not order:
+                    logger.warning(f"Async notification worker could not find order ID {order_id}")
+                    return
+
+                NotificationService._execute_notification_send(order, brand_name)
+
+            except Exception as e:
+                logger.exception(f"Background notification worker encountered error for order ID {order_id}: {e}")
+
+    @staticmethod
+    def _execute_notification_send(order, brand_name: str):
+        """Executes the email deliveries to store owner and customer."""
+        try:
             customer_email = NotificationService.get_customer_email(order)
 
-            # 4. Send email notification to store owner if SMTP is configured
+            # 1. Send store owner alert email
             NotificationService._send_email_notification(order, brand_name)
 
-            # 5. Send customer order confirmation email ONLY if customer has a registered email address
+            # 2. Send customer confirmation email with full order details IF registered
             if customer_email:
                 NotificationService.send_customer_order_confirmation(order, brand_name, customer_email=customer_email)
             else:
                 logger.info(f"Order #{order.order_id}: Customer does not have a registered email address; skipping customer order email.")
 
-            # 6. Flag notification as sent and commit to permanently block duplicate sends
-            order.notification_sent = True
-            from app.extensions import db
-            db.session.commit()
-
         except Exception as e:
-            # Strictly catch all exceptions, log and proceed
-            logger.exception(f"Notification dispatch failed for order {order.order_id}: {e}")
+            logger.exception(f"Error executing email send for order #{order.order_id}: {e}")
 
     @staticmethod
     def get_smtp_config():
