@@ -30,5 +30,25 @@ class Customer(db.Model):
 
     orders = db.relationship("Order", back_populates="customer", lazy="dynamic")
 
+    @property
+    def confirmed_orders(self):
+        """Dynamic query for confirmed orders only (matching admin orders panel)."""
+        from app.models.orders import Order
+        return self.orders.filter(Order.is_confirmed.is_(True))
+
+    @property
+    def confirmed_orders_count(self) -> int:
+        """Count of confirmed orders where payment has been submitted/processed."""
+        if hasattr(self, "_confirmed_orders_count") and self._confirmed_orders_count is not None:
+            return self._confirmed_orders_count
+        from app.models.orders import Order
+        return self.orders.filter(Order.is_confirmed.is_(True)).count()
+
+    @property
+    def orders_count(self) -> int:
+        """Alias for confirmed_orders_count matching the admin orders section."""
+        return self.confirmed_orders_count
+
     def __repr__(self):
         return f"<Customer {self.phone} ({self.name})>"
+

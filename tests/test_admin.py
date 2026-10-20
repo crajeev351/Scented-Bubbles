@@ -1045,6 +1045,72 @@ def test_admin_order_delete_and_purge(auth_client, app, sample_catalog):
         assert Order.query.filter_by(order_id=oid2).first() is None
 
 
+def test_customer_directory_order_count_reflects_only_confirmed_orders(app, auth_client):
+    """Customer order count in customer directory must only count confirmed orders (payment done/verified)."""
+    from app.models.customers import Customer
+
+    with app.app_context():
+        # Create customer
+        cust = Customer(
+            phone="9876500001",
+            name="Test Customer Unconfirmed",
+            email="test_unconfirmed@example.com",
+            city="Pune",
+            state="Maharashtra",
+        )
+        db.session.add(cust)
+        db.session.flush()
+
+        # Create unconfirmed order (awaiting payment)
+        unconfirmed_order = Order(
+            order_id="PERF-TEST-UNCONFIRMED",
+            customer_id=cust.id,
+            subtotal=Decimal("400.00"),
+            delivery_charge=Decimal("50.00"),
+            total_amount=Decimal("450.00"),
+            order_status=Order.STATUS_AWAITING_PAYMENT,
+            payment_status=Order.PAYMENT_PENDING_VERIFICATION,
+            payment_method="MANUAL_UPI",
+            is_confirmed=False,
+            shipping_name="Test Customer Unconfirmed",
+            shipping_phone="9876500001",
+            shipping_address_line1="123 Test St",
+            shipping_city="Pune",
+            shipping_state="Maharashtra",
+            shipping_pincode="411001",
+        )
+        db.session.add(unconfirmed_order)
+        db.session.commit()
+
+        assert cust.confirmed_orders_count == 0
+
+    # Request /admin/customers
+    res = auth_client.get("/admin/customers")
+    assert res.status_code == 200
+    html = res.data.decode("utf-8")
+    assert "Test Customer Unconfirmed" in html
+    # Must show 0 orders, NOT 1 orders
+    assert '<span style="font-weight: 700; color: var(--gold-dark);">0</span> orders' in html
+
+    # Now simulate payment completion (order becomes confirmed)
+    with app.app_context():
+        ord_obj = Order.query.filter_by(order_id="PERF-TEST-UNCONFIRMED").first()
+        ord_obj.is_confirmed = True
+        ord_obj.order_status = Order.STATUS_PENDING
+        db.session.commit()
+
+        cust = Customer.query.filter_by(phone="9876500001").first()
+        assert cust.confirmed_orders_count == 1
+
+    # Request /admin/customers again after payment is done
+    res2 = auth_client.get("/admin/customers")
+    assert res2.status_code == 200
+    html2 = res2.data.decode("utf-8")
+    # Must now show 1 orders
+    assert '<span style="font-weight: 700; color: var(--gold-dark);">1</span> orders' in html2
+
+
+
 
 
 

@@ -1733,8 +1733,21 @@ def customer_list():
         )
 
     pagination = query.order_by(Customer.created_at.desc()).paginate(page=page, per_page=20, error_out=False)
+    customers = pagination.items
 
-    return render_template("admin/customers/index.html", customers=pagination.items, pagination=pagination, search_query=search)
+    if customers:
+        customer_ids = [c.id for c in customers]
+        counts_query = (
+            db.session.query(Order.customer_id, func.count(Order.id))
+            .filter(Order.customer_id.in_(customer_ids), Order.is_confirmed.is_(True))
+            .group_by(Order.customer_id)
+            .all()
+        )
+        counts_map = dict(counts_query)
+        for c in customers:
+            c._confirmed_orders_count = counts_map.get(c.id, 0)
+
+    return render_template("admin/customers/index.html", customers=customers, pagination=pagination, search_query=search)
 
 
 # ==============================================================================
