@@ -285,18 +285,40 @@
 
       <div class="form-row">
         <div class="form-group" style="margin-bottom: 0;">
-          <label for="brevo_api_key" style="color: #1E40AF; font-weight: 700;">Brevo API Key (Recommended &ndash; 300 Free Emails/Day)</label>
-          <input type="password" id="brevo_api_key" name="brevo_api_key" value="{{ settings.get('brevo_api_key', '') }}" autocomplete="new-password" class="form-control" placeholder="xkeysib-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="background: #FFFFFF;">
+          <label for="resend_api_key" style="color: #1E40AF; font-weight: 700;">Resend API Key (Recommended &ndash; 3,000 Free Emails/Month)</label>
+          <input type="password" id="resend_api_key" name="resend_api_key" value="{{ settings.get('resend_api_key', '') }}" autocomplete="new-password" class="form-control" placeholder="re_xxxxxxxxxxxxxxxxxxxx" style="background: #FFFFFF;">
           <small style="color: #1D4ED8; font-size: 0.75rem; display: block; margin-top: 0.35rem; line-height: 1.4;">
-            💡 <strong>Fastest Setup:</strong> Sign up free at <a href="https://app.brevo.com/" target="_blank" rel="noopener noreferrer" style="color: #1E40AF; font-weight: 700; text-decoration: underline;">brevo.com</a> &rarr; Top-right menu &rarr; <strong>SMTP &amp; API</strong> &rarr; <strong>Generate API Key</strong>. Sends seamlessly using your email (<code>{{ settings.get('smtp_user', 'crajeev351@gmail.com') }}</code>).
+            💡 <strong>Fastest Setup:</strong> Sign up free at <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" style="color: #1E40AF; font-weight: 700; text-decoration: underline;">resend.com</a>. Free 100 emails/day over unblocked HTTPS (Port 443).
           </small>
         </div>
 
         <div class="form-group" style="margin-bottom: 0;">
-          <label for="resend_api_key" style="color: #1E40AF; font-weight: 700;">Resend API Key (Alternative &ndash; 3,000 Free Emails/Month)</label>
-          <input type="password" id="resend_api_key" name="resend_api_key" value="{{ settings.get('resend_api_key', '') }}" autocomplete="new-password" class="form-control" placeholder="re_xxxxxxxxxxxxxxxxxxxx" style="background: #FFFFFF;">
+          <label for="brevo_api_key" style="color: #1E40AF; font-weight: 700;">Brevo API Key (Alternative &ndash; 300 Free Emails/Day)</label>
+          <input type="password" id="brevo_api_key" name="brevo_api_key" value="{{ settings.get('brevo_api_key', '') }}" autocomplete="new-password" class="form-control" placeholder="xkeysib-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="background: #FFFFFF;">
           <small style="color: #1D4ED8; font-size: 0.75rem; display: block; margin-top: 0.35rem; line-height: 1.4;">
-            Sign up free at <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" style="color: #1E40AF; font-weight: 700; text-decoration: underline;">resend.com</a>. Free 100 emails/day over HTTPS.
+            Sign up free at <a href="https://app.brevo.com/" target="_blank" rel="noopener noreferrer" style="color: #1E40AF; font-weight: 700; text-decoration: underline;">brevo.com</a>. Sends seamlessly using your sender email.
+          </small>
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-top: 1.25rem;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="resend_from_email" style="color: #1E40AF; font-weight: 700;">Resend Sender Email (From Address)</label>
+          <input type="text" id="resend_from_email" name="resend_from_email" value="{{ settings.get('resend_from_email', '') }}" class="form-control" placeholder="e.g. Scented Bubbles &lt;orders@scentedbubble.in&gt; or onboarding@resend.dev" style="background: #FFFFFF;">
+          <small style="color: #1D4ED8; font-size: 0.75rem; display: block; margin-top: 0.35rem; line-height: 1.4;">
+            Use <code>onboarding@resend.dev</code> for testing (delivers to your Resend account email). To send live tracking coordinates to all customers, verify your domain in Resend and enter your verified sender email here.
+          </small>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="email_service_provider" style="color: #1E40AF; font-weight: 700;">Preferred Email Provider</label>
+          <select id="email_service_provider" name="email_service_provider" class="form-control" style="background: #FFFFFF; font-weight: 600;">
+            <option value="resend" {{ 'selected' if settings.get('email_service_provider', 'resend') == 'resend' else '' }}>⚡ Resend HTTPS API (Recommended &bull; Fast, Port 443 Unblocked)</option>
+            <option value="brevo" {{ 'selected' if settings.get('email_service_provider') == 'brevo' else '' }}>⚡ Brevo (Sendinblue) HTTPS API</option>
+            <option value="smtp" {{ 'selected' if settings.get('email_service_provider') == 'smtp' else '' }}>📬 Standard SMTP Server (Port 587)</option>
+          </select>
+          <small style="color: #1D4ED8; font-size: 0.75rem; display: block; margin-top: 0.35rem; line-height: 1.4;">
+            Order receipts, tracking updates, and password resets will prioritize this delivery service.
           </small>
         </div>
       </div>
@@ -362,17 +384,32 @@
       </div>
     </div>
 
-    <div class="form-group" style="background: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-sm); border-left: 3px solid var(--gold-primary); margin-top: 1rem;">
-      <label for="order_notifications_enabled" style="font-weight: 700; display: flex; align-items: center; gap: 0.4rem;">
-        <span>🔔</span> Order Email Notifications (Testing Mode Toggle)
-      </label>
-      <select id="order_notifications_enabled" name="order_notifications_enabled" class="form-control" style="font-weight: 600;">
-        <option value="true" {{ 'selected' if settings.get('order_notifications_enabled', 'true')|lower in ['true', '1', 'yes'] else '' }}>🟢 Enabled &ndash; Send live email notifications when customer confirms order</option>
-        <option value="false" {{ 'selected' if settings.get('order_notifications_enabled', 'true')|lower not in ['true', '1', 'yes'] else '' }}>🔇 Muted / Testing Mode &ndash; Do NOT send order emails (Use while testing orders)</option>
-      </select>
-      <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 0.4rem; line-height: 1.4;">
-        Switch to <strong>"Muted / Testing Mode"</strong> while testing checkouts and orders to avoid receiving repetitive emails in your inbox. Switch back to <strong>"Enabled"</strong> when you are ready for real customer orders.
-      </small>
+    <div class="form-row" style="margin-top: 1rem;">
+      <div class="form-group" style="background: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-sm); border-left: 3px solid #1E40AF; flex: 1;">
+        <label for="customer_emails_enabled" style="font-weight: 700; display: flex; align-items: center; gap: 0.4rem; color: #1E40AF;">
+          <span>📨</span> Customer Milestone &amp; Tracking Emails (Resend)
+        </label>
+        <select id="customer_emails_enabled" name="customer_emails_enabled" class="form-control" style="font-weight: 600;">
+          <option value="true" {{ 'selected' if settings.get('customer_emails_enabled', 'true')|lower in ['true', '1', 'yes'] else '' }}>🟢 Enabled &ndash; Send order receipts &amp; live courier tracking emails to customers</option>
+          <option value="false" {{ 'selected' if settings.get('customer_emails_enabled', 'true')|lower not in ['true', '1', 'yes'] else '' }}>🔇 Disabled &ndash; Do NOT send milestone emails to customers</option>
+        </select>
+        <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 0.4rem; line-height: 1.4;">
+          When enabled, customers receive rich confirmation receipts and live courier tracking emails with AWB details directly via Resend.
+        </small>
+      </div>
+
+      <div class="form-group" style="background: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-sm); border-left: 3px solid var(--gold-primary); flex: 1;">
+        <label for="order_notifications_enabled" style="font-weight: 700; display: flex; align-items: center; gap: 0.4rem;">
+          <span>🔔</span> Order Notification Alerts (Testing Mode Toggle)
+        </label>
+        <select id="order_notifications_enabled" name="order_notifications_enabled" class="form-control" style="font-weight: 600;">
+          <option value="true" {{ 'selected' if settings.get('order_notifications_enabled', 'true')|lower in ['true', '1', 'yes'] else '' }}>🟢 Enabled &ndash; Send live email notifications when customer confirms order</option>
+          <option value="false" {{ 'selected' if settings.get('order_notifications_enabled', 'true')|lower not in ['true', '1', 'yes'] else '' }}>🔇 Muted / Testing Mode &ndash; Do NOT send order emails (Use while testing orders)</option>
+        </select>
+        <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 0.4rem; line-height: 1.4;">
+          Switch to <strong>"Muted / Testing Mode"</strong> while testing checkouts to prevent cluttering your inbox.
+        </small>
+      </div>
     </div>
 
     <div style="margin-top: 2.5rem;">
@@ -384,19 +421,29 @@
   </form>
 
   {# Separate Test Email Card #}
-  <div class="admin-card" style="margin-top: 2rem; border-left: 4px solid var(--gold-dark);">
-    <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem;">Verify SMTP Connection</h3>
+  <div class="admin-card" style="margin-top: 2rem; border-left: 4px solid #1E40AF;">
+    <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+      <span>🚀</span> Verify SMTP Connection &amp; Resend Email Dispatch
+    </h3>
     <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;">
-      Send a live test email to verify that your mail server coordinates and password authenticate cleanly with Gmail.
+      Send a live verification test email to ensure your Resend HTTPS API key or SMTP coordinates authenticate and deliver cleanly.
     </p>
 
     <form method="POST" action="{{ url_for('admin.settings_test_email') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div style="flex: 1; min-width: 260px;">
+      <div style="flex: 1; min-width: 240px;">
         <label for="test_recipient" style="font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.35rem; display: block;">Recipient Email for Verification Test</label>
         <input type="email" id="test_recipient" name="test_recipient" value="{{ active_smtp.notification_email or active_smtp.user }}" required class="form-control" placeholder="Enter recipient email">
       </div>
-      <button type="submit" class="btn btn-secondary" style="padding: 0.75rem 1.5rem; white-space: nowrap;">
+      <div style="width: 220px;">
+        <label for="test_provider" style="font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.35rem; display: block;">Dispatch Service to Probe</label>
+        <select id="test_provider" name="test_provider" class="form-control">
+          <option value="resend" {{ 'selected' if settings.get('email_service_provider', 'resend') == 'resend' else '' }}>⚡ Resend HTTPS API</option>
+          <option value="brevo" {{ 'selected' if settings.get('email_service_provider') == 'brevo' else '' }}>⚡ Brevo HTTPS API</option>
+          <option value="smtp" {{ 'selected' if settings.get('email_service_provider') == 'smtp' else '' }}>📬 Standard SMTP Server</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-secondary" style="padding: 0.75rem 1.5rem; white-space: nowrap; background: #1E40AF; color: #FFFFFF; border-color: #1E40AF;">
         <span>✉️</span> Send Test Verification Email
       </button>
     </form>

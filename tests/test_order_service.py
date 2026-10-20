@@ -669,6 +669,145 @@ def test_owner_only_notified_and_customer_email_skipped(app, sample_catalog):
             assert len(sent_messages) == 0
 
 
+def test_customer_tracking_details_email_via_resend(app, sample_catalog):
+    """Verifies that send_customer_tracking_details_email formats rich coordinates and delivers via Resend API."""
+    with app.app_context():
+        from app.services.order_service import create_order
+        from app.services.notification_service import NotificationService
+        from app.models.settings import Setting
+
+        Setting.set_value("resend_api_key", "re_test_key_12345")
+        Setting.set_value("resend_from_email", "Scented Bubbles <orders@scentedbubble.in>")
+        db.session.commit()
+
+        vid = sample_catalog["variant_50ml_id"]
+        order = create_order(
+            cart_items=[{"variant_id": vid, "qty": 1}],
+            customer_info={"name": "Priya Sharma", "phone": "9876543222", "email": "priya@example.com"},
+            shipping_info={"name": "Priya Sharma", "phone": "9876543222", "address_line1": "Indiranagar", "city": "Bengaluru", "state": "Karnataka", "pincode": "560038"},
+            payment_method="MANUAL_UPI",
+            utr="554433",
+        )
+        order.courier_name = "Delhivery"
+        order.tracking_number = "DEL99887766IN"
+        order.tracking_url = "https://delhivery.com/track/DEL99887766IN"
+        db.session.commit()
+
+        captured_requests = []
+
+        class MockResponse:
+            status_code = 200
+            def json(self):
+                return {"id": "resend_msg_track_999"}
+
+        def mock_post(url, headers=None, json=None, timeout=None):
+            captured_requests.append({"url": url, "headers": headers, "json": json})
+            return MockResponse()
+
+        with patch("requests.post", side_effect=mock_post):
+            app.config["TESTING"] = False
+            try:
+                success, msg = NotificationService.send_customer_tracking_details_email(order)
+                assert success is True
+                assert "delivered via Resend" in msg or "priya@example.com" in msg
+                assert len(captured_requests) == 1
+                req = captured_requests[0]
+                assert "api.resend.com" in req["url"]
+                assert req["headers"]["Authorization"] == "Bearer re_test_key_12345"
+                assert req["json"]["to"] == ["priya@example.com"]
+                assert "Scented Bubbles <orders@scentedbubble.in>" in req["json"]["from"]
+                assert "Delhivery" in req["json"]["html"]
+                assert "DEL99887766IN" in req["json"]["html"]
+                assert "delhivery.com" in req["json"]["html"]
+                assert "Bengaluru" in req["json"]["html"]
+            finally:
+                app.config["TESTING"] = True
+                Setting.set_value("resend_api_key", "")
+                db.session.commit()
+
+
+def test_customer_side_email_tracking_route(client, app, sample_catalog):
+    """Verifies that a customer can request tracking email on the client side (/orders/<order_id>/email-tracking)."""
+    with app.app_context():
+        from app.services.order_service import create_order
+        from app.models.users import User
+
+        vid = sample_catalog["variant_50ml_id"]
+        # Create a test customer user
+        user = User(
+            phone="9876543233",
+            name="Rohan Verma",
+            email="rohan@example.com",
+            is_active=True,
+        )
+        user.set_password("CustomerPass123!")
+        db.session.add(user)
+        db.session.commit()
+
+        order = create_order(
+            cart_items=[{"variant_id": vid, "qty": 1}],
+            customer_info={"name": "Rohan Verma", "phone": "9876543233", "email": "rohan@example.com"},
+            shipping_info={"name": "Rohan Verma", "phone": "9876543233", "address_line1": "Bandra West", "city": "Mumbai", "state": "Maharashtra", "pincode": "400050"},
+            payment_method="MANUAL_UPI",
+            utr="778899",
+        )
+        order.courier_name = "Blue Dart"
+        order.tracking_number = "BD55443322IN"
+        db.session.commit()
+
+        oid = order.order_id
+        uid = user.id
+
+    # Log in customer
+    with client.session_transaction() as sess:
+        sess["user_id"] = uid
+        sess["user_name"] = "Rohan Verma"
+
+    # Send POST request to email tracking details
+    resp = client.post(f"/orders/{oid}/email-tracking", follow_redirects=True)
+    assert resp.status_code == 200
+    assert b"Tracking coordinates sent to rohan@example.com" in resp.data or b"via Resend" in resp.data
+
+
+def test_admin_resend_tracking_email_route(client, app, sample_catalog):
+    """Verifies that store admin can trigger tracking email to customer from order detail page."""
+    with app.app_context():
+        from app.services.order_service import create_order
+        from app.models.admins import Admin
+
+        # Ensure admin user exists
+        admin = Admin.query.filter_by(username="admin").first()
+        if not admin:
+            admin = Admin(username="admin", email="admin@scentedbubbles.com")
+            admin.set_password("AdminPass123!")
+            db.session.add(admin)
+            db.session.commit()
+        aid = admin.id
+
+        vid = sample_catalog["variant_50ml_id"]
+        order = create_order(
+            cart_items=[{"variant_id": vid, "qty": 1}],
+            customer_info={"name": "Kavita Rao", "phone": "9876543244", "email": "kavita@example.com"},
+            shipping_info={"name": "Kavita Rao", "phone": "9876543244", "address_line1": "Anna Nagar", "city": "Chennai", "state": "Tamil Nadu", "pincode": "600040"},
+            payment_method="MANUAL_UPI",
+            utr="332211",
+        )
+        order.courier_name = "DTDC"
+        order.tracking_number = "DTDC12345IN"
+        db.session.commit()
+        oid = order.order_id
+
+    # Log in as admin
+    with client.session_transaction() as sess:
+        sess["admin_id"] = aid
+        sess["admin_username"] = "admin"
+
+    resp = client.post(f"/admin/orders/{oid}/resend-tracking-email", follow_redirects=True)
+    assert resp.status_code == 200
+    assert b"Tracking coordinates email dispatched to kavita@example.com" in resp.data or b"via Resend" in resp.data
+
+
+
 
 
 

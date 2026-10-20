@@ -1631,6 +1631,29 @@ def order_update_status(order_id):
     return redirect(url_for("admin.order_detail", order_id=order_id))
 
 
+@admin_bp.route("/orders/<order_id>/resend-tracking-email", methods=["POST"])
+@admin_required
+def order_resend_tracking_email(order_id):
+    """Store admin manually triggers tracking email to customer via Resend."""
+    from app.services.notification_service import NotificationService
+    order = Order.query.filter_by(order_id=order_id).first_or_404()
+    customer_email = NotificationService.get_customer_email(order)
+    if not customer_email:
+        flash(f"Order #{order.order_id} has no registered customer email address.", "error")
+        return redirect(url_for("admin.order_detail", order_id=order_id))
+
+    brand_name = Setting.get_value("company_name", "Scented Bubbles")
+    success, msg = NotificationService.send_customer_tracking_details_email(
+        order, brand_name=brand_name, customer_email=customer_email, force_resend=True
+    )
+    if success:
+        flash(f"Tracking coordinates email dispatched to {customer_email} via Resend HTTPS API!", "success")
+    else:
+        flash(f"Failed to dispatch tracking email: {msg}", "error")
+
+    return redirect(url_for("admin.order_detail", order_id=order_id))
+
+
 @admin_bp.route("/orders/<order_id>/verify-payment", methods=["POST"])
 @admin_required
 def order_verify_payment(order_id):
@@ -1836,6 +1859,7 @@ def settings():
             "brevo_api_key",
             "resend_api_key",
             "resend_from_email",
+            "email_service_provider",
             "email_webhook_url",
             "customer_emails_enabled",
             "smtp_host",
@@ -1880,10 +1904,11 @@ def settings():
 @admin_bp.route("/settings/test-email", methods=["POST"])
 @admin_required
 def settings_test_email():
-    """Trigger a live test email probe using active SMTP configuration."""
+    """Trigger a live test email probe using active Resend/SMTP configuration."""
     from app.services.notification_service import NotificationService
     recipient = request.form.get("test_recipient", "").strip() or None
-    success, message = NotificationService.test_smtp_connection(recipient)
+    provider = request.form.get("test_provider", "").strip().lower() or None
+    success, message = NotificationService.test_smtp_connection(recipient, provider=provider)
     if success:
         flash(message, "success")
     else:

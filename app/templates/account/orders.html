@@ -128,9 +128,17 @@
             <div>
               🚚 Dispatched via <strong>{{ order.courier_name or 'Courier' }}</strong> &bull; Tracking AWB: <code style="font-weight: 700; color: var(--gold-dark);">{{ order.tracking_number }}</code>
             </div>
-            <a href="{{ url_for('orders.track_order') }}?order_id={{ order.order_id }}" class="btn btn-secondary btn-sm" style="font-size: 0.75rem; padding: 0.25rem 0.65rem;">
-              Full Tracking &rarr;
-            </a>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <form method="POST" action="{{ url_for('orders.email_tracking_details', order_id=order.order_id) }}" style="margin: 0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-secondary btn-sm" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; display: flex; align-items: center; gap: 0.25rem;" title="Email live tracking coordinates via Resend">
+                  <span>✉️</span> Email Tracking
+                </button>
+              </form>
+              <a href="{{ url_for('orders.track_order') }}?order_id={{ order.order_id }}" class="btn btn-secondary btn-sm" style="font-size: 0.75rem; padding: 0.25rem 0.65rem;">
+                Full Tracking &rarr;
+              </a>
+            </div>
           </div>
           {% endif %}
         </div>

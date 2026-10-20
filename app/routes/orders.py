@@ -218,10 +218,51 @@ def track_order():
     if not selected_order and current_orders:
         selected_order = current_orders[0]
 
+    from app.services.notification_service import NotificationService
+    customer_email = NotificationService.get_customer_email(selected_order) if selected_order else (user.email if user else "")
+
     return render_template(
         "orders/track.html",
         user=user,
         current_orders=current_orders,
         order=selected_order,
+        customer_email=customer_email,
     )
+
+
+@orders_bp.route("/orders/<order_id>/email-tracking", methods=["POST"])
+def email_tracking_details(order_id):
+    """Allows customer to request tracking coordinates emailed to their inbox via Resend."""
+    order = Order.query.filter_by(order_id=order_id).first_or_404()
+    if not has_order_access(order):
+        flash("You do not have permission to access tracking for this order.", "error")
+        return redirect(url_for("account.login"))
+
+    from app.services.notification_service import NotificationService
+    customer_email = NotificationService.get_customer_email(order)
+    if not customer_email:
+        user_id = session.get("user_id")
+        if user_id:
+            u = db.session.get(User, user_id)
+            if u and u.email:
+                customer_email = str(u.email).strip().lower()
+
+    if not customer_email:
+        flash("No email address is linked to your order. Please contact our concierge via WhatsApp for live tracking support.", "warning")
+        return redirect(url_for("orders.track_order", order_id=order.order_id))
+
+    from app.models.settings import Setting
+    brand_name = Setting.get_value("company_name", "Scented Bubbles")
+    success, msg = NotificationService.send_customer_tracking_details_email(
+        order, brand_name=brand_name, customer_email=customer_email, force_resend=True
+    )
+    if success:
+        flash(f"Tracking coordinates sent to {customer_email} via Resend! Please check your inbox or spam/promotions folder.", "success")
+    else:
+        flash(f"Unable to send tracking email: {msg}", "error")
+
+    referer = request.headers.get("Referer", "")
+    if "account/orders" in referer:
+        return redirect(url_for("account.orders"))
+    return redirect(url_for("orders.track_order", order_id=order.order_id))
 

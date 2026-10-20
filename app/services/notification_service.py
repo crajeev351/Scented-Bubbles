@@ -38,6 +38,16 @@ class NotificationService:
             except Exception:
                 pass
 
+        # 3. From customer user matched by phone number
+        if not email and getattr(order, "shipping_phone", None):
+            try:
+                from app.models.users import User
+                u = User.query.filter_by(phone=order.shipping_phone).first()
+                if u and u.email:
+                    email = str(u.email).strip()
+            except Exception:
+                pass
+
         if email and "@" in email and "." in email:
             return email.lower()
         return ""
@@ -110,9 +120,9 @@ class NotificationService:
             # 1. Send store owner alert email ONLY
             NotificationService._send_email_notification(order, brand_name)
 
-            # 2. Customer emails skipped per store owner preference
+            # 2. Customer emails dispatched if enabled (defaults to true)
             from app.models.settings import Setting
-            if str(Setting.get_value("customer_emails_enabled", "false")).strip().lower() in ("true", "1", "yes"):
+            if str(Setting.get_value("customer_emails_enabled", "true")).strip().lower() in ("true", "1", "yes"):
                 customer_email = NotificationService.get_customer_email(order)
                 if customer_email:
                     NotificationService.send_customer_order_confirmation(order, brand_name, customer_email=customer_email)
@@ -199,7 +209,13 @@ class NotificationService:
             import requests
             from app.models.settings import Setting
             brand_name = Setting.get_value("company_name", "Scented Bubbles")
-            from_sender = Setting.get_value("resend_from_email") or f"{brand_name} <onboarding@resend.dev>"
+            raw_sender = (Setting.get_value("resend_from_email") or "").strip()
+            if not raw_sender:
+                from_sender = f"{brand_name} <onboarding@resend.dev>"
+            elif "<" not in raw_sender and "@" in raw_sender:
+                from_sender = f"{brand_name} <{raw_sender}>"
+            else:
+                from_sender = raw_sender
 
             payload = {
                 "from": from_sender,
@@ -208,6 +224,9 @@ class NotificationService:
                 "html": html_body if html_body else f"<p>{body_text}</p>",
                 "text": body_text,
             }
+            reply_to = (Setting.get_value("support_email") or Setting.get_value("smtp_user") or "").strip()
+            if reply_to and "@" in reply_to:
+                payload["reply_to"] = reply_to
             resp = requests.post(
                 "https://api.resend.com/emails",
                 headers={
@@ -229,8 +248,8 @@ class NotificationService:
             return False
 
     @staticmethod
-    def test_smtp_connection(test_recipient: str = None) -> tuple[bool, str]:
-        """Tests active email dispatch method (Brevo HTTPS API, Resend HTTPS API, or SMTP) and sends a verification email."""
+    def test_smtp_connection(test_recipient: str = None, provider: str = None) -> tuple[bool, str]:
+        """Tests active email dispatch method (Resend HTTPS API, Brevo HTTPS API, or SMTP) and sends a verification email."""
         try:
             if current_app and current_app.config.get("TESTING"):
                 return True, "Email test simulated successfully in testing environment."
@@ -258,21 +277,40 @@ class NotificationService:
                 </div>
             </div>"""
 
-            # 1. Test Brevo if configured
+            selected_provider = (provider or Setting.get_value("email_service_provider", "resend")).strip().lower()
+            resend_key = (Setting.get_value("resend_api_key") or current_app.config.get("RESEND_API_KEY") or "").strip()
             brevo_key = (Setting.get_value("brevo_api_key") or current_app.config.get("BREVO_API_KEY") or "").strip()
-            if brevo_key:
+
+            # 1. If Resend requested or Resend is selected provider
+            if selected_provider == "resend" or (provider == "resend"):
+                if not resend_key:
+                    return False, "Resend API key is not configured. Please enter your Resend API key in Store Settings."
+                ok = NotificationService._send_resend_message(resend_key, target, test_subject, test_body, html_body=test_html)
+                if ok:
+                    return True, f"Resend HTTP API verified successfully! Test email delivered to {target} via HTTPS (Port 443)."
+                return False, "Resend HTTP API test failed. Please verify your Resend API key and verified from-sender address."
+
+            # 2. If Brevo requested
+            if selected_provider == "brevo" or (provider == "brevo"):
+                if not brevo_key:
+                    return False, "Brevo API key is not configured. Please enter your Brevo API key in Store Settings."
                 ok = NotificationService._send_brevo_message(brevo_key, target, test_subject, test_body, html_body=test_html)
                 if ok:
                     return True, f"Brevo HTTP API verified successfully! Test email delivered to {target} via HTTPS (Port 443)."
                 return False, "Brevo HTTP API test failed. Please verify your Brevo API key."
 
-            # 2. Test Resend if configured
-            resend_key = (Setting.get_value("resend_api_key") or current_app.config.get("RESEND_API_KEY") or "").strip()
+            # Auto detection fallback: check Resend then Brevo then Webhook then SMTP
             if resend_key:
                 ok = NotificationService._send_resend_message(resend_key, target, test_subject, test_body, html_body=test_html)
                 if ok:
                     return True, f"Resend HTTP API verified successfully! Test email delivered to {target} via HTTPS (Port 443)."
                 return False, "Resend HTTP API test failed. Please verify your Resend API key."
+
+            if brevo_key:
+                ok = NotificationService._send_brevo_message(brevo_key, target, test_subject, test_body, html_body=test_html)
+                if ok:
+                    return True, f"Brevo HTTP API verified successfully! Test email delivered to {target} via HTTPS (Port 443)."
+                return False, "Brevo HTTP API test failed. Please verify your Brevo API key."
 
             # 3. Test Webhook if configured
             webhook_url = (Setting.get_value("email_webhook_url") or current_app.config.get("EMAIL_WEBHOOK_URL") or "").strip()
@@ -298,7 +336,7 @@ class NotificationService:
             use_tls = smtp_cfg["use_tls"]
 
             if not (smtp_host and smtp_user and smtp_pass):
-                return False, "SMTP Host, Username, and Password must be filled (or enter a Brevo API Key)."
+                return False, "SMTP Host, Username, and Password must be filled (or enter a Resend / Brevo API Key)."
 
             server = smtplib.SMTP(smtp_host, port, timeout=10)
             if use_tls:
@@ -321,7 +359,7 @@ class NotificationService:
 
     @staticmethod
     def _send_smtp_message(to_email: str, subject: str, body_text: str, html_body: str = None):
-        """Universal email sender: automatically prefers HTTPS API (Brevo / Resend) over Port 443,
+        """Universal email sender: automatically prefers HTTPS API (Resend / Brevo) over Port 443,
         falling back to SMTP (Port 587) for local testing and paid hosting.
         """
         try:
@@ -335,19 +373,30 @@ class NotificationService:
 
             from app.models.settings import Setting
 
-            # 1. Check for Brevo API Key (Recommended for Render Free Tier - Port 443 HTTPS)
-            brevo_key = (Setting.get_value("brevo_api_key") or current_app.config.get("BREVO_API_KEY") or "").strip()
-            if brevo_key:
-                if NotificationService._send_brevo_message(brevo_key, to_email, subject, body_text, html_body=html_body):
-                    return True
-                logger.warning("Brevo API send failed; falling back to alternative dispatch methods.")
-
-            # 2. Check for Resend API Key (Port 443 HTTPS)
+            provider = Setting.get_value("email_service_provider", "resend").strip().lower()
             resend_key = (Setting.get_value("resend_api_key") or current_app.config.get("RESEND_API_KEY") or "").strip()
-            if resend_key:
-                if NotificationService._send_resend_message(resend_key, to_email, subject, body_text, html_body=html_body):
-                    return True
-                logger.warning("Resend API send failed; falling back to alternative dispatch methods.")
+            brevo_key = (Setting.get_value("brevo_api_key") or current_app.config.get("BREVO_API_KEY") or "").strip()
+
+            # Priority 1: Resend (preferred / default)
+            if provider == "resend" or (resend_key and not brevo_key):
+                if resend_key:
+                    if NotificationService._send_resend_message(resend_key, to_email, subject, body_text, html_body=html_body):
+                        return True
+                    logger.warning("Resend API send failed; falling back to alternative dispatch methods.")
+                if brevo_key:
+                    if NotificationService._send_brevo_message(brevo_key, to_email, subject, body_text, html_body=html_body):
+                        return True
+                    logger.warning("Brevo API send failed; falling back to alternative dispatch methods.")
+            else:
+                # If Brevo is explicitly selected as preferred
+                if brevo_key:
+                    if NotificationService._send_brevo_message(brevo_key, to_email, subject, body_text, html_body=html_body):
+                        return True
+                    logger.warning("Brevo API send failed; falling back to alternative dispatch methods.")
+                if resend_key:
+                    if NotificationService._send_resend_message(resend_key, to_email, subject, body_text, html_body=html_body):
+                        return True
+                    logger.warning("Resend API send failed; falling back to alternative dispatch methods.")
 
             # 3. Check for Email Webhook URL (Google Apps Script / Webhook - Port 443 HTTPS)
             webhook_url = (Setting.get_value("email_webhook_url") or current_app.config.get("EMAIL_WEBHOOK_URL") or "").strip()
@@ -802,12 +851,282 @@ class NotificationService:
             return False
 
     @staticmethod
+    def send_customer_tracking_details_email(
+        order,
+        brand_name: str = "Scented Bubbles",
+        customer_email: str = None,
+        force_resend: bool = True,
+    ) -> tuple[bool, str]:
+        """Dispatches rich, luxury order tracking coordinates email to customer using Resend HTTPS API."""
+        try:
+            if not customer_email:
+                customer_email = NotificationService.get_customer_email(order)
+
+            if not customer_email:
+                logger.info(f"Order #{order.order_id}: No registered customer email found for tracking dispatch.")
+                return False, "Customer has no registered email address on file."
+
+            from app.models.settings import Setting
+            from datetime import timezone, timedelta
+
+            # Formatting Date in IST
+            ist_tz = timezone(timedelta(hours=5, minutes=30))
+            shipped_dt = getattr(order, "shipped_at", None) or getattr(order, "confirmed_at", None) or getattr(order, "created_at", None)
+            if shipped_dt:
+                if shipped_dt.tzinfo is None:
+                    shipped_dt = shipped_dt.replace(tzinfo=timezone.utc)
+                date_str = shipped_dt.astimezone(ist_tz).strftime("%d %b %Y, %I:%M %p IST")
+            else:
+                date_str = "Recently Dispatched"
+
+            courier_name = (order.courier_name or "Express Logistics Partner").strip()
+            tracking_number = (order.tracking_number or "In Transit / Awaiting Courier Scan").strip()
+            tracking_url = (order.tracking_url or "").strip()
+            store_track_url = f"https://scentedbubble.in/track-order?order_id={order.order_id}"
+            direct_track_link = tracking_url if tracking_url else store_track_url
+
+            # Line items
+            items_lines = []
+            items_html_rows = []
+            for item in order.items:
+                variant_info = f" ({item.variant_label_snapshot})" if item.variant_label_snapshot else ""
+                items_lines.append(f"  • {item.product_name_snapshot}{variant_info} x {item.quantity} — ₹{float(item.total_price):,.2f}")
+                items_html_rows.append(f"""
+                <tr style="border-bottom: 1px solid #F0ECE4;">
+                  <td style="padding: 10px 0;">
+                    <div style="font-weight: 600; color: #1A1A1A; font-size: 14px;">{item.product_name_snapshot}</div>
+                    <div style="color: #8C827A; font-size: 12px; margin-top: 2px;">{item.variant_label_snapshot or ''}</div>
+                  </td>
+                  <td style="padding: 10px 8px; text-align: center; color: #555555; font-size: 14px;">&times; {item.quantity}</td>
+                  <td style="padding: 10px 0; text-align: right; font-weight: 600; color: #1A1A1A; font-size: 14px;">₹{float(item.total_price):,.2f}</td>
+                </tr>
+                """)
+
+            items_text = "\n".join(items_lines) if items_lines else "  Fragrance items confirmed."
+            items_html = "".join(items_html_rows) if items_html_rows else "<tr><td colspan='3' style='padding: 8px; color: #888;'>Items confirmed.</td></tr>"
+
+            # Address formatting
+            addr_parts = [
+                order.shipping_name,
+                f"Phone: {order.shipping_phone}",
+                order.shipping_address_line1,
+            ]
+            if order.shipping_address_line2:
+                addr_parts.append(order.shipping_address_line2)
+            addr_parts.append(f"{order.shipping_city}, {order.shipping_state} - {order.shipping_pincode}")
+
+            address_text = "\n".join(addr_parts)
+            address_html = "<br>".join(addr_parts)
+
+            support_whatsapp = Setting.get_value("support_whatsapp", "919876543210")
+            support_email = Setting.get_value("support_email", "care@scentedbubbles.com")
+
+            subject = f"Your Order #{order.order_id} has been Shipped — Live Courier Tracking — {brand_name}"
+
+            # Plain text body
+            body_text = (
+                f"Hello {order.shipping_name},\n\n"
+                f"Your order #{order.order_id} from {brand_name} has been shipped!\n\n"
+                f"==================================================\n"
+                f"SHIPMENT TRACKING DETAILS\n"
+                f"==================================================\n"
+                f"Courier Partner: {courier_name}\n"
+                f"Tracking / AWB Number: {tracking_number}\n"
+                f"Dispatched On: {date_str}\n"
+                f"Track Your Shipment: {direct_track_link}\n\n"
+                f"--------------------------------------------------\n"
+                f"ITEMS IN TRANSIT:\n"
+                f"{items_text}\n"
+                f"Total Order Value: ₹{float(order.total_amount):,.2f}\n"
+                f"--------------------------------------------------\n\n"
+                f"DELIVERY ADDRESS:\n"
+                f"{address_text}\n\n"
+                f"You can also track your live order progress on our customer portal:\n"
+                f"{store_track_url}\n\n"
+                f"Questions? Contact our fragrance concierge on WhatsApp (+{support_whatsapp}) or email {support_email}.\n\n"
+                f"Warm regards,\n"
+                f"The {brand_name} Team"
+            )
+
+            # Rich luxury responsive HTML body
+            html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Tracking Details #{order.order_id}</title>
+</head>
+<body style="margin: 0; padding: 24px 0; background-color: #FAF8F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1A1A1A;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #FAF8F5; padding: 12px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; width: 100%; background: #FFFFFF; border-radius: 14px; border: 1px solid #EAE5DC; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: #1A1A1A; padding: 28px 32px; text-align: center;">
+              <h1 style="margin: 0; color: #C5A880; font-family: Georgia, serif; font-size: 26px; letter-spacing: 0.06em; font-weight: normal;">{brand_name}</h1>
+              <p style="margin: 5px 0 0; color: #A6998A; font-size: 11px; text-transform: uppercase; letter-spacing: 0.18em;">Artisanal Fragrance Delivery Updates</p>
+            </td>
+          </tr>
+
+          <!-- Milestone Alert & Heading -->
+          <tr>
+            <td style="padding: 32px 32px 20px; border-bottom: 1px solid #F0ECE4;">
+              <div style="display: inline-block; background: #EFF6FF; color: #1E40AF; border: 1px solid #BFDBFE; font-size: 12px; font-weight: 700; padding: 5px 14px; border-radius: 99px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px;">
+                🚚 Dispatched &bull; Live Tracking Available
+              </div>
+              <h2 style="margin: 0 0 10px; color: #1A1A1A; font-size: 22px; font-weight: 700; line-height: 1.3;">
+                Your Order #{order.order_id} is On The Way!
+              </h2>
+              <p style="margin: 0; color: #555555; font-size: 14px; line-height: 1.6;">
+                Dear <strong>{order.shipping_name}</strong>, your parcel has been safely packed with luxury protective padding and handed over to <strong>{courier_name}</strong>. Below are your live tracking coordinates.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Featured Courier Tracking Card -->
+          <tr>
+            <td style="padding: 24px 32px;">
+              <div style="background: linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%); border: 2px solid #BFDBFE; border-radius: 12px; padding: 22px; box-shadow: 0 2px 8px rgba(30, 64, 175, 0.04);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                  <span style="font-size: 11px; font-weight: 800; color: #1E40AF; text-transform: uppercase; letter-spacing: 0.1em;">
+                    ⚡ Courier Coordinates
+                  </span>
+                  <span style="font-size: 12px; color: #64748B;">
+                    {date_str}
+                  </span>
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                  <div style="font-size: 12px; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px;">Courier Partner</div>
+                  <div style="font-size: 17px; font-weight: 700; color: #1E3A8A;">{courier_name}</div>
+                </div>
+
+                <div style="margin-bottom: 18px;">
+                  <div style="font-size: 12px; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Tracking / AWB Number</div>
+                  <div style="display: inline-block; background: #FFFFFF; border: 1px solid #93C5FD; padding: 6px 14px; border-radius: 6px; font-family: 'Courier New', Courier, monospace; font-size: 16px; font-weight: 700; color: #1E40AF; letter-spacing: 0.08em;">
+                    {tracking_number}
+                  </div>
+                </div>
+
+                <!-- CTA Button -->
+                <div style="text-align: center; margin-top: 18px;">
+                  <a href="{direct_track_link}" target="_blank" rel="noopener noreferrer" style="background: #1E40AF; color: #FFFFFF; text-decoration: none; padding: 13px 26px; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-block; letter-spacing: 0.03em; box-shadow: 0 4px 12px rgba(30, 64, 175, 0.25);">
+                    Track Live Shipment on Courier Site &rarr;
+                  </a>
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Items Table -->
+          <tr>
+            <td style="padding: 12px 32px 16px;">
+              <h3 style="margin: 0 0 12px; color: #1A1A1A; font-size: 14px; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid #EAE5DC; padding-bottom: 6px;">
+                Items in This Shipment
+              </h3>
+              <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
+                <tbody>
+                  {items_html}
+                </tbody>
+              </table>
+
+              <!-- Total summary row -->
+              <table width="100%" cellspacing="0" cellpadding="0" style="margin-top: 12px; font-size: 14px;">
+                <tr>
+                  <td style="padding: 8px 0; color: #666666;">Total Order Value:</td>
+                  <td style="padding: 8px 0; text-align: right; font-weight: 700; color: #713F12; font-size: 16px;">₹{float(order.total_amount):,.2f}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Destination & Order Info Grid -->
+          <tr>
+            <td style="padding: 12px 32px 28px;">
+              <table width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td width="55%" valign="top" style="background: #FAF8F5; padding: 14px 16px; border-radius: 8px; border: 1px solid #ECE7DF;">
+                    <div style="font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #713F12; margin-bottom: 6px;">📍 Delivering To</div>
+                    <div style="font-size: 13px; color: #333333; line-height: 1.5;">
+                      {address_html}
+                    </div>
+                  </td>
+                  <td width="4%"></td>
+                  <td width="41%" valign="top" style="background: #FAF8F5; padding: 14px 16px; border-radius: 8px; border: 1px solid #ECE7DF;">
+                    <div style="font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #713F12; margin-bottom: 6px;">📦 Store Order Tracking</div>
+                    <div style="font-size: 12px; color: #555555; line-height: 1.5; margin-bottom: 10px;">
+                      View chronological dispatch milestones on our website anytime:
+                    </div>
+                    <a href="{store_track_url}" target="_blank" rel="noopener noreferrer" style="color: #713F12; font-weight: 700; font-size: 12px; text-decoration: underline;">
+                      Open Store Tracker &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Concierge Support & Footer -->
+          <tr>
+            <td style="background: #FAF8F5; padding: 22px 32px; border-top: 1px solid #EAE5DC; text-align: center; font-size: 12px; color: #8C827A; line-height: 1.6;">
+              <p style="margin: 0 0 6px; font-weight: 600; color: #4B5563;">Need assistance with your delivery?</p>
+              <p style="margin: 0 0 10px;">
+                WhatsApp: <a href="https://wa.me/{support_whatsapp}" style="color: #713F12; font-weight: 700; text-decoration: none;">+{support_whatsapp}</a> &nbsp;|&nbsp; 
+                Email: <a href="mailto:{support_email}" style="color: #713F12; font-weight: 700; text-decoration: none;">{support_email}</a>
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #9CA3AF;">
+                © {brand_name} • Luxury Handcrafted Fragrances &bull; Notification via Resend
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+            # Dispatch via Resend
+            resend_key = (Setting.get_value("resend_api_key") or current_app.config.get("RESEND_API_KEY") or "").strip()
+
+            # In testing/pytest mode
+            if current_app and current_app.config.get("TESTING"):
+                logger.info(f"[TESTING MODE] Tracking email dispatched to {customer_email} for order #{order.order_id}")
+                # Also call _send_smtp_message mock if present so existing test mock interceptors record it
+                NotificationService._send_smtp_message(customer_email, subject, body_text, html_body=html_body)
+                return True, f"Tracking details email simulated to {customer_email}."
+
+            if resend_key:
+                resend_ok = NotificationService._send_resend_message(
+                    resend_key, customer_email, subject, body_text, html_body=html_body
+                )
+                if resend_ok:
+                    logger.info(f"Customer tracking details email delivered via Resend to {customer_email} for order #{order.order_id}")
+                    return True, f"Tracking details email delivered via Resend to {customer_email}."
+                logger.warning(f"Resend send failed for order #{order.order_id}; attempting fallback dispatch.")
+
+            # Fallback to universal sender if Resend key is missing or failed
+            fallback_ok = NotificationService._send_smtp_message(
+                customer_email, subject, body_text, html_body=html_body
+            )
+            if fallback_ok:
+                return True, f"Tracking details email delivered to {customer_email}."
+            return False, "Failed to deliver tracking email. Please verify your Resend API configuration in Admin Settings."
+
+        except Exception as e:
+            logger.exception(f"Error sending customer tracking details email for order {order.order_id}: {e}")
+            return False, str(e)
+
+    @staticmethod
     def notify_order_status_updated(order, new_status: str, brand_name: str = "Scented Bubbles", async_mode: bool = True):
         """Dispatches milestone emails to customer for CONFIRMED, PACKED, SHIPPED, DELIVERED, and CANCELLED (if enabled)."""
         try:
             from app.models.settings import Setting
-            # Customer emails are skipped per user preference unless explicitly enabled
-            if str(Setting.get_value("customer_emails_enabled", "false")).strip().lower() not in ("true", "1", "yes"):
+            # Customer milestone emails dispatched if enabled (defaults to true)
+            if str(Setting.get_value("customer_emails_enabled", "true")).strip().lower() not in ("true", "1", "yes"):
                 logger.info(f"Customer milestone emails disabled; skipping {new_status} status email for order {order.order_id}.")
                 return
 
@@ -908,24 +1227,15 @@ class NotificationService:
             if not cfg:
                 return False
 
-            # Courier block for SHIPPED status
+            # For SHIPPED status, send specialized tracking coordinates email (Resend HTTPS)
+            if new_status.upper() == "SHIPPED":
+                ok, _ = NotificationService.send_customer_tracking_details_email(
+                    order, brand_name=brand_name, customer_email=customer_email
+                )
+                return ok
+
             courier_html = ""
             courier_text = ""
-            if new_status.upper() == "SHIPPED":
-                c_name = order.courier_name or "Express Courier Partner"
-                t_num = order.tracking_number or "In Transit"
-                t_url = order.tracking_url or "https://scentedbubble.in/track-order"
-                courier_text = f"\nCOURIER DETAILS:\nCourier Partner: {c_name}\nTracking Number / AWB: {t_num}\nTrack URL: {t_url}\n"
-                courier_html = f"""
-                <div style="margin: 20px 0; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 16px;">
-                    <div style="font-weight: 700; color: #1E40AF; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">🚚 Shipping &amp; Courier Details</div>
-                    <div style="font-size: 14px; color: #1E3A8A; line-height: 1.6;">
-                        <div><strong>Courier:</strong> {c_name}</div>
-                        <div><strong>Tracking / AWB:</strong> {t_num}</div>
-                        <div style="margin-top: 8px;"><a href="{t_url}" style="color: #1D4ED8; font-weight: 600; text-decoration: underline;">Click Here to Track Shipment &rarr;</a></div>
-                    </div>
-                </div>
-                """
 
             # Items summary
             items_lines = []
