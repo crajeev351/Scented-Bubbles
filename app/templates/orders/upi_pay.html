@@ -52,6 +52,18 @@
       <div style="font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold-dark); margin-bottom: 0.75rem;">
         ⚡ Instant 1-Tap Mobile Payment
       </div>
+
+      {% if upi_id.endswith('@pty') %}
+        <div style="background: #EFF6FF; border: 1.5px solid #BFDBFE; border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1rem; text-align: left; font-size: 0.825rem; line-height: 1.5; color: #1E40AF;">
+          <div style="font-weight: 700; margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.35rem;">
+            <span>ℹ️</span> <span>Paytm Business Account Note:</span>
+          </div>
+          <div>
+            &bull; <strong>Have Paytm?</strong> Tap the <strong>Paytm</strong> button below for 1-tap payment.<br>
+            &bull; <strong>Using Google Pay or PhonePe?</strong> Please scan the QR code below or save it to your gallery to pay.
+          </div>
+        </div>
+      {% endif %}
       
       {# Primary Direct Button: Google Pay (uses modern Android Chrome Intent & iOS scheme with verified merchant parameters) #}
       <button type="button" id="btn-pay-gpay" class="btn btn-block upi-app-trigger" 
@@ -124,6 +136,16 @@
         {% else %}
           <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--gold-dark); font-weight: 600;">⚡ Instant Dynamic QR (Amount Pre-filled)</div>
         {% endif %}
+      </div>
+
+      <div style="margin-top: 0.85rem;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="saveQrToGallery();" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.85rem; font-size: 0.8rem; font-weight: 600; border-radius: var(--radius-pill); background: #FFFFFF; border: 1px solid var(--border-light);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span id="save-qr-btn-text">Save QR to Gallery / Download</span>
+        </button>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+          📱 On mobile? Save QR &bull; Open GPay / PhonePe / Paytm &bull; Tap Scan &bull; Select from Gallery
+        </div>
       </div>
       
       <div style="margin-top: 1.25rem;">
@@ -277,6 +299,42 @@
       }
       function promptFallback(t) {
         window.prompt('Copy to clipboard: Ctrl+C, Enter', t);
+      }
+    };
+
+    // Save/Download QR helper for mobile users
+    window.saveQrToGallery = function() {
+      const btn = document.getElementById('save-qr-btn-text');
+      const img = document.getElementById('upi-qr-custom-img');
+      const dynamicSvg = document.querySelector('#upi-qr-dynamic svg');
+      
+      let downloadUrl = null;
+      let filename = 'merchant_upi_qr.png';
+      
+      if (img && img.style.display !== 'none' && img.src) {
+        downloadUrl = img.src;
+      } else if (dynamicSvg) {
+        const svgData = new XMLSerializer().serializeToString(dynamicSvg);
+        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+        downloadUrl = URL.createObjectURL(svgBlob);
+        filename = 'scented_bubbles_qr.svg';
+      }
+      
+      if (downloadUrl) {
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = filename;
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        if (btn) {
+          const prev = btn.textContent;
+          btn.textContent = '✓ Saved to Downloads / Gallery';
+          setTimeout(() => { btn.textContent = prev; }, 2400);
+        }
+      } else {
+        window.alert('Please long-press the QR code above to save it to your photos.');
       }
     };
 

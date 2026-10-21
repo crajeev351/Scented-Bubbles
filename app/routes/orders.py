@@ -67,17 +67,14 @@ def upi_pay(order_id):
     order_ref = re.sub(r"[^a-zA-Z0-9]", "", order.order_id)[:35]
     return_url = url_for("orders.upi_pay", order_id=order.order_id, _external=True)
 
-    # Standard NPCI Business UPI Query Parameters
+    # Standard Clean UPI Query Parameters (omits mode=02 to avoid unsigned intent blocks on Google Pay/PhonePe)
     upi_params = (
         f"pa={upi_id}"
         f"&pn={quote_plus(clean_brand)}"
-        f"&mc={clean_mcc}"
         f"&tr={order_ref}"
         f"&am={order.total_amount:.2f}"
         f"&cu=INR"
         f"&tn={quote_plus(f'Order {order.order_id}')}"
-        f"&mode=02"
-        f"&url={quote_plus(return_url)}"
     )
 
     # Universal UPI Intent URL (compliant with all UPI apps)

@@ -93,7 +93,10 @@
       <div class="form-group">
         <label for="upi_id">Store Business UPI ID (VPA) *</label>
         <input type="text" id="upi_id" name="upi_id" value="{{ settings.get('upi_id', 'scentedbubbles@okaxis') }}" required class="form-control" style="font-family: monospace; font-size: 1rem;" placeholder="e.g. scentedbubbles@okaxis or yourbrand@okhdfcbank">
-        <small style="color: var(--text-muted); font-size: 0.75rem;">Your official Business UPI ID. Used for 1-Tap Google Pay, PhonePe, Paytm, and QR code generation.</small>
+        <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.35rem; line-height: 1.45;">
+          Your official Business UPI ID (e.g. <code>yourname@ptyes</code>, <code>yourname@ptaxis</code>, <code>yourname@paytm</code>, or <code>yourname@kotakbank</code>).<br>
+          <span style="color: #b45309; font-weight: 600;">⚠️ Important for Paytm Business accounts:</span> Do not enter the in-store soundbox QR string ending with <code>@pty</code> (e.g. <code>paytm.xxx@pty</code>) here. <code>@pty</code> is an internal QR code format; Google Pay and PhonePe cannot resolve <code>@pty</code> for 1-tap web payments and will show <em>"VPA is not available"</em>. Instead, enter your primary UPI ID from your <strong>Paytm for Business app</strong> (which ends in <code>@ptyes</code>, <code>@ptaxis</code>, or <code>@paytm</code>) or your bank's UPI ID.
+        </small>
       </div>
 
       <div class="form-group">

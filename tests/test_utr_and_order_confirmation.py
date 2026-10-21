@@ -257,8 +257,6 @@ def test_business_upi_intent_parameters(client, app, sample_catalog):
     # 2. Check that GPay Android Intent has correct package and business parameters
     assert "com.google.android.apps.nbu.paisa.user" in html
     assert "pa=scentedbubbles.biz@okhdfcbank" in html
-    assert "mc=5977" in html
-    assert "mode=02" in html
     # tr parameter must match alphanumeric cleaned order reference
     clean_ref = order_id.replace("-", "")
     assert f"tr={clean_ref}" in html
