@@ -1835,6 +1835,8 @@ def settings():
             "store_address",
             "business_hours",
             "upi_id",
+            "upi_merchant_name",
+            "upi_mcc",
             "delivery_charge",
             "free_delivery_threshold",
             "cod_enabled",
@@ -1879,16 +1881,19 @@ def settings():
             clean_pw = new_smtp_pw.replace(" ", "")
             Setting.set_value("smtp_password", clean_pw)
 
-        # Handle UPI QR Code Upload
-        qr_file = request.files.get("upi_qr_file")
-        if qr_file and qr_file.filename:
-            try:
-                qr_key = handle_uploaded_file(qr_file, prefix="qr")
-                from app.services.storage import get_storage
-                storage = get_storage()
-                Setting.set_value("upi_qr_url", storage.url_for(qr_key))
-            except ValueError as ve:
-                flash(str(ve), "error")
+        # Handle UPI QR Code: Removal or New Upload
+        if request.form.get("remove_upi_qr") == "1":
+            Setting.set_value("upi_qr_url", "")
+        else:
+            qr_file = request.files.get("upi_qr_file")
+            if qr_file and qr_file.filename:
+                try:
+                    qr_key = handle_uploaded_file(qr_file, prefix="qr")
+                    from app.services.storage import get_storage
+                    storage = get_storage()
+                    Setting.set_value("upi_qr_url", storage.url_for(qr_key))
+                except ValueError as ve:
+                    flash(str(ve), "error")
 
         db.session.commit()
         cache.invalidate_all()

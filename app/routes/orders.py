@@ -50,27 +50,62 @@ def upi_pay(order_id):
         return redirect(url_for("orders.order_success", order_id=order.order_id))
 
     # Store settings for UPI
-    upi_id = Setting.get_value("upi_id", "scentedbubbles@upi")
+    upi_id = Setting.get_value("upi_id", "scentedbubbles@okaxis").strip()
     raw_qr = Setting.get_value("upi_qr_url", "/static/images/placeholder_upi_qr.png")
     from app.services.image_service import get_image_url
     upi_qr_url = get_image_url(raw_qr, size="medium") if raw_qr else "/static/images/placeholder_upi_qr.png"
-    brand_name = Setting.get_value("company_name", "Scented Bubbles")
+    has_custom_qr = bool(raw_qr and not raw_qr.endswith("placeholder_upi_qr.png"))
+    brand_name = Setting.get_value("company_name", "Scented Bubbles").strip()
+    merchant_name = Setting.get_value("upi_merchant_name", "").strip() or brand_name
+    mcc = Setting.get_value("upi_mcc", "5977").strip() or "5977"
 
-    # Generate specific UPI intent URLs for Google Pay (Tez), PhonePe, Paytm, and standard UPI
+    # Clean merchant name (NPCI: letters, numbers, spaces only, max 30 chars) and MCC
     from urllib.parse import quote_plus
-    clean_brand = re.sub(r"[^\w\s]", "", brand_name).strip() or "Scented Bubbles"
+    clean_brand = re.sub(r"[^\w\s]", "", merchant_name).strip()[:30] or "Scented Bubbles"
+    clean_mcc = re.sub(r"\D", "", mcc)[:4] or "5977"
+    # Mandatory NPCI merchant transaction reference ID (alphanumeric, max 35 chars)
+    order_ref = re.sub(r"[^a-zA-Z0-9]", "", order.order_id)[:35]
     return_url = url_for("orders.upi_pay", order_id=order.order_id, _external=True)
+
+    # Standard NPCI Business UPI Query Parameters
     upi_params = (
         f"pa={upi_id}"
         f"&pn={quote_plus(clean_brand)}"
+        f"&mc={clean_mcc}"
+        f"&tr={order_ref}"
         f"&am={order.total_amount:.2f}"
         f"&cu=INR"
         f"&tn={quote_plus(f'Order {order.order_id}')}"
+        f"&mode=02"
         f"&url={quote_plus(return_url)}"
     )
+
+    # Universal UPI Intent URL (compliant with all UPI apps)
     upi_intent_url = f"upi://pay?{upi_params}"
+
+    # Google Pay Direct Intent (Native Android Intent targeting package & iOS gpay:// scheme)
+    gpay_android_intent = (
+        f"intent://pay?{upi_params}#Intent;"
+        f"scheme=upi;package=com.google.android.apps.nbu.paisa.user;"
+        f"S.browser_fallback_url={quote_plus('https://play.google.com/store/apps/details?id=com.google.android.apps.nbu.paisa.user')};end"
+    )
+    gpay_ios_intent = f"gpay://upi/pay?{upi_params}"
     gpay_intent_url = f"tez://upi/pay?{upi_params}"
+
+    # PhonePe Direct Intent
+    phonepe_android_intent = (
+        f"intent://pay?{upi_params}#Intent;"
+        f"scheme=upi;package=com.phonepe.app;"
+        f"S.browser_fallback_url={quote_plus('https://play.google.com/store/apps/details?id=com.phonepe.app')};end"
+    )
     phonepe_intent_url = f"phonepe://pay?{upi_params}"
+
+    # Paytm Direct Intent
+    paytm_android_intent = (
+        f"intent://pay?{upi_params}#Intent;"
+        f"scheme=upi;package=net.one97.paytm;"
+        f"S.browser_fallback_url={quote_plus('https://play.google.com/store/apps/details?id=net.one97.paytm')};end"
+    )
     paytm_intent_url = f"paytmmp://pay?{upi_params}"
 
     if request.method == "POST":
@@ -149,11 +184,19 @@ def upi_pay(order_id):
         order=order,
         upi_id=upi_id,
         upi_qr_url=upi_qr_url,
+        has_custom_qr=has_custom_qr,
         upi_intent_url=upi_intent_url,
+        upi_params=upi_params,
         gpay_intent_url=gpay_intent_url,
+        gpay_android_intent=gpay_android_intent,
+        gpay_ios_intent=gpay_ios_intent,
         phonepe_intent_url=phonepe_intent_url,
+        phonepe_android_intent=phonepe_android_intent,
         paytm_intent_url=paytm_intent_url,
+        paytm_android_intent=paytm_android_intent,
         brand_name=brand_name,
+        merchant_name=clean_brand,
+        mcc=clean_mcc,
     )
 
 

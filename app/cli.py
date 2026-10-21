@@ -59,6 +59,8 @@ def seed_demo_command():
         "support_email": ("care@scentedbubbles.com", "Customer support email"),
         "store_address": ("Plot 42, Fragrance Avenue, Jubilee Hills, Hyderabad - 500033", "Physical store / fulfillment address"),
         "upi_id": ("scentedbubbles@okaxis", "Store UPI VPA for customer manual payments"),
+        "upi_merchant_name": ("Scented Bubbles", "Registered Business / Merchant Name for UPI payments"),
+        "upi_mcc": ("5977", "Merchant Category Code for Business UPI payments (5977: Cosmetics/Soaps)"),
         "upi_qr_url": ("/static/images/placeholder_upi_qr.png", "UPI QR code scan image"),
         "delivery_charge": ("50.00", "Standard delivery fee in INR"),
         "free_delivery_threshold": ("999.00", "Order total in INR for free shipping"),

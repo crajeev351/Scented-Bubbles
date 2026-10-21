@@ -219,3 +219,74 @@ def test_customer_order_details_email_sent_only_when_registered(app, sample_cata
             assert "store_owner@scentedbubbles.com" in recipients
             assert "" not in recipients
 
+
+def test_business_upi_intent_parameters(client, app, sample_catalog):
+    """Verify that upi_pay page generates compliant NPCI Business UPI parameters (pa, pn, mc, tr, mode=02) and direct GPay Android intent."""
+    from app.services.order_service import create_order
+
+    vid = sample_catalog["variant_50ml_id"]
+    with app.app_context():
+        # Set specific business settings
+        Setting.set_value("upi_id", "scentedbubbles.biz@okhdfcbank")
+        Setting.set_value("upi_merchant_name", "Scented Bubbles Luxury")
+        Setting.set_value("upi_mcc", "5977")
+        db.session.commit()
+
+        order = create_order(
+            cart_items=[{"variant_id": vid, "qty": 1}],
+            customer_info={"name": "Priya Sharma", "phone": "9876543210", "email": "priya@example.com"},
+            shipping_info={"name": "Priya Sharma", "phone": "9876543210", "address_line1": "Road 10", "city": "Mumbai", "state": "Maharashtra", "pincode": "400001"},
+            payment_method="MANUAL_UPI",
+        )
+        order_id = order.order_id
+
+    # Simulate customer visiting upi-pay screen
+    with client.session_transaction() as sess:
+        sess["recent_order_id"] = order_id
+
+    res = client.get(f"/orders/{order_id}/upi-pay")
+    assert res.status_code == 200
+    html = res.get_data(as_text=True)
+
+    # 1. Check that Business UPI ID and Merchant details are present
+    assert "scentedbubbles.biz@okhdfcbank" in html
+    assert "Scented Bubbles Luxury" in html
+    assert "Copy" in html
+    assert "Copy Amount" in html
+
+    # 2. Check that GPay Android Intent has correct package and business parameters
+    assert "com.google.android.apps.nbu.paisa.user" in html
+    assert "pa=scentedbubbles.biz@okhdfcbank" in html
+    assert "mc=5977" in html
+    assert "mode=02" in html
+    # tr parameter must match alphanumeric cleaned order reference
+    clean_ref = order_id.replace("-", "")
+    assert f"tr={clean_ref}" in html
+
+    # 3. Check PhonePe & Paytm intents
+    assert "com.phonepe.app" in html
+    assert "net.one97.paytm" in html
+
+
+def test_admin_updates_business_upi_settings(client, app, test_admin_user):
+    """Admin updates UPI ID, registered merchant name, and MCC in /admin/settings."""
+    with client.session_transaction() as sess:
+        sess["admin_id"] = test_admin_user
+        sess["admin_username"] = "admin"
+
+    res = client.post("/admin/settings", data={
+        "company_name": "Scented Bubbles",
+        "upi_id": "merchant.scented@okaxis",
+        "upi_merchant_name": "Scented Bubbles Perfumes",
+        "upi_mcc": "5977",
+        "delivery_charge": "50.00",
+        "free_delivery_threshold": "999.00",
+        "cod_enabled": "false",
+    }, follow_redirects=True)
+    assert res.status_code == 200
+
+    with app.app_context():
+        assert Setting.get_value("upi_id") == "merchant.scented@okaxis"
+        assert Setting.get_value("upi_merchant_name") == "Scented Bubbles Perfumes"
+        assert Setting.get_value("upi_mcc") == "5977"
+

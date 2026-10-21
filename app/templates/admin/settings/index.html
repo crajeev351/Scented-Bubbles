@@ -76,15 +76,44 @@
       <input type="text" id="store_address" name="store_address" value="{{ settings.get('store_address', '') }}" class="form-control">
     </div>
 
-    <h3 style="font-size: 1.15rem; margin: 2.5rem 0 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
-      2. Payment Settings (Prepaid UPI &amp; Online Checkout)
+    <h3 style="font-size: 1.15rem; margin: 2.5rem 0 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 0.5rem;">
+      <span>2. Payment Settings (Prepaid UPI &amp; Online Checkout)</span>
+      <span style="font-size: 0.75rem; background: rgba(197, 160, 89, 0.15); color: var(--gold-dark); border: 1px solid var(--gold-primary); padding: 0.15rem 0.6rem; border-radius: 9999px; font-weight: 600;">Google Pay &amp; Business Ready</span>
     </h3>
+
+    <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: var(--radius-sm); padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; gap: 0.85rem; align-items: flex-start;">
+      <div style="font-size: 1.25rem; line-height: 1;">💼</div>
+      <div style="font-size: 0.85rem; color: #166534; line-height: 1.5;">
+        <strong>Google Pay &amp; Business UPI Compliance:</strong><br>
+        Google Pay and NPCI require a registered <strong>Business / Merchant UPI ID</strong> (from Google Pay for Business, PhonePe Business, Paytm Business, or your bank) for 1-tap browser payments. Once you input your Business UPI ID and upload your official QR standee below, customer 1-tap payments in Google Pay will process seamlessly without security warnings.
+      </div>
+    </div>
 
     <div class="form-row">
       <div class="form-group">
-        <label for="upi_id">Store UPI ID (VPA) *</label>
-        <input type="text" id="upi_id" name="upi_id" value="{{ settings.get('upi_id', 'scentedbubbles@okaxis') }}" required class="form-control" style="font-family: monospace; font-size: 1rem;">
-        <small style="color: var(--text-muted); font-size: 0.75rem;">Shown to customers on the Scan &amp; Pay payment screen</small>
+        <label for="upi_id">Store Business UPI ID (VPA) *</label>
+        <input type="text" id="upi_id" name="upi_id" value="{{ settings.get('upi_id', 'scentedbubbles@okaxis') }}" required class="form-control" style="font-family: monospace; font-size: 1rem;" placeholder="e.g. scentedbubbles@okaxis or yourbrand@okhdfcbank">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Your official Business UPI ID. Used for 1-Tap Google Pay, PhonePe, Paytm, and QR code generation.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="upi_merchant_name">Registered Merchant / Business Name *</label>
+        <input type="text" id="upi_merchant_name" name="upi_merchant_name" value="{{ settings.get('upi_merchant_name', settings.get('company_name', 'Scented Bubbles')) }}" required class="form-control" placeholder="e.g. Scented Bubbles">
+        <small style="color: var(--text-muted); font-size: 0.75rem;">The official trade name registered with your UPI merchant account. Displayed on the customer's Google Pay screen.</small>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="upi_mcc">Merchant Category Code (MCC) *</label>
+        <select id="upi_mcc" name="upi_mcc" class="form-control">
+          <option value="5977" {{ 'selected' if settings.get('upi_mcc', '5977') == '5977' else '' }}>5977 &ndash; Cosmetics, Toiletries, Soaps &amp; Fine Fragrances (Recommended)</option>
+          <option value="5399" {{ 'selected' if settings.get('upi_mcc', '5977') == '5399' else '' }}>5399 &ndash; Miscellaneous General Merchandise &amp; Retail</option>
+          <option value="5499" {{ 'selected' if settings.get('upi_mcc', '5977') == '5499' else '' }}>5499 &ndash; Specialty Market &amp; Artisan Goods</option>
+          <option value="5699" {{ 'selected' if settings.get('upi_mcc', '5977') == '5699' else '' }}>5699 &ndash; Miscellaneous Apparel &amp; Lifestyle Accessories</option>
+          <option value="0000" {{ 'selected' if settings.get('upi_mcc', '5977') == '0000' else '' }}>0000 &ndash; Default / Unspecified</option>
+        </select>
+        <small style="color: var(--text-muted); font-size: 0.75rem;">Standard 4-digit code required by Google Pay &amp; NPCI to classify merchant payments.</small>
       </div>
 
       <div class="form-group">
@@ -97,13 +126,32 @@
       </div>
     </div>
 
-    <div class="form-group">
-      <label for="upi_qr_file">Upload Store UPI QR Code Image</label>
-      <input type="file" id="upi_qr_file" name="upi_qr_file" accept=".png,.jpg,.jpeg,.webp" class="form-control">
-      {% if settings.get('upi_qr_url') %}
-        <div style="margin-top: 0.75rem; display: flex; align-items: center; gap: 1rem;">
-          <img src="{{ image_url(settings.get('upi_qr_url')) }}" alt="Current QR" style="width: 80px; height: 80px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); object-fit: contain; background: #ffffff;">
-          <span style="font-size: 0.8125rem; color: var(--text-muted);">Current Active QR Code</span>
+    <div class="form-group" style="background: var(--bg-subtle); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 1.25rem; margin-bottom: 1.5rem;">
+      <label for="upi_qr_file" style="font-weight: 700; margin-bottom: 0.35rem; display: block;">Upload Official Business UPI QR Code Image</label>
+      <input type="file" id="upi_qr_file" name="upi_qr_file" accept=".png,.jpg,.jpeg,.webp" class="form-control" style="background: #FFFFFF;">
+      <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.4rem;">
+        Upload your official Google Pay for Business, PhonePe Business, or Paytm Business QR code image (PNG, JPG, WEBP).
+      </small>
+      
+      {% if settings.get('upi_qr_url') and not settings.get('upi_qr_url').endswith('placeholder_upi_qr.png') %}
+        <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1.25rem; background: #FFFFFF; border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.85rem 1rem;">
+          <img src="{{ image_url(settings.get('upi_qr_url')) }}" alt="Current QR" style="width: 90px; height: 90px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); object-fit: contain; background: #ffffff;">
+          <div>
+            <div style="font-weight: 700; font-size: 0.875rem; color: #166534; display: flex; align-items: center; gap: 0.4rem;">
+              <span>✓ Official Business QR Code Active</span>
+            </div>
+            <div style="font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.2rem;">
+              Displayed to customers on checkout Scan &amp; Pay screen.
+            </div>
+            <label style="margin-top: 0.5rem; display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8125rem; color: #DC2626; cursor: pointer;">
+              <input type="checkbox" name="remove_upi_qr" value="1">
+              <span>Remove custom QR (reverts to dynamic vector SVG QR)</span>
+            </label>
+          </div>
+        </div>
+      {% else %}
+        <div style="margin-top: 0.75rem; font-size: 0.8125rem; color: var(--text-muted);">
+          ℹ️ Currently using the <strong>high-precision dynamic vector SVG QR generator</strong> (encodes the exact order amount and business parameters automatically).
         </div>
       {% endif %}
     </div>
