@@ -141,75 +141,220 @@
       {% endif %}
     </div>
 
-    <h3 style="font-size: 1.15rem; margin: 2rem 0 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
-      4. Size / Volume Variants
+    <h3 style="font-size: 1.15rem; margin: 2rem 0 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+      <span>4. Size / Volume Variants</span>
+      <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">
+        Freely add or edit ML sizes, individual pricing, and live inventory.
+      </span>
     </h3>
 
-    {% if product %}
-      {# Existing Variants in Edit mode #}
-      <div style="margin-bottom: 1.5rem;">
-        <label style="font-size: 0.8125rem; color: var(--text-muted); display: block; margin-bottom: 0.75rem;">Modify Existing Variants:</label>
-        {% for var in product.variants %}
-        <div class="admin-variant-row">
-          <div>
-            <label style="font-size: 0.75rem; color: var(--text-muted);">Size Label:</label>
-            <input type="text" name="var_label_{{ var.id }}" value="{{ var.size_label }}" required class="form-control" style="font-size: 0.8125rem; padding: 0.4rem;">
-          </div>
-          <div>
-            <label style="font-size: 0.75rem; color: var(--text-muted);">SKU:</label>
-            <input type="text" name="var_sku_{{ var.id }}" value="{{ var.sku }}" required class="form-control" style="font-size: 0.8125rem; padding: 0.4rem;">
-          </div>
-          <div>
-            <label style="font-size: 0.75rem; color: var(--text-muted);">Price (₹):</label>
-            <input type="number" step="0.01" name="var_price_{{ var.id }}" value="{{ var.price }}" required class="form-control" style="font-size: 0.8125rem; padding: 0.4rem;">
-          </div>
-          <div>
-            <label style="font-size: 0.75rem; color: var(--text-muted);">Sale Price (₹):</label>
-            <input type="number" step="0.01" name="var_discounted_price_{{ var.id }}" value="{{ var.discounted_price or '' }}" class="form-control" style="font-size: 0.8125rem; padding: 0.4rem;">
-          </div>
-          <div>
-            <label style="font-size: 0.75rem; color: var(--text-muted);">Stock:</label>
-            <input type="number" name="var_stock_{{ var.id }}" value="{{ var.stock }}" required class="form-control" style="font-size: 0.8125rem; padding: 0.4rem;">
-          </div>
-          <div style="text-align: center;">
-            <label style="font-size: 0.75rem; color: var(--text-muted);">Active:</label>
-            <input type="checkbox" name="var_active_{{ var.id }}" value="1" {{ 'checked' if var.active else '' }} style="display: block; margin: 6px auto;">
-          </div>
-        </div>
-        {% endfor %}
+    {# Datalist for autocomplete suggestions of common perfume volumes #}
+    <datalist id="ml-size-suggestions">
+      <option value="10ml EDP">
+      <option value="15ml EDP">
+      <option value="30ml EDP">
+      <option value="50ml EDP">
+      <option value="100ml EDP">
+      <option value="200ml EDP">
+      <option value="10ml Travel Spray">
+      <option value="10ml Hanging Diffuser">
+      <option value="50ml Extrait de Parfum">
+      <option value="100ml Extrait de Parfum">
+      <option value="60ml Parfum">
+      <option value="2ml Sample Vial">
+    </datalist>
+
+    <div class="variant-manager-card">
+
+      {# Quick Add ML Size Preset Chips #}
+      <div class="variant-quick-presets-bar">
+        <span style="font-size: 0.75rem; font-weight: 700; color: var(--gold-dark); text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 0.35rem;">
+          ⚡ Quick Add ML:
+        </span>
+        <button type="button" class="btn-ml-preset" data-preset="10ml EDP">+ 10ml</button>
+        <button type="button" class="btn-ml-preset" data-preset="30ml EDP">+ 30ml</button>
+        <button type="button" class="btn-ml-preset" data-preset="50ml EDP">+ 50ml</button>
+        <button type="button" class="btn-ml-preset" data-preset="100ml EDP">+ 100ml</button>
+        <button type="button" class="btn-ml-preset" data-preset="200ml EDP">+ 200ml</button>
+        <button type="button" class="btn-ml-preset" data-preset="10ml Travel Spray">+ Travel Spray</button>
+        <button type="button" class="btn-ml-preset" data-preset="10ml Hanging Diffuser">+ Car Diffuser</button>
       </div>
 
-      {# Add New Variant Row #}
-      <div style="border-top: 1px dashed var(--border-light); padding-top: 1rem; margin-top: 1rem;">
-        <label style="font-size: 0.8125rem; font-weight: 600; color: var(--gold-dark); display: block; margin-bottom: 0.5rem;">+ Add Another Variant:</label>
-        <div class="admin-new-variant-row">
-          <input type="text" name="new_variant_label" placeholder="e.g. 100ml EDP" class="form-control" style="font-size: 0.8125rem;">
-          <input type="text" name="new_variant_sku" placeholder="SKU (Auto if blank)" class="form-control" style="font-size: 0.8125rem;">
-          <input type="number" step="0.01" name="new_variant_price" placeholder="Price (₹)" class="form-control" style="font-size: 0.8125rem;">
-          <input type="number" step="0.01" name="new_variant_discounted_price" placeholder="Sale Price (₹)" class="form-control" style="font-size: 0.8125rem;">
-          <input type="number" name="new_variant_stock" placeholder="Stock" class="form-control" style="font-size: 0.8125rem;">
-        </div>
-      </div>
+      {% if product %}
+        {# ================= EDIT MODE ================= #}
+        <div style="margin-bottom: 1.5rem;" id="existing-variants-container">
+          <label style="font-size: 0.8125rem; font-weight: 600; color: var(--text-main); display: block; margin-bottom: 0.65rem;">
+            Existing Fragrance Variants:
+          </label>
 
-    {% else %}
-      {# Creation mode initial variant rows #}
-      <div id="variants-container">
-        <div class="admin-new-variant-row">
-          <input type="text" name="variant_label[]" value="50ml EDP" required placeholder="Size label" class="form-control">
-          <input type="text" name="variant_sku[]" placeholder="SKU (e.g. VOR-50ML)" class="form-control">
-          <input type="number" step="0.01" name="variant_price[]" value="1299.00" required placeholder="Price (₹)" class="form-control">
-          <input type="number" step="0.01" name="variant_discounted_price[]" placeholder="Sale Price" class="form-control">
-          <input type="number" name="variant_stock[]" value="25" required placeholder="Stock" class="form-control">
+          {# Desktop Table Header #}
+          <div class="variant-table-header-edit">
+            <div>Size / Volume (ML) *</div>
+            <div>SKU Code</div>
+            <div>Price (₹) *</div>
+            <div>Sale Price (₹)</div>
+            <div>Stock *</div>
+            <div style="text-align: center;">Active</div>
+            <div style="text-align: center;">Action</div>
+          </div>
+
+          {% for var in product.variants if not var.is_deleted %}
+          <div class="variant-edit-row">
+            <div>
+              <label class="variant-field-label">Size / ML:</label>
+              <input type="text" name="var_label_{{ var.id }}" value="{{ var.size_label }}" list="ml-size-suggestions" required class="form-control variant-label-input" style="font-size: 0.8125rem; padding: 0.4rem;">
+            </div>
+            <div>
+              <label class="variant-field-label">SKU:</label>
+              <input type="text" name="var_sku_{{ var.id }}" value="{{ var.sku }}" required class="form-control variant-sku-input" style="font-size: 0.8125rem; padding: 0.4rem;">
+            </div>
+            <div>
+              <label class="variant-field-label">Price (₹) *:</label>
+              <input type="number" step="0.01" name="var_price_{{ var.id }}" value="{{ var.price }}" required class="form-control variant-price-input" style="font-size: 0.8125rem; padding: 0.4rem;">
+            </div>
+            <div>
+              <label class="variant-field-label">Sale Price (₹):</label>
+              <input type="number" step="0.01" name="var_discounted_price_{{ var.id }}" value="{{ var.discounted_price or '' }}" class="form-control variant-disc-price-input" placeholder="Optional" style="font-size: 0.8125rem; padding: 0.4rem;">
+            </div>
+            <div>
+              <label class="variant-field-label">Stock *:</label>
+              <input type="number" name="var_stock_{{ var.id }}" value="{{ var.stock }}" required class="form-control variant-stock-input" style="font-size: 0.8125rem; padding: 0.4rem;">
+            </div>
+            <div style="text-align: center;">
+              <label class="variant-field-label">Active:</label>
+              <input type="checkbox" name="var_active_{{ var.id }}" value="1" {{ 'checked' if var.active else '' }} style="display: block; margin: 6px auto; width: 16px; height: 16px; accent-color: var(--gold-primary);">
+            </div>
+            <div class="variant-cell-action" style="text-align: center;">
+              <button type="button" class="btn-remove-variant btn-delete-existing-variant" data-var-id="{{ var.id }}" title="Remove this variant">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+          {% endfor %}
         </div>
-        <div class="admin-new-variant-row">
-          <input type="text" name="variant_label[]" value="100ml EDP" placeholder="Size label" class="form-control">
-          <input type="text" name="variant_sku[]" placeholder="SKU (e.g. VOR-100ML)" class="form-control">
-          <input type="number" step="0.01" name="variant_price[]" value="2199.00" placeholder="Price (₹)" class="form-control">
-          <input type="number" step="0.01" name="variant_discounted_price[]" placeholder="Sale Price" class="form-control">
-          <input type="number" name="variant_stock[]" value="15" placeholder="Stock" class="form-control">
+
+        {# Add New Variants in Edit Mode #}
+        <div style="border-top: 1px dashed var(--border-light); padding-top: 1.25rem; margin-top: 1rem;">
+          <label style="font-size: 0.8125rem; font-weight: 600; color: var(--gold-dark); display: block; margin-bottom: 0.75rem;">
+            + Add New Size / Volume Variants to Catalog:
+          </label>
+
+          <div class="variant-table-header" style="opacity: 0.85;">
+            <div>Size / Volume (ML) *</div>
+            <div>SKU (Auto if blank)</div>
+            <div>Price (₹) *</div>
+            <div>Sale Price (₹)</div>
+            <div>Stock *</div>
+            <div style="text-align: center;">Action</div>
+          </div>
+
+          <div id="new-variants-container"></div>
+
+          <div style="margin-top: 0.75rem;">
+            <button type="button" id="btn-add-variant" class="btn btn-secondary" style="border: 1.5px dashed var(--gold-primary, #C5A059); color: #8C6D23; background: rgba(197, 160, 89, 0.08); font-weight: 700; padding: 0.6rem 1.25rem; display: inline-flex; align-items: center; gap: 0.45rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">
+              <span style="font-size: 1.15rem; line-height: 1;">+</span> Add Another ML Size
+            </button>
+          </div>
         </div>
-      </div>
-    {% endif %}
+
+      {% else %}
+        {# ================= CREATION MODE ================= #}
+        {# Desktop Table Header #}
+        <div class="variant-table-header">
+          <div>Size / Volume (ML) *</div>
+          <div>SKU (Auto if blank)</div>
+          <div>Price (₹) *</div>
+          <div>Sale Price (₹)</div>
+          <div>Stock *</div>
+          <div style="text-align: center;">Action</div>
+        </div>
+
+        <div id="variants-container">
+          <div class="variant-row">
+            <div>
+              <label class="variant-field-label">Size / ML:</label>
+              <input type="text" name="variant_label[]" value="50ml EDP" list="ml-size-suggestions" required placeholder="Size label (e.g. 50ml EDP)" class="form-control variant-label-input">
+            </div>
+            <div>
+              <label class="variant-field-label">SKU:</label>
+              <input type="text" name="variant_sku[]" placeholder="SKU (e.g. VOR-50ML)" class="form-control variant-sku-input">
+            </div>
+            <div>
+              <label class="variant-field-label">Price (₹) *:</label>
+              <input type="number" step="0.01" name="variant_price[]" value="1299.00" required placeholder="Price (₹)" class="form-control variant-price-input">
+            </div>
+            <div>
+              <label class="variant-field-label">Sale Price (₹):</label>
+              <input type="number" step="0.01" name="variant_discounted_price[]" placeholder="Sale Price (₹)" class="form-control variant-disc-price-input">
+            </div>
+            <div>
+              <label class="variant-field-label">Stock *:</label>
+              <input type="number" name="variant_stock[]" value="25" required placeholder="Stock" class="form-control variant-stock-input">
+            </div>
+            <div class="variant-cell-action" style="text-align: center;">
+              <button type="button" class="btn-remove-variant" title="Remove this variant" aria-label="Remove variant">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="variant-row">
+            <div>
+              <label class="variant-field-label">Size / ML:</label>
+              <input type="text" name="variant_label[]" value="100ml EDP" list="ml-size-suggestions" placeholder="Size label (e.g. 100ml EDP)" class="form-control variant-label-input">
+            </div>
+            <div>
+              <label class="variant-field-label">SKU:</label>
+              <input type="text" name="variant_sku[]" placeholder="SKU (e.g. VOR-100ML)" class="form-control variant-sku-input">
+            </div>
+            <div>
+              <label class="variant-field-label">Price (₹) *:</label>
+              <input type="number" step="0.01" name="variant_price[]" value="2199.00" placeholder="Price (₹)" class="form-control variant-price-input">
+            </div>
+            <div>
+              <label class="variant-field-label">Sale Price (₹):</label>
+              <input type="number" step="0.01" name="variant_discounted_price[]" placeholder="Sale Price (₹)" class="form-control variant-disc-price-input">
+            </div>
+            <div>
+              <label class="variant-field-label">Stock *:</label>
+              <input type="number" name="variant_stock[]" value="15" placeholder="Stock" class="form-control variant-stock-input">
+            </div>
+            <div class="variant-cell-action" style="text-align: center;">
+              <button type="button" class="btn-remove-variant" title="Remove this variant" aria-label="Remove variant">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {# Add Variant Button #}
+        <div style="margin-top: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+          <button type="button" id="btn-add-variant" class="btn btn-secondary" style="border: 1.5px dashed var(--gold-primary, #C5A059); color: #8C6D23; background: rgba(197, 160, 89, 0.08); font-weight: 700; padding: 0.65rem 1.35rem; display: inline-flex; align-items: center; gap: 0.5rem; border-radius: 8px; cursor: pointer; font-size: 0.875rem;">
+            <span style="font-size: 1.2rem; line-height: 1;">+</span> Add Another Size / Volume Variant
+          </button>
+          <small style="color: var(--text-muted); font-size: 0.78rem;">
+            💡 Need to sell 10ml, 30ml, or testers? Click <strong>+ Add Another Size</strong> or use the <strong>Quick Add ML</strong> chips above.
+          </small>
+        </div>
+
+      {% endif %}
+
+    </div>
 
     <div style="margin-top: 2.5rem; display: flex; gap: 1rem;">
       <button type="submit" class="btn btn-primary" style="padding: 0.85rem 2rem;">

@@ -196,6 +196,273 @@
     }
   }
 
+  // 6b. Dynamic Size & Volume Variant Manager
+  function initVariantManager() {
+    var container = document.getElementById('variants-container');
+    var newContainer = document.getElementById('new-variants-container');
+    var existingContainer = document.getElementById('existing-variants-container');
+
+    if (!container && !newContainer && !existingContainer) return;
+
+    var nameInput = document.getElementById('name');
+    var slugInput = document.getElementById('slug');
+
+    function getProductPrefix() {
+      if (slugInput && slugInput.value.trim()) {
+        var cleanSlug = slugInput.value.trim().replace(/[^a-zA-Z0-9]/g, '');
+        return cleanSlug.substring(0, 4).toUpperCase() || 'PROD';
+      }
+      if (nameInput && nameInput.value.trim()) {
+        var cleanName = nameInput.value.trim().replace(/[^a-zA-Z0-9]/g, '');
+        return cleanName.substring(0, 4).toUpperCase() || 'PROD';
+      }
+      return 'PROD';
+    }
+
+    function extractSizeCode(sizeStr) {
+      if (!sizeStr) return '';
+      var mlMatch = sizeStr.match(/(\d+\s*ml)/i);
+      if (mlMatch) {
+        return mlMatch[1].replace(/\s+/g, '').toUpperCase();
+      }
+      var numMatch = sizeStr.match(/(\d+)/);
+      if (numMatch) {
+        return numMatch[1] + 'ML';
+      }
+      var clean = sizeStr.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+      return clean.substring(0, 5) || 'VAR';
+    }
+
+    function autoSuggestSku(row) {
+      var labelInput = row.querySelector('.variant-label-input');
+      var skuInput = row.querySelector('.variant-sku-input');
+      if (!labelInput || !skuInput) return;
+
+      var labelVal = labelInput.value.trim();
+      if (labelVal && !skuInput.value.trim()) {
+        var prefix = getProductPrefix();
+        var code = extractSizeCode(labelVal);
+        skuInput.value = prefix + '-' + code;
+      }
+    }
+
+    function attachRowListeners(row) {
+      var labelInput = row.querySelector('.variant-label-input');
+      if (labelInput) {
+        labelInput.addEventListener('blur', function() {
+          autoSuggestSku(row);
+        });
+        labelInput.addEventListener('change', function() {
+          autoSuggestSku(row);
+        });
+      }
+    }
+
+    // Attach listeners to all existing variant rows
+    document.querySelectorAll('.variant-row, .variant-edit-row').forEach(function(r) {
+      attachRowListeners(r);
+    });
+
+    // Create a new variant row element
+    function createVariantRowElement(isNewMode, defaultLabel) {
+      var row = document.createElement('div');
+      row.className = 'variant-row';
+      var prefix = isNewMode ? 'variant' : 'new_variant';
+
+      var labelFieldName = prefix + '_label[]';
+      var skuFieldName = prefix + '_sku[]';
+      var priceFieldName = prefix + '_price[]';
+      var discPriceFieldName = prefix + '_discounted_price[]';
+      var stockFieldName = prefix + '_stock[]';
+
+      row.innerHTML = 
+        '<div>' +
+          '<label class="variant-field-label">Size / ML:</label>' +
+          '<input type="text" name="' + labelFieldName + '" value="' + (defaultLabel || '') + '" list="ml-size-suggestions" required placeholder="e.g. 50ml EDP, 30ml" class="form-control variant-label-input">' +
+        '</div>' +
+        '<div>' +
+          '<label class="variant-field-label">SKU:</label>' +
+          '<input type="text" name="' + skuFieldName + '" placeholder="SKU (Auto if blank)" class="form-control variant-sku-input">' +
+        '</div>' +
+        '<div>' +
+          '<label class="variant-field-label">Price (₹) *:</label>' +
+          '<input type="number" step="0.01" name="' + priceFieldName + '" required placeholder="Price (₹)" class="form-control variant-price-input">' +
+        '</div>' +
+        '<div>' +
+          '<label class="variant-field-label">Sale Price (₹):</label>' +
+          '<input type="number" step="0.01" name="' + discPriceFieldName + '" placeholder="Sale Price (₹)" class="form-control variant-disc-price-input">' +
+        '</div>' +
+        '<div>' +
+          '<label class="variant-field-label">Stock *:</label>' +
+          '<input type="number" name="' + stockFieldName + '" value="20" required placeholder="Stock" class="form-control variant-stock-input">' +
+        '</div>' +
+        '<div class="variant-cell-action" style="text-align: center;">' +
+          '<button type="button" class="btn-remove-variant" title="Remove this variant" aria-label="Remove variant">' +
+            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+              '<polyline points="3 6 5 6 21 6"></polyline>' +
+              '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>' +
+              '<line x1="10" y1="11" x2="10" y2="17"></line>' +
+              '<line x1="14" y1="11" x2="14" y2="17"></line>' +
+            '</svg>' +
+          '</button>' +
+        '</div>';
+
+      attachRowListeners(row);
+      return row;
+    }
+
+    // Quick ML Preset Buttons
+    document.querySelectorAll('.btn-ml-preset').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var presetVal = this.getAttribute('data-preset');
+        if (!presetVal) return;
+
+        if (container) {
+          // In creation mode: check if an existing row has an empty label
+          var rows = container.querySelectorAll('.variant-row');
+          var targetRow = null;
+          rows.forEach(function(r) {
+            var lbl = r.querySelector('.variant-label-input');
+            if (lbl && !lbl.value.trim() && !targetRow) {
+              targetRow = r;
+            }
+          });
+
+          if (targetRow) {
+            var lblInp = targetRow.querySelector('.variant-label-input');
+            lblInp.value = presetVal;
+            autoSuggestSku(targetRow);
+            var prInp = targetRow.querySelector('.variant-price-input');
+            if (prInp) prInp.focus();
+            return;
+          }
+
+          var newRow = createVariantRowElement(true, presetVal);
+          container.appendChild(newRow);
+          autoSuggestSku(newRow);
+          var pr = newRow.querySelector('.variant-price-input');
+          if (pr) pr.focus();
+        } else if (newContainer) {
+          // In edit mode: add to new-variants-container
+          var editRow = createVariantRowElement(false, presetVal);
+          newContainer.appendChild(editRow);
+          autoSuggestSku(editRow);
+          var editPrice = editRow.querySelector('.variant-price-input');
+          if (editPrice) editPrice.focus();
+        }
+      });
+    });
+
+    // Add Variant Button
+    var addBtn = document.getElementById('btn-add-variant');
+    if (addBtn) {
+      addBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (container) {
+          var r = createVariantRowElement(true, '');
+          container.appendChild(r);
+          var lbl = r.querySelector('.variant-label-input');
+          if (lbl) lbl.focus();
+        } else if (newContainer) {
+          var nr = createVariantRowElement(false, '');
+          newContainer.appendChild(nr);
+          var nlbl = nr.querySelector('.variant-label-input');
+          if (nlbl) nlbl.focus();
+        }
+      });
+    }
+
+    // Delegated Remove and Delete/Undo handlers
+    document.addEventListener('click', function(e) {
+      // 1. Remove button on dynamic new rows
+      var removeBtn = e.target.closest('.btn-remove-variant');
+      if (removeBtn && !removeBtn.classList.contains('btn-delete-existing-variant')) {
+        e.preventDefault();
+        var row = removeBtn.closest('.variant-row');
+        if (row) {
+          var parent = row.parentElement;
+          if (parent && parent.id === 'variants-container') {
+            var allRows = parent.querySelectorAll('.variant-row');
+            if (allRows.length <= 1) {
+              alert('A product must have at least one size / volume variant. You can change this variant\'s ML size instead of removing it.');
+              return;
+            }
+          }
+          row.style.opacity = '0';
+          row.style.transform = 'scale(0.95)';
+          row.style.transition = 'all 0.18s ease';
+          setTimeout(function() {
+            if (row && row.parentNode) row.parentNode.removeChild(row);
+          }, 180);
+        }
+        return;
+      }
+
+      // 2. Delete / Undo button on existing variants (edit mode)
+      var delExistingBtn = e.target.closest('.btn-delete-existing-variant');
+      if (delExistingBtn) {
+        e.preventDefault();
+        var editRow = delExistingBtn.closest('.variant-edit-row');
+        if (!editRow) return;
+        var varId = delExistingBtn.getAttribute('data-var-id');
+
+        var isDeleted = editRow.classList.contains('variant-marked-deleted');
+        if (!isDeleted) {
+          // Mark for deletion
+          editRow.classList.add('variant-marked-deleted');
+          var hiddenDel = document.createElement('input');
+          hiddenDel.type = 'hidden';
+          hiddenDel.name = 'delete_var_' + varId;
+          hiddenDel.value = '1';
+          hiddenDel.className = 'delete-flag-input';
+          editRow.appendChild(hiddenDel);
+          delExistingBtn.innerHTML = '↶ Undo';
+          delExistingBtn.className = 'btn-undo-variant btn-delete-existing-variant';
+          delExistingBtn.title = 'Undo removal of this variant';
+        } else {
+          // Undo deletion
+          editRow.classList.remove('variant-marked-deleted');
+          var hiddenInput = editRow.querySelector('.delete-flag-input');
+          if (hiddenInput) hiddenInput.remove();
+          delExistingBtn.innerHTML = 
+            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+              '<polyline points="3 6 5 6 21 6"></polyline>' +
+              '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>' +
+              '<line x1="10" y1="11" x2="10" y2="17"></line>' +
+              '<line x1="14" y1="11" x2="14" y2="17"></line>' +
+            '</svg>';
+          delExistingBtn.className = 'btn-remove-variant btn-delete-existing-variant';
+          delExistingBtn.title = 'Remove this variant';
+        }
+      }
+    });
+
+    // Form submit validation: ensure at least one valid variant
+    var formCard = document.querySelector('form.admin-card');
+    if (formCard && container) {
+      formCard.addEventListener('submit', function(e) {
+        var rows = container.querySelectorAll('.variant-row');
+        var hasValid = false;
+        rows.forEach(function(r) {
+          var lbl = r.querySelector('.variant-label-input');
+          var pr = r.querySelector('.variant-price-input');
+          if (lbl && lbl.value.trim() && pr && pr.value.trim()) {
+            hasValid = true;
+          }
+        });
+        if (!hasValid) {
+          e.preventDefault();
+          alert('Please specify at least one Size / Volume Variant with a Size Label and Price.');
+          var firstLbl = container.querySelector('.variant-label-input');
+          if (firstLbl) firstLbl.focus();
+          return false;
+        }
+      });
+    }
+  }
+
+
   // 7. Combo Form Helpers
   function initComboForm() {
     var wrapper = document.getElementById('combo-items-wrapper');
@@ -437,6 +704,7 @@
     initSidebar();
     initEventDelegation();
     initProductForm();
+    initVariantManager();
     initComboForm();
     initBannerForm();
     initLiveSync();

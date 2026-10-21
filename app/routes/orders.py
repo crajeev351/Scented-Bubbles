@@ -1,5 +1,8 @@
+import io
 import re
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
+from pathlib import Path
+import requests
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, Response, send_file
 from app.models.orders import Order
 from app.models.payments import Payment
 from app.models.settings import Setting
@@ -195,6 +198,93 @@ def upi_pay(order_id):
         merchant_name=clean_brand,
         mcc=clean_mcc,
     )
+
+
+@orders_bp.route("/orders/<order_id>/qr-download")
+def qr_download(order_id):
+    """Serve the UPI QR code as a same-origin binary download with Content-Disposition: attachment.
+    Prevents cross-origin browser navigation to external storage URLs (e.g. Supabase)
+    and enables direct saving to mobile galleries and downloads on Android and iOS.
+    """
+    order = Order.query.filter_by(order_id=order_id).first_or_404()
+    if not has_order_access(order):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    raw_qr = Setting.get_value("upi_qr_url", "").strip()
+    filename = f"Scented_Bubbles_UPI_QR_{order.order_id}.png"
+
+    # 1. If merchant uploaded a custom QR code
+    if raw_qr and not raw_qr.endswith("placeholder_upi_qr.png"):
+        local_path = Path("app/static/uploads") / raw_qr.lstrip("/\\")
+        if local_path.exists() and local_path.is_file():
+            mime = "image/png"
+            if str(local_path).lower().endswith(".webp"):
+                mime = "image/webp"
+            elif str(local_path).lower().endswith((".jpg", ".jpeg")):
+                mime = "image/jpeg"
+            return send_file(local_path, mimetype=mime, as_attachment=True, download_name=filename)
+
+        from app.services.image_service import get_image_url
+        full_url = get_image_url(raw_qr)
+        if full_url:
+            try:
+                resp = requests.get(full_url, timeout=12)
+                if resp.status_code == 200:
+                    content_type = resp.headers.get("Content-Type", "image/png")
+                    return Response(
+                        resp.content,
+                        mimetype=content_type,
+                        headers={
+                            "Content-Disposition": f'attachment; filename="{filename}"',
+                            "Cache-Control": "public, max-age=3600",
+                        },
+                    )
+            except Exception:
+                pass
+
+    # 2. Dynamic QR code or fallback: Generate PNG with NPCI UPI parameters
+    upi_id = Setting.get_value("upi_id", "scentedbubbles@okaxis").strip()
+    brand_name = Setting.get_value("company_name", "Scented Bubbles").strip()
+    merchant_name = Setting.get_value("upi_merchant_name", "").strip() or brand_name
+    from urllib.parse import quote_plus
+    clean_brand = re.sub(r"[^\w\s]", "", merchant_name).strip()[:30] or "Scented Bubbles"
+    order_ref = re.sub(r"[^a-zA-Z0-9]", "", order.order_id)[:35]
+    upi_params = (
+        f"pa={upi_id}"
+        f"&pn={quote_plus(clean_brand)}"
+        f"&tr={order_ref}"
+        f"&am={order.total_amount:.2f}"
+        f"&cu=INR"
+        f"&tn={quote_plus(f'Order {order.order_id}')}"
+    )
+    upi_intent_url = f"upi://pay?{upi_params}"
+
+    try:
+        import qrcode
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=2,
+        )
+        qr.add_data(upi_intent_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="#141312", back_color="#FFFFFF")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        return Response(
+            buf.getvalue(),
+            mimetype="image/png",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Cache-Control": "public, max-age=3600",
+            },
+        )
+    except Exception:
+        pass
+
+    return redirect(url_for("orders.upi_pay", order_id=order.order_id))
 
 
 @orders_bp.route("/orders/<order_id>/success")

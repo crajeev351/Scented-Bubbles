@@ -139,12 +139,12 @@
       </div>
 
       <div style="margin-top: 0.85rem;">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="saveQrToGallery();" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.85rem; font-size: 0.8rem; font-weight: 600; border-radius: var(--radius-pill); background: #FFFFFF; border: 1px solid var(--border-light);">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          <span id="save-qr-btn-text">Save QR to Gallery / Download</span>
+        <button type="button" id="save-qr-btn" class="btn btn-secondary btn-sm" onclick="saveQrToGallery();" style="display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.45rem 1.15rem; font-size: 0.825rem; font-weight: 700; border-radius: var(--radius-pill); background: #FFFFFF; border: 1.5px solid var(--gold-primary, #C5A059); color: var(--gold-dark, #8C6D23); cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(197, 160, 89, 0.15);">
+          <svg id="save-qr-btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span id="save-qr-btn-text">Save QR to Gallery / Photos</span>
         </button>
-        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
-          📱 On mobile? Save QR &bull; Open GPay / PhonePe / Paytm &bull; Tap Scan &bull; Select from Gallery
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem; line-height: 1.45;">
+          📱 On mobile? Tap <strong>Save QR</strong> &bull; Open GPay / PhonePe / Paytm &bull; Tap <strong>Scan</strong> &bull; Select from Gallery
         </div>
       </div>
       
@@ -302,39 +302,150 @@
       }
     };
 
-    // Save/Download QR helper for mobile users
-    window.saveQrToGallery = function() {
+    // Floating toast helper for payment page
+    function showQrToast(msg) {
+      var toast = document.getElementById('qr-save-toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'qr-save-toast';
+        toast.style.cssText = 'position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1B1815; color: #FAF7F2; border: 1.5px solid var(--gold-primary, #C5A059); border-radius: 30px; padding: 0.75rem 1.4rem; box-shadow: 0 10px 30px rgba(0,0,0,0.35); font-size: 0.85rem; font-weight: 600; z-index: 99999; text-align: center; max-width: 90vw; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.3s ease;';
+        document.body.appendChild(toast);
+      }
+      toast.innerHTML = '<span>' + msg + '</span>';
+      toast.style.opacity = '1';
+      toast.style.display = 'flex';
+      setTimeout(function() {
+        if (toast) {
+          toast.style.opacity = '0';
+          setTimeout(function() {
+            if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+          }, 350);
+        }
+      }, 5000);
+    }
+
+    // Save/Download QR with Native Android & iPhone Gallery / Photos Integration
+    window.saveQrToGallery = async function() {
       const btn = document.getElementById('save-qr-btn-text');
       const img = document.getElementById('upi-qr-custom-img');
       const dynamicSvg = document.querySelector('#upi-qr-dynamic svg');
-      
-      let downloadUrl = null;
-      let filename = 'merchant_upi_qr.png';
-      
-      if (img && img.style.display !== 'none' && img.src) {
-        downloadUrl = img.src;
-      } else if (dynamicSvg) {
-        const svgData = new XMLSerializer().serializeToString(dynamicSvg);
-        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-        downloadUrl = URL.createObjectURL(svgBlob);
-        filename = 'scented_bubbles_qr.svg';
+      const qrDownloadUrl = {{ url_for('orders.qr_download', order_id=order.order_id) | tojson }};
+      const orderId = {{ order.order_id | tojson }};
+      const filename = 'Scented_Bubbles_UPI_QR_' + orderId + '.png';
+
+      const prevText = btn ? btn.textContent : 'Save QR to Gallery / Photos';
+      if (btn) btn.textContent = '⏳ Preparing QR Image...';
+
+      let blob = null;
+
+      // 1. Fetch same-origin binary blob directly from server proxy
+      try {
+        const res = await fetch(qrDownloadUrl, { credentials: 'same-origin' });
+        if (res.ok) {
+          blob = await res.blob();
+        }
+      } catch (e) {
+        console.warn('Same-origin QR fetch fallback:', e);
       }
-      
-      if (downloadUrl) {
+
+      // 2. Client-side Canvas fallback if fetch was blocked or offline
+      if (!blob) {
+        if (dynamicSvg) {
+          try {
+            const svgXml = new XMLSerializer().serializeToString(dynamicSvg);
+            const svgBlob = new Blob([svgXml], { type: 'image/svg+xml;charset=utf-8' });
+            const svgUrl = URL.createObjectURL(svgBlob);
+            const tempImg = new Image();
+            tempImg.crossOrigin = 'anonymous';
+            await new Promise(function(resolve, reject) {
+              tempImg.onload = resolve;
+              tempImg.onerror = reject;
+              tempImg.src = svgUrl;
+            });
+            const canvas = document.createElement('canvas');
+            canvas.width = 600;
+            canvas.height = 600;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, 600, 600);
+            ctx.drawImage(tempImg, 0, 0, 600, 600);
+            URL.revokeObjectURL(svgUrl);
+            blob = await new Promise(function(resolve) { canvas.toBlob(resolve, 'image/png'); });
+          } catch (svgErr) {
+            console.warn('SVG canvas rasterization fallback:', svgErr);
+          }
+        } else if (img && img.style.display !== 'none' && img.complete && img.naturalWidth > 0) {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || 600;
+            canvas.height = img.naturalHeight || 600;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            blob = await new Promise(function(resolve) { canvas.toBlob(resolve, 'image/png'); });
+          } catch (imgErr) {
+            console.warn('Canvas export tainted:', imgErr);
+          }
+        }
+      }
+
+      // If still no blob, prompt long-press
+      if (!blob) {
+        if (btn) btn.textContent = prevText;
+        window.alert('Please long-press the QR code above and select "Save Image" to save it to your Photos.');
+        return;
+      }
+
+      // 3. Native OS Integration: iPhone Photos and Android Share Sheet (Web Share API Level 2)
+      const mimeType = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/png';
+      const file = new File([blob], filename, { type: mimeType });
+
+      if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'Scented Bubbles UPI QR',
+            text: 'Save QR to Photos and scan in your UPI app (GPay / PhonePe / Paytm)'
+          });
+          if (btn) {
+            btn.textContent = '✓ Photo Ready in Gallery!';
+            setTimeout(function() { btn.textContent = prevText; }, 3500);
+          }
+          showQrToast('✓ QR Code ready! Open GPay, PhonePe, or Paytm > Scan > Select from Gallery.');
+          return;
+        } catch (shareErr) {
+          if (shareErr.name === 'AbortError') {
+            // User closed share sheet without completing
+            if (btn) btn.textContent = prevText;
+            return;
+          }
+          console.warn('Web Share API error, using direct download:', shareErr);
+        }
+      }
+
+      // 4. Direct same-origin Blob Download (Android Gallery & Desktop)
+      // Never navigates away from page or opens blank tabs!
+      try {
+        const localUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = downloadUrl;
+        a.href = localUrl;
         a.download = filename;
-        a.target = '_blank';
+        a.target = '_self'; // Keeps user on the same payment page
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(localUrl); }, 15000);
+
         if (btn) {
-          const prev = btn.textContent;
-          btn.textContent = '✓ Saved to Downloads / Gallery';
-          setTimeout(() => { btn.textContent = prev; }, 2400);
+          btn.textContent = '✓ Saved to Photos / Gallery!';
+          setTimeout(function() { btn.textContent = prevText; }, 3500);
         }
-      } else {
-        window.alert('Please long-press the QR code above to save it to your photos.');
+        showQrToast('📥 QR Code saved to Photos / Downloads! Open your UPI app and select from Gallery.');
+      } catch (dlErr) {
+        console.error('Download failure:', dlErr);
+        if (btn) btn.textContent = prevText;
+        window.alert('Please long-press the QR code above and select "Save Image" to save it to your device photos.');
       }
     };
 

@@ -288,3 +288,48 @@ def test_admin_updates_business_upi_settings(client, app, test_admin_user):
         assert Setting.get_value("upi_merchant_name") == "Scented Bubbles Perfumes"
         assert Setting.get_value("upi_mcc") == "5977"
 
+
+def test_upi_qr_download_endpoint(client, app, sample_catalog):
+    """Test same-origin qr-download route serves attachment without cross-origin redirects."""
+    vid = sample_catalog["variant_50ml_id"]
+    client.post("/account/register", data={
+        "name": "QR Tester",
+        "phone": "9876543210",
+        "email": "qr@example.com",
+        "password": "CustomerPass123!",
+        "confirm_password": "CustomerPass123!",
+    }, follow_redirects=True)
+
+    res_checkout = client.post("/checkout", data={
+        "name": "QR Tester",
+        "phone": "9876543210",
+        "email": "qr@example.com",
+        "address_line1": "Flat 101, Test Road",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "pincode": "400001",
+        "payment_method": "MANUAL_UPI",
+        "items": f'[{{"variant_id": {vid}, "qty": 1}}]',
+    }, follow_redirects=False)
+
+    assert res_checkout.status_code == 302
+    assert "/upi-pay" in res_checkout.headers["Location"]
+    order_id = res_checkout.headers["Location"].split("/")[2]
+
+    # 1. Authorized request with recent_order_id in session
+    res_auth = client.get(f"/orders/{order_id}/qr-download")
+    assert res_auth.status_code == 200
+    assert "Content-Disposition" in res_auth.headers
+    assert "attachment;" in res_auth.headers["Content-Disposition"]
+    assert f"Scented_Bubbles_UPI_QR_{order_id}.png" in res_auth.headers["Content-Disposition"]
+    assert res_auth.headers.get("Content-Type") in ("image/png", "image/webp", "image/jpeg")
+    assert len(res_auth.data) > 100
+
+    # 2. Unauthorized request (clear session)
+    with client.session_transaction() as sess:
+        sess.clear()
+
+    res_unauth = client.get(f"/orders/{order_id}/qr-download")
+    assert res_unauth.status_code == 403
+
+

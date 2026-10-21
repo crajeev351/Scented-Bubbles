@@ -696,21 +696,37 @@ def product_create():
         disc_prices = request.form.getlist("variant_discounted_price[]")
         stocks = request.form.getlist("variant_stock[]")
 
+        variant_count = 0
         for i in range(len(labels)):
             lbl = labels[i].strip()
             sku = skus[i].strip() if i < len(skus) else ""
             if not lbl:
                 continue
             if not sku:
-                sku = f"{product.slug[:4].upper()}-{lbl[:4].upper()}-{i+1}"
+                clean_lbl = "".join(ch for ch in lbl if ch.isalnum()).upper()
+                sku = f"{product.slug[:4].upper()}-{clean_lbl[:6] or (i+1)}"
             
             # Check unique SKU
             if ProductVariant.query.filter_by(sku=sku).first():
-                sku = f"{sku}-{datetime.datetime.now().strftime('%M%S')}"
+                sku = f"{sku}-{datetime.datetime.now().strftime('%M%S%f')[:5]}"
 
-            p = Decimal(prices[i]) if i < len(prices) and prices[i] else Decimal("999.00")
-            dp = Decimal(disc_prices[i]) if i < len(disc_prices) and disc_prices[i] else None
-            stk = int(stocks[i]) if i < len(stocks) and stocks[i] else 0
+            p_val = prices[i].strip() if i < len(prices) and prices[i] else "999.00"
+            try:
+                p = Decimal(p_val)
+            except Exception:
+                p = Decimal("999.00")
+
+            dp_val = disc_prices[i].strip() if i < len(disc_prices) and disc_prices[i] else ""
+            try:
+                dp = Decimal(dp_val) if dp_val else None
+            except Exception:
+                dp = None
+
+            stk_val = stocks[i].strip() if i < len(stocks) and stocks[i] else "0"
+            try:
+                stk = int(stk_val)
+            except Exception:
+                stk = 0
 
             var = ProductVariant(
                 product_id=product.id,
@@ -723,6 +739,12 @@ def product_create():
                 display_order=i,
             )
             db.session.add(var)
+            variant_count += 1
+
+        if variant_count == 0:
+            db.session.rollback()
+            flash("Please provide at least one valid Size / Volume variant with a price.", "error")
+            return render_template("admin/products/form.html", product=None, categories=categories)
 
         db.session.commit()
         cache.invalidate_all()
@@ -781,42 +803,95 @@ def product_edit(id):
         product.bestseller = bool(request.form.get("bestseller"))
         product.active = bool(request.form.get("active"))
 
-        # Update existing variants
-        for var in product.variants:
+        # Update or delete existing variants
+        for var in list(product.variants):
             v_id_str = str(var.id)
+            if f"delete_var_{v_id_str}" in request.form:
+                # Variant marked for deletion by admin
+                has_orders = OrderItem.query.filter_by(product_variant_id=var.id).first() is not None
+                has_combos = ComboItem.query.filter_by(product_variant_id=var.id).first() is not None
+                if not has_orders and not has_combos:
+                    db.session.delete(var)
+                else:
+                    var.is_deleted = True
+                    var.active = False
+                continue
+
             if f"var_label_{v_id_str}" in request.form:
                 var.size_label = request.form.get(f"var_label_{v_id_str}", var.size_label).strip()
                 var.sku = request.form.get(f"var_sku_{v_id_str}", var.sku).strip()
                 p_val = request.form.get(f"var_price_{v_id_str}", "").strip()
                 if p_val:
-                    var.price = Decimal(p_val)
+                    try:
+                        var.price = Decimal(p_val)
+                    except Exception:
+                        pass
                 dp_val = request.form.get(f"var_discounted_price_{v_id_str}", "").strip()
-                var.discounted_price = Decimal(dp_val) if dp_val else None
+                try:
+                    var.discounted_price = Decimal(dp_val) if dp_val else None
+                except Exception:
+                    var.discounted_price = None
                 s_val = request.form.get(f"var_stock_{v_id_str}", "").strip()
                 if s_val:
-                    var.stock = int(s_val)
+                    try:
+                        var.stock = int(s_val)
+                    except Exception:
+                        pass
                 var.active = bool(request.form.get(f"var_active_{v_id_str}"))
 
-        # Handle newly added variant row if filled
-        new_label = request.form.get("new_variant_label", "").strip()
-        if new_label:
-            new_sku = request.form.get("new_variant_sku", "").strip() or f"{product.slug[:4].upper()}-{new_label[:4].upper()}"
-            new_price = Decimal(request.form.get("new_variant_price", "999.00"))
-            new_dp = Decimal(request.form.get("new_variant_discounted_price", "")) if request.form.get("new_variant_discounted_price") else None
-            new_stock = int(request.form.get("new_variant_stock", 0))
+        # Handle newly added variant rows (supports multiple dynamic rows as well as legacy single row)
+        new_labels = request.form.getlist("new_variant_label[]")
+        new_skus = request.form.getlist("new_variant_sku[]")
+        new_prices = request.form.getlist("new_variant_price[]")
+        new_disc_prices = request.form.getlist("new_variant_discounted_price[]")
+        new_stocks = request.form.getlist("new_variant_stock[]")
 
-            if ProductVariant.query.filter_by(sku=new_sku).first():
-                new_sku = f"{new_sku}-{datetime.datetime.now().strftime('%M%S')}"
+        if not new_labels and request.form.get("new_variant_label"):
+            new_labels = [request.form.get("new_variant_label")]
+            new_skus = [request.form.get("new_variant_sku", "")]
+            new_prices = [request.form.get("new_variant_price", "999.00")]
+            new_disc_prices = [request.form.get("new_variant_discounted_price", "")]
+            new_stocks = [request.form.get("new_variant_stock", "0")]
+
+        current_var_count = len(product.variants)
+        for idx, n_lbl in enumerate(new_labels):
+            n_lbl = n_lbl.strip()
+            if not n_lbl:
+                continue
+            n_sku = new_skus[idx].strip() if idx < len(new_skus) else ""
+            if not n_sku:
+                clean_lbl = "".join(ch for ch in n_lbl if ch.isalnum()).upper()
+                n_sku = f"{product.slug[:4].upper()}-{clean_lbl[:6] or (idx+1)}"
+            if ProductVariant.query.filter_by(sku=n_sku).first():
+                n_sku = f"{n_sku}-{datetime.datetime.now().strftime('%M%S%f')[:5]}"
+
+            n_price_str = new_prices[idx].strip() if idx < len(new_prices) else ""
+            try:
+                n_price = Decimal(n_price_str) if n_price_str else Decimal("999.00")
+            except Exception:
+                n_price = Decimal("999.00")
+
+            n_dp_str = new_disc_prices[idx].strip() if idx < len(new_disc_prices) else ""
+            try:
+                n_dp = Decimal(n_dp_str) if n_dp_str else None
+            except Exception:
+                n_dp = None
+
+            n_stk_str = new_stocks[idx].strip() if idx < len(new_stocks) else ""
+            try:
+                n_stk = int(n_stk_str) if n_stk_str else 0
+            except Exception:
+                n_stk = 0
 
             new_v = ProductVariant(
                 product_id=product.id,
-                size_label=new_label,
-                sku=new_sku,
-                price=new_price,
-                discounted_price=new_dp,
-                stock=new_stock,
+                size_label=n_lbl,
+                sku=n_sku,
+                price=n_price,
+                discounted_price=n_dp,
+                stock=n_stk,
                 active=True,
-                display_order=len(product.variants),
+                display_order=current_var_count + idx,
             )
             db.session.add(new_v)
 
