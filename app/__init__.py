@@ -146,22 +146,6 @@ def create_app(config_name=None, config_override=None):
         except Exception as e:
             app.logger.warning(f"Pages column migration warning: {e}")
 
-    # Auto-migrate users table for google_id and avatar_url columns
-    with app.app_context():
-        try:
-            from sqlalchemy import inspect, text
-            inspector = inspect(db.engine)
-            if "users" in inspector.get_table_names():
-                existing_cols = {col["name"] for col in inspector.get_columns("users")}
-                with db.engine.connect() as conn:
-                    if "google_id" not in existing_cols:
-                        conn.execute(text("ALTER TABLE users ADD COLUMN google_id VARCHAR(128)"))
-                    if "avatar_url" not in existing_cols:
-                        conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url VARCHAR(255)"))
-                    conn.commit()
-        except Exception as e:
-            app.logger.warning(f"Users column migration warning: {e}")
-
     # Auto-format product names to end with 'Inspired Perfume' and clear inspired_by
     with app.app_context():
         try:
