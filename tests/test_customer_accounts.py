@@ -272,3 +272,261 @@ def test_track_order_and_account_orders_hide_delivered_and_cancelled_orders(clie
         assert len(u.get_current_orders()) == 0
         assert len(u.get_orders(current_only=False)) == 1
 
+
+def test_google_login_page_renders_buttons(client):
+    """Sign-in and sign-up pages include Continue/Sign up with Google buttons."""
+    res_login = client.get("/account/login")
+    assert res_login.status_code == 200
+    assert b"Continue with Google" in res_login.data
+    assert b"btn-google-login" in res_login.data
+    assert b"auth-divider" in res_login.data
+
+    res_register = client.get("/account/register")
+    assert res_register.status_code == 200
+    assert b"Sign up with Google" in res_register.data
+    assert b"btn-google-signup" in res_register.data
+    assert b"auth-divider" in res_register.data
+
+
+def test_google_login_not_configured_flashes_warning(client):
+    """If Google OAuth credentials are not set, initiating Google login warns user."""
+    res = client.get("/account/google/login", follow_redirects=True)
+    assert res.status_code == 200
+    assert b"Google Sign-In is not configured yet" in res.data
+
+
+def test_google_login_redirects_to_google_when_configured(client, app):
+    """When configured, /account/google/login redirects to Google OAuth endpoint with state."""
+    from app.models.settings import Setting
+    with app.app_context():
+        Setting.set_value("google_client_id", "test-client-id-123.apps.googleusercontent.com")
+        Setting.set_value("google_client_secret", "test-secret-456")
+        db.session.commit()
+
+    res = client.get("/account/google/login?next=/account/orders", follow_redirects=False)
+    assert res.status_code == 302
+    assert "https://accounts.google.com/o/oauth2/v2/auth" in res.headers["Location"]
+    assert "client_id=test-client-id-123.apps.googleusercontent.com" in res.headers["Location"]
+    assert "response_type=code" in res.headers["Location"]
+    assert "scope=openid+email+profile" in res.headers["Location"]
+
+    with client.session_transaction() as sess:
+        assert "oauth_state" in sess
+        assert sess.get("oauth_next") == "/account/orders"
+
+
+def test_google_callback_invalid_state_rejected(client, app):
+    """Callback with forged or expired state is rejected."""
+    from app.models.settings import Setting
+    with app.app_context():
+        Setting.set_value("google_client_id", "test-client-id-123")
+        Setting.set_value("google_client_secret", "test-secret-456")
+        db.session.commit()
+
+    with client.session_transaction() as sess:
+        sess["oauth_state"] = "legitimate-secret-state"
+
+    res = client.get("/account/google/callback?code=some_code&state=wrong-state", follow_redirects=True)
+    assert res.status_code == 200
+    assert b"Authentication session expired or invalid state" in res.data
+
+
+def test_google_callback_creates_new_user_and_customer(client, app, monkeypatch):
+    """Successful Google OAuth creates User, Customer, and sets session."""
+    from app.models.settings import Setting
+    with app.app_context():
+        Setting.set_value("google_client_id", "test-client-id-123")
+        Setting.set_value("google_client_secret", "test-secret-456")
+        db.session.commit()
+
+    # Mock token exchange
+    class MockTokenResponse:
+        ok = True
+        status_code = 200
+        def json(self):
+            return {"access_token": "mock-access-token-xyz"}
+
+    # Mock userinfo response
+    class MockUserInfoResponse:
+        ok = True
+        status_code = 200
+        def json(self):
+            return {
+                "sub": "google-user-id-998877",
+                "email": "rohit.google@example.com",
+                "name": "Rohit Verma",
+                "picture": "https://lh3.googleusercontent.com/a/mock-pic.jpg",
+            }
+
+    import requests
+    def mock_post(url, *args, **kwargs):
+        if "oauth2.googleapis.com/token" in url:
+            return MockTokenResponse()
+        return requests.Response()
+
+    def mock_get(url, *args, **kwargs):
+        if "googleapis.com/oauth2/v3/userinfo" in url:
+            return MockUserInfoResponse()
+        return requests.Response()
+
+    monkeypatch.setattr(requests, "post", mock_post)
+    monkeypatch.setattr(requests, "get", mock_get)
+
+    with client.session_transaction() as sess:
+        sess["oauth_state"] = "valid-test-state-123"
+        sess["oauth_next"] = "/account/orders"
+
+    res = client.get("/account/google/callback?code=mock_code&state=valid-test-state-123", follow_redirects=True)
+    assert res.status_code == 200
+    assert b"Signed in successfully with Google" in res.data
+
+    with app.app_context():
+        user = User.query.filter_by(google_id="google-user-id-998877").first()
+        assert user is not None
+        assert user.email == "rohit.google@example.com"
+        assert user.name == "Rohit Verma"
+        assert user.avatar_url == "https://lh3.googleusercontent.com/a/mock-pic.jpg"
+
+
+def test_google_callback_links_existing_user_by_email(client, app, monkeypatch):
+    """Google login links google_id to existing email-registered customer."""
+    from app.models.settings import Setting
+    with app.app_context():
+        Setting.set_value("google_client_id", "test-client-id-123")
+        Setting.set_value("google_client_secret", "test-secret-456")
+
+        existing_user = User(
+            name="Existing Shopper",
+            email="existing@example.com",
+            phone="9876543299",
+            is_active=True,
+        )
+        existing_user.set_password("SecurePassword999")
+        db.session.add(existing_user)
+        db.session.commit()
+        existing_id = existing_user.id
+
+    class MockTokenResponse:
+        ok = True
+        status_code = 200
+        def json(self):
+            return {"access_token": "mock-access-token-abc"}
+
+    class MockUserInfoResponse:
+        ok = True
+        status_code = 200
+        def json(self):
+            return {
+                "sub": "google-user-id-112233",
+                "email": "existing@example.com",
+                "name": "Existing Shopper",
+                "picture": "https://lh3.googleusercontent.com/a/pic2.jpg",
+            }
+
+    import requests
+    monkeypatch.setattr(requests, "post", lambda *a, **k: MockTokenResponse())
+    monkeypatch.setattr(requests, "get", lambda *a, **k: MockUserInfoResponse())
+
+    with client.session_transaction() as sess:
+        sess["oauth_state"] = "state-link-test"
+
+    res = client.get("/account/google/callback?code=mock_code&state=state-link-test", follow_redirects=True)
+    assert res.status_code == 200
+
+    with app.app_context():
+        user = db.session.get(User, existing_id)
+        assert user.google_id == "google-user-id-112233"
+        assert user.avatar_url == "https://lh3.googleusercontent.com/a/pic2.jpg"
+
+
+def test_google_callback_links_guest_orders(client, app, sample_catalog, monkeypatch):
+    """Google sign-in links pre-existing guest customer orders matching email."""
+    from app.models.settings import Setting
+    email = "prior.guest@example.com"
+    phone = "9876543266"
+
+    with app.app_context():
+        Setting.set_value("google_client_id", "test-client-id-123")
+        Setting.set_value("google_client_secret", "test-secret-456")
+        order = create_order(
+            cart_items=[{"variant_id": sample_catalog["variant_50ml_id"], "qty": 1}],
+            customer_info={"name": "Prior Guest", "phone": phone, "email": email},
+            shipping_info={
+                "name": "Prior Guest",
+                "phone": phone,
+                "address_line1": "Flat 101, Sky Towers",
+                "city": "Mumbai",
+                "state": "Maharashtra",
+                "pincode": "400001",
+            },
+            payment_method="COD",
+        )
+        oid = order.order_id
+
+    class MockTokenResponse:
+        ok = True
+        status_code = 200
+        def json(self):
+            return {"access_token": "mock-token-xyz"}
+
+    class MockUserInfoResponse:
+        ok = True
+        status_code = 200
+        def json(self):
+            return {
+                "sub": "google-user-id-554433",
+                "email": email,
+                "name": "Prior Guest",
+                "picture": "https://lh3.googleusercontent.com/a/pic3.jpg",
+            }
+
+    import requests
+    monkeypatch.setattr(requests, "post", lambda *a, **k: MockTokenResponse())
+    monkeypatch.setattr(requests, "get", lambda *a, **k: MockUserInfoResponse())
+
+    with client.session_transaction() as sess:
+        sess["oauth_state"] = "state-guest-order-link"
+
+    res = client.get("/account/google/callback?code=mock_code&state=state-guest-order-link", follow_redirects=True)
+    assert res.status_code == 200
+
+    with app.app_context():
+        user = User.query.filter_by(google_id="google-user-id-554433").first()
+        assert user is not None
+        orders = user.get_orders()
+        assert len(orders) >= 1
+        assert orders[0].order_id == oid
+
+
+def test_admin_settings_updates_google_oauth_configuration(client, app):
+    """Admin can configure Google Client ID, secret, and toggle status in store settings."""
+    from app.models.settings import Setting
+    from app.models.admins import Admin
+    with app.app_context():
+        admin = Admin(username="settings_admin", email="settings@scentedbubbles.com", is_active=True, role="superadmin")
+        admin.set_password("AdminPass12345!")
+        db.session.add(admin)
+        db.session.commit()
+        admin_id = admin.id
+
+    with client.session_transaction() as sess:
+        sess["admin_id"] = admin_id
+        sess["admin_username"] = "settings_admin"
+        sess["admin_role"] = "superadmin"
+
+    res = client.post("/admin/settings", data={
+        "company_name": "Scented Bubbles",
+        "google_login_enabled": "true",
+        "google_client_id": "google-client-id-abc12345.apps.googleusercontent.com",
+        "google_client_secret": "GOCSPX-secretkey98765",
+    }, follow_redirects=True)
+    assert res.status_code == 200
+
+    with app.app_context():
+        assert Setting.get_value("google_login_enabled") == "true"
+        assert Setting.get_value("google_client_id") == "google-client-id-abc12345.apps.googleusercontent.com"
+        assert Setting.get_value("google_client_secret") == "GOCSPX-secretkey98765"
+
+
+
+

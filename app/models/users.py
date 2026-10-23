@@ -11,6 +11,8 @@ class User(db.Model):
     name = db.Column(db.String(100), nullable=True)
     phone = db.Column(db.String(15), unique=True, nullable=True, index=True)
     email = db.Column(db.String(120), unique=True, nullable=True, index=True)
+    google_id = db.Column(db.String(128), unique=True, nullable=True, index=True)
+    avatar_url = db.Column(db.String(255), nullable=True)
     password_hash = db.Column(db.String(256), nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
