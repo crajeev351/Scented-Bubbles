@@ -3329,5 +3329,173 @@ html, body {
   height: 20px;
 }
 
+/* ==============================================================================
+   CUSTOMER PROFILE & ADDRESS DASHBOARD (RESPONSIVE FOR ALL DEVICES)
+   ============================================================================== */
 
+.profile-page-container {
+  padding: 2.75rem 1rem 5rem;
+}
 
+.account-header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.account-page-title {
+  font-size: 2.2rem;
+  margin-bottom: 0.35rem;
+  font-family: var(--font-serif);
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.profile-layout-grid {
+  display: grid;
+  grid-template-columns: 1.8fr 1.2fr;
+  gap: 2.25rem;
+  max-width: 1040px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+.profile-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 2.25rem;
+  box-shadow: var(--shadow-sm);
+  box-sizing: border-box;
+}
+
+.profile-card-title {
+  font-size: 1.3rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid var(--border-light);
+  font-family: var(--font-serif);
+  color: var(--text-main);
+}
+
+.profile-section-subtitle {
+  font-size: 1.05rem;
+  margin: 1.75rem 0 1rem;
+  color: var(--gold-dark);
+  font-family: var(--font-serif);
+}
+
+.profile-form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.profile-form-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.profile-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 2.25rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  transition: all var(--transition-fast);
+}
+
+/* Tablet screens (<= 991px) */
+@media (max-width: 991px) {
+  .profile-layout-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    max-width: 680px;
+  }
+}
+
+/* Mobile Devices & Phones (<= 768px) */
+@media (max-width: 768px) {
+  .profile-page-container {
+    padding: 1.75rem 0.875rem 4rem;
+  }
+
+  .account-header-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.25rem;
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.25rem;
+  }
+
+  .account-page-title {
+    font-size: 1.75rem;
+  }
+
+  .account-header-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem !important;
+    width: 100%;
+  }
+
+  .account-header-actions .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.65rem 0.5rem !important;
+    font-size: 0.84rem !important;
+    text-align: center;
+  }
+
+  .profile-card {
+    padding: 1.5rem 1.15rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .profile-card-title {
+    font-size: 1.2rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .profile-form-row-2 {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .profile-form-row-3 {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .profile-action-btn {
+    width: 100%;
+    text-align: center;
+    padding: 0.85rem 1rem;
+  }
+}
+
+/* Extra small screens (<= 400px) */
+@media (max-width: 400px) {
+  .account-page-title {
+    font-size: 1.5rem;
+  }
+
+  .profile-card {
+    padding: 1.25rem 0.875rem;
+  }
+
+  .account-header-actions {
+    grid-template-columns: 1fr;
+  }
+}

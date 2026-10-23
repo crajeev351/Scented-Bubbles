@@ -3,23 +3,23 @@
 {% block title %}My Orders &amp; Tracking | {{ brand_name }}{% endblock %}
 
 {% block content %}
-<div class="container" style="padding: 3rem 1rem 6rem;">
+<div class="container profile-page-container">
 
   {# Account Header #}
-  <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1.5rem; margin-bottom: 2.5rem;">
+  <div class="account-header-container">
     <div>
       <span class="section-tag">Account Dashboard</span>
-      <h1 style="font-size: 2.2rem; margin-bottom: 0.25rem;">My Orders &amp; Shipments</h1>
-      <p style="color: var(--text-muted); font-size: 0.9375rem;">
+      <h1 class="account-page-title">My Orders &amp; Shipments</h1>
+      <p style="color: var(--text-muted); font-size: 0.9375rem; margin: 0;">
         Welcome back, <strong>{{ user.name or user.phone }}</strong> ({{ user.phone }})
       </p>
     </div>
 
-    <div style="display: flex; gap: 0.75rem;">
-      <a href="{{ url_for('account.profile') }}" class="btn btn-secondary btn-sm" style="padding: 0.5rem 1rem;">
+    <div class="account-header-actions">
+      <a href="{{ url_for('account.profile') }}" class="btn btn-secondary btn-sm">
         ⚙️ Profile &amp; Addresses
       </a>
-      <a href="{{ url_for('account.logout') }}" class="btn btn-secondary btn-sm" style="padding: 0.5rem 1rem; color: #DC2626; border-color: #FCA5A5;">
+      <a href="{{ url_for('account.logout') }}" class="btn btn-secondary btn-sm" style="color: #DC2626; border-color: #FCA5A5;">
         Sign Out
       </a>
     </div>
