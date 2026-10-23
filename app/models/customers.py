@@ -49,6 +49,39 @@ class Customer(db.Model):
         """Alias for confirmed_orders_count matching the admin orders section."""
         return self.confirmed_orders_count
 
+    @property
+    def time_since_joined(self) -> str:
+        """Returns a human-readable relative duration string (e.g. '2 days ago', '3 weeks ago')."""
+        if not self.created_at:
+            return ""
+        now = datetime.now(timezone.utc)
+        dt = self.created_at
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        delta = now - dt
+        seconds = max(0, int(delta.total_seconds()))
+        if seconds < 60:
+            return "Just now"
+        minutes = seconds // 60
+        if minutes < 60:
+            return f"{minutes}m ago"
+        hours = minutes // 60
+        if hours < 24:
+            return f"{hours}h ago"
+        days = delta.days
+        if days == 1:
+            return "1 day ago"
+        if days < 7:
+            return f"{days} days ago"
+        weeks = days // 7
+        if weeks < 5:
+            return f"{weeks} week{'s' if weeks > 1 else ''} ago"
+        months = days // 30
+        if months < 12:
+            return f"{months} month{'s' if months > 1 else ''} ago"
+        years = days // 365
+        return f"{years} year{'s' if years > 1 else ''} ago"
+
     def __repr__(self):
         return f"<Customer {self.phone} ({self.name})>"
 

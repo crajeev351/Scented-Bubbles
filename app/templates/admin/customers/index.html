@@ -4,11 +4,93 @@
 
 {% block content %}
 
-<div class="admin-header-row" style="margin-bottom: 2rem;">
-  <form method="GET" action="{{ url_for('admin.customer_list') }}" style="display: flex; gap: 0.5rem; width: 100%; max-width: 360px;">
-    <input type="text" name="q" value="{{ search_query }}" placeholder="Search by mobile or name..." class="form-control" style="flex: 1; font-size: 0.875rem;">
-    <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+{# Search, Sort & Filter Controls #}
+<div class="admin-card" style="padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;">
+  <form method="GET" action="{{ url_for('admin.customer_list') }}" class="admin-filter-bar">
+    
+    <div style="flex: 2; min-width: 220px;">
+      <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">
+        Search Customer, Mobile, Email:
+      </label>
+      <input type="text" name="q" value="{{ search_query }}" placeholder="e.g. Rajeev, 9876543210, mail@..." class="form-control" style="font-size: 0.875rem;">
+    </div>
+
+    <div style="flex: 1.2; min-width: 170px;">
+      <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">
+        Sort Order:
+      </label>
+      <select name="sort" class="form-control" style="font-size: 0.875rem;">
+        <option value="highest_orders" {{ 'selected' if sort == 'highest_orders' else '' }}>🏆 Highest Orders First</option>
+        <option value="lowest_orders" {{ 'selected' if sort == 'lowest_orders' else '' }}>📉 Lowest Orders First</option>
+        <option value="member_newest" {{ 'selected' if sort == 'member_newest' or not sort else '' }}>⏳ Member: Newest First</option>
+        <option value="member_oldest" {{ 'selected' if sort == 'member_oldest' else '' }}>🕰️ Member: Oldest First</option>
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 150px;">
+      <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">
+        Orders Activity:
+      </label>
+      <select name="filter" class="form-control" style="font-size: 0.875rem;">
+        <option value="all" {{ 'selected' if order_filter == 'all' or not order_filter else '' }}>All Customers</option>
+        <option value="with_orders" {{ 'selected' if order_filter == 'with_orders' else '' }}>🛍️ Has Orders (1+)</option>
+        <option value="no_orders" {{ 'selected' if order_filter == 'no_orders' else '' }}>💤 Zero Orders (0)</option>
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 150px;">
+      <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">
+        Member Duration:
+      </label>
+      <select name="member_time" class="form-control" style="font-size: 0.875rem;">
+        <option value="all" {{ 'selected' if member_time == 'all' or not member_time else '' }}>All Time</option>
+        <option value="today" {{ 'selected' if member_time == 'today' else '' }}>Joined Today</option>
+        <option value="7d" {{ 'selected' if member_time == '7d' else '' }}>Past 7 Days</option>
+        <option value="30d" {{ 'selected' if member_time == '30d' else '' }}>Past 30 Days</option>
+        <option value="90d" {{ 'selected' if member_time == '90d' else '' }}>Past 90 Days</option>
+      </select>
+    </div>
+
+    <div style="display: flex; gap: 0.4rem; align-items: flex-end;">
+      <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.6rem 1.25rem; font-weight: 600;">
+        Filter
+      </button>
+      {% if search_query or (sort and sort != 'member_newest') or (order_filter and order_filter != 'all') or (member_time and member_time != 'all') %}
+        <a href="{{ url_for('admin.customer_list') }}" class="btn btn-secondary btn-sm" style="padding: 0.6rem 1rem;">
+          Reset
+        </a>
+      {% endif %}
+    </div>
+
   </form>
+</div>
+
+{# Total Count & Active Indicator #}
+<div class="admin-header-row" style="margin-bottom: 0.85rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+  <span style="font-size: 0.84rem; color: var(--text-muted);">
+    Total Customers Found: <strong>{{ pagination.total if pagination else customers|length }}</strong>
+  </span>
+  <div style="display: flex; gap: 0.35rem; align-items: center;">
+    {% if sort == 'highest_orders' %}
+      <span style="font-size: 0.75rem; background: #FEF3C7; color: #92400E; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;">🏆 Highest Orders</span>
+    {% elif sort == 'lowest_orders' %}
+      <span style="font-size: 0.75rem; background: #F1F5F9; color: #475569; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;">📉 Lowest Orders</span>
+    {% elif sort == 'member_oldest' %}
+      <span style="font-size: 0.75rem; background: #E0E7FF; color: #3730A3; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;">🕰️ Oldest Members</span>
+    {% elif sort == 'member_newest' %}
+      <span style="font-size: 0.75rem; background: #ECFDF5; color: #065F46; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;">⏳ Newest Members</span>
+    {% endif %}
+
+    {% if order_filter == 'with_orders' %}
+      <span style="font-size: 0.75rem; background: #DCFCE7; color: #166534; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;">Has Orders</span>
+    {% elif order_filter == 'no_orders' %}
+      <span style="font-size: 0.75rem; background: #FEE2E2; color: #991B1B; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;">0 Orders</span>
+    {% endif %}
+
+    {% if member_time and member_time != 'all' %}
+      <span style="font-size: 0.75rem; background: #F3E8FF; color: #6B21A8; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;">Period: {{ member_time }}</span>
+    {% endif %}
+  </div>
 </div>
 
 <div class="admin-card" style="padding: 0; overflow: hidden;">
@@ -21,8 +103,34 @@
         <th>Customer Name</th>
         <th>Email</th>
         <th>City &amp; State</th>
-        <th>Orders Placed</th>
-        <th>Member Since</th>
+        <th>
+          <a href="{{ url_for('admin.customer_list', q=search_query, filter=order_filter, member_time=member_time, sort='lowest_orders' if sort == 'highest_orders' else 'highest_orders') }}" 
+             style="color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem;"
+             title="Click to sort by orders">
+            Orders Placed
+            {% if sort == 'highest_orders' %}
+              <span style="color: var(--gold-dark); font-size: 0.75rem;">▼</span>
+            {% elif sort == 'lowest_orders' %}
+              <span style="color: var(--gold-dark); font-size: 0.75rem;">▲</span>
+            {% else %}
+              <span style="color: var(--text-light); font-size: 0.75rem; opacity: 0.6;">⇅</span>
+            {% endif %}
+          </a>
+        </th>
+        <th>
+          <a href="{{ url_for('admin.customer_list', q=search_query, filter=order_filter, member_time=member_time, sort='member_oldest' if sort == 'member_newest' else 'member_newest') }}" 
+             style="color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem;"
+             title="Click to sort by membership date">
+            Member Since
+            {% if sort == 'member_newest' or not sort %}
+              <span style="color: var(--gold-dark); font-size: 0.75rem;">▼</span>
+            {% elif sort == 'member_oldest' %}
+              <span style="color: var(--gold-dark); font-size: 0.75rem;">▲</span>
+            {% else %}
+              <span style="color: var(--text-light); font-size: 0.75rem; opacity: 0.6;">⇅</span>
+            {% endif %}
+          </a>
+        </th>
       </tr>
     </thead>
     <tbody>
@@ -36,7 +144,6 @@
             <button type="button" class="reveal-btn" data-toggle-reveal="cust-phone-{{ c.id }}" title="Click to reveal/hide">
               👁 Reveal
             </button>
-
           </span>
         </td>
         <td><strong style="color: var(--text-main);">{{ c.name }}</strong></td>
@@ -49,7 +156,6 @@
             <button type="button" class="reveal-btn" data-toggle-reveal="cust-email-{{ c.id }}" title="Click to reveal/hide">
               👁
             </button>
-
           </span>
           {% else %}
             <span style="color: var(--text-light);">-</span>
@@ -59,7 +165,16 @@
         <td>
           <span style="font-weight: 700; color: var(--gold-dark);">{{ c.confirmed_orders_count }}</span> orders
         </td>
-        <td style="font-size: 0.8125rem; color: var(--text-muted);">{{ (c.created_at | ist).strftime('%d %b %Y') }}</td>
+        <td>
+          <div style="font-size: 0.8125rem; font-weight: 600; color: var(--text-main);">
+            {{ (c.created_at | ist).strftime('%d %b %Y') }}
+          </div>
+          {% if c.time_since_joined %}
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+              {{ c.time_since_joined }}
+            </div>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -70,7 +185,7 @@
   <div style="display: flex; justify-content: center; gap: 0.5rem; padding: 1.25rem; border-top: 1px solid var(--border-light);">
     {% for page_num in pagination.iter_pages() %}
       {% if page_num %}
-        <a href="{{ url_for('admin.customer_list', page=page_num, q=search_query) }}" 
+        <a href="{{ url_for('admin.customer_list', page=page_num, q=search_query, sort=sort, filter=order_filter, member_time=member_time) }}" 
            class="btn btn-sm {{ 'btn-dark' if page_num == pagination.page else 'btn-secondary' }}">
           {{ page_num }}
         </a>
@@ -80,8 +195,15 @@
   {% endif %}
 
   {% else %}
-    <div style="padding: 3rem; text-align: center; color: var(--text-muted);">
-      No customer profiles found.
+    <div style="padding: 3.5rem 1.5rem; text-align: center; color: var(--text-muted);">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔍</div>
+      <div style="font-weight: 600; font-size: 1rem; color: var(--text-main);">No matching customer profiles found</div>
+      <p style="margin-top: 0.35rem; font-size: 0.875rem;">Try adjusting your search terms or filters.</p>
+      {% if search_query or (sort and sort != 'member_newest') or (order_filter and order_filter != 'all') or (member_time and member_time != 'all') %}
+        <a href="{{ url_for('admin.customer_list') }}" class="btn btn-secondary btn-sm" style="margin-top: 0.75rem;">
+          Clear All Filters
+        </a>
+      {% endif %}
     </div>
   {% endif %}
 </div>

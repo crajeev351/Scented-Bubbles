@@ -1815,11 +1815,27 @@ def order_purge_delivered():
 @admin_bp.route("/customers")
 @admin_required
 def customer_list():
-    """List customer records with order count and total spend."""
+    """List customer records with search, order volume sorting, and membership duration filters."""
     page = request.args.get("page", 1, type=int)
     search = request.args.get("q", "").strip()
+    sort = request.args.get("sort", "member_newest").strip()
+    order_filter = request.args.get("filter", "all").strip()
+    member_time = request.args.get("member_time", "all").strip()
 
-    query = Customer.query
+    # Subquery for confirmed orders count per customer
+    subq = (
+        db.session.query(
+            Order.customer_id,
+            func.count(Order.id).label("confirmed_cnt"),
+        )
+        .filter(Order.is_confirmed.is_(True))
+        .group_by(Order.customer_id)
+        .subquery()
+    )
+
+    query = Customer.query.outerjoin(subq, Customer.id == subq.c.customer_id)
+
+    # 1. Search by mobile, name, or email
     if search:
         pattern = f"%{search}%"
         query = query.filter(
@@ -1830,7 +1846,39 @@ def customer_list():
             )
         )
 
-    pagination = query.order_by(Customer.created_at.desc()).paginate(page=page, per_page=20, error_out=False)
+    # 2. Filter by orders activity (Has orders vs 0 orders)
+    confirmed_count_expr = func.coalesce(subq.c.confirmed_cnt, 0)
+    if order_filter == "with_orders":
+        query = query.filter(confirmed_count_expr > 0)
+    elif order_filter == "no_orders":
+        query = query.filter(confirmed_count_expr == 0)
+
+    # 3. Filter by member duration (time since joined)
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    if member_time == "today":
+        start_today = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+        query = query.filter(Customer.created_at >= start_today)
+    elif member_time == "7d":
+        since_7d = now_utc - datetime.timedelta(days=7)
+        query = query.filter(Customer.created_at >= since_7d)
+    elif member_time == "30d":
+        since_30d = now_utc - datetime.timedelta(days=30)
+        query = query.filter(Customer.created_at >= since_30d)
+    elif member_time == "90d":
+        since_90d = now_utc - datetime.timedelta(days=90)
+        query = query.filter(Customer.created_at >= since_90d)
+
+    # 4. Sorting logic
+    if sort == "highest_orders":
+        query = query.order_by(confirmed_count_expr.desc(), Customer.created_at.desc())
+    elif sort == "lowest_orders":
+        query = query.order_by(confirmed_count_expr.asc(), Customer.created_at.desc())
+    elif sort == "member_oldest":
+        query = query.order_by(Customer.created_at.asc())
+    else:  # member_newest (default)
+        query = query.order_by(Customer.created_at.desc())
+
+    pagination = query.paginate(page=page, per_page=20, error_out=False)
     customers = pagination.items
 
     if customers:
@@ -1845,7 +1893,15 @@ def customer_list():
         for c in customers:
             c._confirmed_orders_count = counts_map.get(c.id, 0)
 
-    return render_template("admin/customers/index.html", customers=customers, pagination=pagination, search_query=search)
+    return render_template(
+        "admin/customers/index.html",
+        customers=customers,
+        pagination=pagination,
+        search_query=search,
+        sort=sort,
+        order_filter=order_filter,
+        member_time=member_time,
+    )
 
 
 # ==============================================================================

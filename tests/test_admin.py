@@ -1216,10 +1216,33 @@ def test_admin_settings_remove_logo(auth_client, app):
     assert 'id="brand-logo-link"' in html
 
 
+def test_customer_directory_sort_and_filters(auth_client, app):
+    """Customer directory supports sorting by highest/lowest orders, member duration, and activity filtering."""
+    # 1. Default customer list
+    res_default = auth_client.get("/admin/customers")
+    assert res_default.status_code == 200
+    assert b"Customer Directory" in res_default.data
+    assert b"Sort Order:" in res_default.data
 
+    # 2. Sort by highest orders
+    res_high = auth_client.get("/admin/customers?sort=highest_orders")
+    assert res_high.status_code == 200
+    assert b"Highest Orders" in res_high.data
 
+    # 3. Sort by lowest orders
+    res_low = auth_client.get("/admin/customers?sort=lowest_orders")
+    assert res_low.status_code == 200
+    assert b"Lowest Orders" in res_low.data
 
+    # 4. Filter by orders activity (with_orders vs no_orders)
+    res_with = auth_client.get("/admin/customers?filter=with_orders")
+    assert res_with.status_code == 200
+    res_zero = auth_client.get("/admin/customers?filter=no_orders")
+    assert res_zero.status_code == 200
 
+    # 5. Filter by member time duration
+    res_time = auth_client.get("/admin/customers?member_time=30d")
+    assert res_time.status_code == 200
 
 
 
