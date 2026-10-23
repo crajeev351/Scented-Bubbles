@@ -1948,10 +1948,17 @@ def settings():
             "logo_display_mode",
             "logo_max_height",
             "brand_logo_url",
+            "google_login_enabled",
+            "google_client_id",
         ]
         for k in keys:
             if k in request.form:
                 Setting.set_value(k, request.form.get(k, "").strip())
+
+        # Update Google Client Secret only if provided (preserves existing secret if left empty)
+        new_google_secret = request.form.get("google_client_secret", "").strip()
+        if new_google_secret:
+            Setting.set_value("google_client_secret", new_google_secret)
 
         # Update SMTP password only if a new one is typed (preserves existing password if empty)
         new_smtp_pw = request.form.get("smtp_password", "").strip()
