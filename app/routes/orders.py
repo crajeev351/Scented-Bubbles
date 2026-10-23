@@ -80,33 +80,8 @@ def upi_pay(order_id):
         f"&tn={quote_plus(f'Order {order.order_id}')}"
     )
 
-    # Universal UPI Intent URL (compliant with all UPI apps)
+    # Universal UPI URI for QR Code Generation (compliant with all UPI apps)
     upi_intent_url = f"upi://pay?{upi_params}"
-
-    # Google Pay Direct Intent (Native Android Intent targeting package & iOS gpay:// scheme)
-    gpay_android_intent = (
-        f"intent://pay?{upi_params}#Intent;"
-        f"scheme=upi;package=com.google.android.apps.nbu.paisa.user;"
-        f"S.browser_fallback_url={quote_plus('https://play.google.com/store/apps/details?id=com.google.android.apps.nbu.paisa.user')};end"
-    )
-    gpay_ios_intent = f"gpay://upi/pay?{upi_params}"
-    gpay_intent_url = f"tez://upi/pay?{upi_params}"
-
-    # PhonePe Direct Intent
-    phonepe_android_intent = (
-        f"intent://pay?{upi_params}#Intent;"
-        f"scheme=upi;package=com.phonepe.app;"
-        f"S.browser_fallback_url={quote_plus('https://play.google.com/store/apps/details?id=com.phonepe.app')};end"
-    )
-    phonepe_intent_url = f"phonepe://pay?{upi_params}"
-
-    # Paytm Direct Intent
-    paytm_android_intent = (
-        f"intent://pay?{upi_params}#Intent;"
-        f"scheme=upi;package=net.one97.paytm;"
-        f"S.browser_fallback_url={quote_plus('https://play.google.com/store/apps/details?id=net.one97.paytm')};end"
-    )
-    paytm_intent_url = f"paytmmp://pay?{upi_params}"
 
     if request.method == "POST":
         raw_utr = request.form.get("utr", "").strip()
@@ -187,13 +162,6 @@ def upi_pay(order_id):
         has_custom_qr=has_custom_qr,
         upi_intent_url=upi_intent_url,
         upi_params=upi_params,
-        gpay_intent_url=gpay_intent_url,
-        gpay_android_intent=gpay_android_intent,
-        gpay_ios_intent=gpay_ios_intent,
-        phonepe_intent_url=phonepe_intent_url,
-        phonepe_android_intent=phonepe_android_intent,
-        paytm_intent_url=paytm_intent_url,
-        paytm_android_intent=paytm_android_intent,
         brand_name=brand_name,
         merchant_name=clean_brand,
         mcc=clean_mcc,

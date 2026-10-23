@@ -220,8 +220,8 @@ def test_customer_order_details_email_sent_only_when_registered(app, sample_cata
             assert "" not in recipients
 
 
-def test_business_upi_intent_parameters(client, app, sample_catalog):
-    """Verify that upi_pay page generates compliant NPCI Business UPI parameters (pa, pn, mc, tr, mode=02) and direct GPay Android intent."""
+def test_business_upi_scanner_parameters(client, app, sample_catalog):
+    """Verify that upi_pay page renders the QR scanner and UPI details exclusively, without 1-tap app triggers."""
     from app.services.order_service import create_order
 
     vid = sample_catalog["variant_50ml_id"]
@@ -251,19 +251,23 @@ def test_business_upi_intent_parameters(client, app, sample_catalog):
     # 1. Check that Business UPI ID and Merchant details are present
     assert "scentedbubbles.biz@okhdfcbank" in html
     assert "Scented Bubbles Luxury" in html
-    assert "Copy" in html
+    assert "Copy UPI ID" in html
     assert "Copy Amount" in html
 
-    # 2. Check that GPay Android Intent has correct package and business parameters
-    assert "com.google.android.apps.nbu.paisa.user" in html
+    # 2. Check that QR code scanner and save button are present
+    assert "upi-qr-frame" in html
+    assert "upi-qr-dynamic" in html
+    assert "save-qr-btn" in html
     assert "pa=scentedbubbles.biz@okhdfcbank" in html
-    # tr parameter must match alphanumeric cleaned order reference
     clean_ref = order_id.replace("-", "")
     assert f"tr={clean_ref}" in html
 
-    # 3. Check PhonePe & Paytm intents
-    assert "com.phonepe.app" in html
-    assert "net.one97.paytm" in html
+    # 3. Verify 1-tap app buttons and deep links are REMOVED from the page
+    assert "btn-pay-gpay" not in html
+    assert "com.google.android.apps.nbu.paisa.user" not in html
+    assert "com.phonepe.app" not in html
+    assert "net.one97.paytm" not in html
+    assert "openUpiAppWithFallback" not in html
 
 
 def test_admin_updates_business_upi_settings(client, app, test_admin_user):
