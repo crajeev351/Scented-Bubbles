@@ -8,15 +8,24 @@
   <div style="max-width: 440px; margin: 0 auto; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 3rem 2.5rem; box-shadow: var(--shadow-md);">
     
     <div style="text-align: center; margin-bottom: 2rem;">
-      {# Inline SVG Bubble Icon #}
-      <svg class="bubble-icon" style="width: 36px; height: 36px; color: var(--gold-primary); margin-bottom: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="9"/>
-        <path d="M9 9a3 3 0 0 1 3-3"/>
-        <circle cx="16" cy="8" r="1.5" fill="currentColor"/>
-        <circle cx="7" cy="15" r="1" fill="currentColor"/>
-      </svg>
-      <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">{{ brand_name }}</h1>
-      <span style="font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--gold-dark); font-weight: 700;">
+      <a href="{{ url_for('main.index') }}" style="display: inline-flex; flex-direction: column; align-items: center; text-decoration: none; color: inherit;" title="Return to {{ brand_name }} Storefront">
+        {% if brand_logo_url %}
+          <img src="{{ image_url(brand_logo_url, size='medium') }}" alt="{{ brand_name }}" style="max-height: 52px; max-width: 220px; object-fit: contain; margin-bottom: 0.5rem;">
+          {% if logo_display_mode == 'image_and_text' %}
+            <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">{{ brand_name }}</h1>
+          {% endif %}
+        {% else %}
+          {# Inline SVG Bubble Icon #}
+          <svg class="bubble-icon" style="width: 36px; height: 36px; color: var(--gold-primary); margin-bottom: 0.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M9 9a3 3 0 0 1 3-3"/>
+            <circle cx="16" cy="8" r="1.5" fill="currentColor"/>
+            <circle cx="7" cy="15" r="1" fill="currentColor"/>
+          </svg>
+          <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">{{ brand_name }}</h1>
+        {% endif %}
+      </a>
+      <span style="font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--gold-dark); font-weight: 700; display: block; margin-top: 0.25rem;">
         Owner &amp; Store Management
       </span>
     </div>

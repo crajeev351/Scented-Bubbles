@@ -1,3 +1,4 @@
+import io
 from decimal import Decimal
 import pytest
 from app.extensions import db
@@ -1108,6 +1109,112 @@ def test_customer_directory_order_count_reflects_only_confirmed_orders(app, auth
     html2 = res2.data.decode("utf-8")
     # Must now show 1 orders
     assert '<span style="font-weight: 700; color: var(--gold-dark);">1</span> orders' in html2
+
+
+def test_admin_settings_upload_and_edit_logo(auth_client, app):
+    """Admin uploads a custom logo image; storefront renders custom logo and tapping it navigates to main page."""
+    from PIL import Image
+
+    # 1. Initially, storefront uses default SVG bubble mark
+    res_home_init = auth_client.get("/")
+    assert res_home_init.status_code == 200
+    html_init = res_home_init.data.decode("utf-8")
+    assert 'class="bubble-icon"' in html_init
+    assert 'id="brand-logo-link"' in html_init
+    assert 'href="/"' in html_init
+
+    # 2. Upload a custom PNG logo
+    logo_buf = io.BytesIO()
+    test_logo = Image.new("RGBA", (300, 80), color=(197, 160, 89, 255))
+    test_logo.save(logo_buf, format="PNG")
+    logo_buf.seek(0)
+
+    post_res = auth_client.post("/admin/settings", data={
+        "company_name": "Scented Bubbles",
+        "support_whatsapp": "919876543210",
+        "support_email": "care@scentedbubbles.com",
+        "brand_logo_file": (logo_buf, "custom_store_logo.png"),
+        "logo_display_mode": "image_only",
+        "logo_max_height": "42",
+    }, follow_redirects=True)
+    assert post_res.status_code == 200
+
+    # 3. Verify setting was updated
+    with app.app_context():
+        logo_url = Setting.get_value("brand_logo_url")
+        assert logo_url is not None
+        assert "logo_" in logo_url
+        assert Setting.get_value("logo_display_mode") == "image_only"
+        assert Setting.get_value("logo_max_height") == "42"
+
+    # 4. Request storefront homepage: custom logo must be rendered inside brand-logo-link pointing to home
+    res_home = auth_client.get("/")
+    assert res_home.status_code == 200
+    html = res_home.data.decode("utf-8")
+    assert 'id="site-brand-logo"' in html
+    assert 'class="brand-logo-img"' in html
+    assert 'id="brand-logo-link"' in html
+    assert 'href="/"' in html
+    assert 'id="drawer-brand-link"' in html
+
+    # 5. Check admin settings page shows preview and status
+    res_settings = auth_client.get("/admin/settings")
+    assert res_settings.status_code == 200
+    assert "Custom Logo Active" in res_settings.data.decode("utf-8")
+
+
+def test_admin_settings_upload_svg_logo(auth_client, app):
+    """Admin can upload an SVG logo file directly."""
+    svg_content = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 30"><text y="20">Scented Bubbles</text></svg>'
+    svg_buf = io.BytesIO(svg_content)
+
+    post_res = auth_client.post("/admin/settings", data={
+        "company_name": "Scented Bubbles",
+        "support_whatsapp": "919876543210",
+        "support_email": "care@scentedbubbles.com",
+        "brand_logo_file": (svg_buf, "luxury_vector_logo.svg"),
+        "logo_display_mode": "image_only",
+        "logo_max_height": "36",
+    }, follow_redirects=True)
+    assert post_res.status_code == 200
+
+    with app.app_context():
+        logo_url = Setting.get_value("brand_logo_url")
+        assert logo_url.endswith(".svg")
+
+    res_home = auth_client.get("/")
+    assert res_home.status_code == 200
+    html = res_home.data.decode("utf-8")
+    assert 'id="site-brand-logo"' in html
+    assert ".svg" in html
+
+
+def test_admin_settings_remove_logo(auth_client, app):
+    """Admin removes custom logo; storefront cleanly reverts to default luxury bubble SVG mark."""
+    with app.app_context():
+        Setting.set_value("brand_logo_url", "/static/uploads/logo_dummy.webp")
+        cache.invalidate_all()
+
+    # Admin checks 'remove_brand_logo'
+    post_res = auth_client.post("/admin/settings", data={
+        "company_name": "Scented Bubbles",
+        "support_whatsapp": "919876543210",
+        "support_email": "care@scentedbubbles.com",
+        "remove_brand_logo": "1",
+    }, follow_redirects=True)
+    assert post_res.status_code == 200
+
+    with app.app_context():
+        assert Setting.get_value("brand_logo_url") == ""
+
+    # Homepage reverts to SVG bubble icon
+    res_home = auth_client.get("/")
+    assert res_home.status_code == 200
+    html = res_home.data.decode("utf-8")
+    assert 'id="site-brand-logo"' not in html
+    assert 'class="bubble-icon"' in html
+    assert 'id="brand-logo-link"' in html
+
 
 
 

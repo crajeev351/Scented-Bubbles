@@ -163,6 +163,8 @@ def get_image_url(image_key: str, size: str = "medium") -> str:
     # If it was saved with a /static/uploads/ prefix, resolve it dynamically via storage backend
     if image_key.startswith("/static/uploads/") or image_key.startswith("static/uploads/"):
         clean_upload = image_key.replace("/static/uploads/", "").replace("static/uploads/", "")
+        if clean_upload.endswith(".svg"):
+            return storage.url_for(clean_upload)
         for s in ("_thumb.webp", "_medium.webp", "_large.webp"):
             if clean_upload.endswith(s):
                 clean_stem = clean_upload[:-len(s)]
@@ -175,6 +177,8 @@ def get_image_url(image_key: str, size: str = "medium") -> str:
 
     # Extract base key by stripping _thumb.webp, _medium.webp, _large.webp or .webp
     clean_key = image_key.lstrip("/")
+    if clean_key.endswith(".svg"):
+        return storage.url_for(clean_key)
     for s in ("_thumb.webp", "_medium.webp", "_large.webp"):
         if clean_key.endswith(s):
             clean_key = clean_key[:-len(s)]

@@ -1945,6 +1945,9 @@ def settings():
             "smtp_use_tls",
             "notification_email",
             "order_notifications_enabled",
+            "logo_display_mode",
+            "logo_max_height",
+            "brand_logo_url",
         ]
         for k in keys:
             if k in request.form:
@@ -1955,6 +1958,40 @@ def settings():
         if new_smtp_pw:
             clean_pw = new_smtp_pw.replace(" ", "")
             Setting.set_value("smtp_password", clean_pw)
+
+        # Handle Brand Logo: Removal or New Upload
+        if request.form.get("remove_brand_logo") == "1":
+            old_logo = Setting.get_value("brand_logo_url", "")
+            if old_logo:
+                try:
+                    from app.services.image_service import delete_image_bundle
+                    delete_image_bundle(old_logo)
+                except Exception:
+                    pass
+            Setting.set_value("brand_logo_url", "")
+        else:
+            logo_file = request.files.get("brand_logo_file")
+            if logo_file and logo_file.filename:
+                try:
+                    if logo_file.filename.lower().endswith(".svg"):
+                        svg_bytes = logo_file.read()
+                        if b"<svg" not in svg_bytes.lower():
+                            raise ValueError("The uploaded SVG file is not a valid SVG document.")
+                        import uuid, datetime
+                        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                        rand_id = uuid.uuid4().hex[:6]
+                        logo_key = f"logo_{ts}_{rand_id}.svg"
+                        from app.services.storage import get_storage
+                        storage = get_storage()
+                        storage.save(svg_bytes, logo_key, content_type="image/svg+xml")
+                        Setting.set_value("brand_logo_url", storage.url_for(logo_key))
+                    else:
+                        logo_key = handle_uploaded_file(logo_file, prefix="logo")
+                        from app.services.storage import get_storage
+                        storage = get_storage()
+                        Setting.set_value("brand_logo_url", storage.url_for(logo_key))
+                except ValueError as ve:
+                    flash(str(ve), "error")
 
         # Handle UPI QR Code: Removal or New Upload
         if request.form.get("remove_upi_qr") == "1":

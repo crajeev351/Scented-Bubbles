@@ -229,6 +229,9 @@ def create_app(config_name=None, config_override=None):
         
         # Primary requirement: Brand name must be read from company_name setting
         brand_name = store_settings.get("company_name") or "Scented Bubbles"
+        brand_logo_url = store_settings.get("brand_logo_url") or ""
+        logo_display_mode = store_settings.get("logo_display_mode") or "image_only"
+        logo_max_height = store_settings.get("logo_max_height") or "40"
 
         current_user = None
         user_id = session.get("user_id")
@@ -240,6 +243,9 @@ def create_app(config_name=None, config_override=None):
 
         return {
             "brand_name": brand_name,
+            "brand_logo_url": brand_logo_url,
+            "logo_display_mode": logo_display_mode,
+            "logo_max_height": logo_max_height,
             "store_settings": store_settings,
             "nav_categories": nav_categories,
             "current_user": current_user,

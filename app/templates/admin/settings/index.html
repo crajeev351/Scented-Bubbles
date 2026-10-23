@@ -32,6 +32,95 @@
       </div>
     </div>
 
+    {# Brand Logo Configuration Card #}
+    <div class="form-group" style="background: var(--bg-subtle, #FAF8F5); border: 1.5px solid var(--border-light, #E8E4DE); border-radius: var(--radius-sm, 8px); padding: 1.25rem; margin: 1.5rem 0;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; flex-wrap: wrap; gap: 0.5rem;">
+        <label for="brand_logo_file" style="font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.4rem; font-size: 0.95rem; color: var(--text-main);">
+          <span>🎨 Store Brand Logo Image</span>
+        </label>
+        <span style="font-size: 0.75rem; background: rgba(197, 160, 89, 0.15); color: var(--gold-dark, #8C6D23); border: 1px solid var(--gold-primary, #C5A059); padding: 0.15rem 0.55rem; border-radius: 9999px; font-weight: 600;">
+          Header &amp; Mobile Navigation
+        </span>
+      </div>
+
+      <p style="font-size: 0.8125rem; color: var(--text-muted); margin: 0 0 1rem; line-height: 1.45;">
+        Upload a custom image for the header logo. Clicking or tapping the logo anywhere across the site will take customers directly to the homepage.
+      </p>
+
+      <div class="form-row" style="align-items: flex-start; margin-bottom: 1rem;">
+        <div class="form-group" style="margin-bottom: 0; flex: 1.2;">
+          <label for="brand_logo_file" style="font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.35rem;">Upload New Logo Image</label>
+          <input type="file" id="brand_logo_file" name="brand_logo_file" accept=".png,.jpg,.jpeg,.webp,.svg" class="form-control" style="background: #FFFFFF;">
+          <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
+            Supports transparent PNG, WEBP, JPG, or vector SVG.
+          </small>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0; flex: 1;">
+          <label for="logo_display_mode" style="font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.35rem;">Logo Display Style</label>
+          <select id="logo_display_mode" name="logo_display_mode" class="form-control" style="background: #FFFFFF;">
+            <option value="image_only" {{ 'selected' if settings.get('logo_display_mode', 'image_only') == 'image_only' else '' }}>Logo Image Only (Replaces text &ndash; recommended if logo includes brand name)</option>
+            <option value="image_and_text" {{ 'selected' if settings.get('logo_display_mode', 'image_only') == 'image_and_text' else '' }}>Logo Icon + Brand Name Text (Shows icon graphic next to text)</option>
+          </select>
+          <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
+            Choose whether to show the text alongside your custom logo.
+          </small>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0; width: 130px; flex: none;">
+          <label for="logo_max_height" style="font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.35rem;">Max Height (px)</label>
+          <input type="number" id="logo_max_height" name="logo_max_height" value="{{ settings.get('logo_max_height', '40') }}" min="24" max="70" step="2" class="form-control" style="background: #FFFFFF;" placeholder="40">
+          <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
+            Default: 40px
+          </small>
+        </div>
+      </div>
+
+      {# Current Active Logo Preview & Status #}
+      {% if settings.get('brand_logo_url') %}
+        <div style="background: #FFFFFF; border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+          <div style="display: flex; align-items: center; gap: 1.25rem;">
+            <div style="background: #FAF8F5; border: 1px dashed var(--gold-primary); border-radius: 6px; padding: 0.5rem 1rem; display: flex; align-items: center; justify-content: center; min-width: 120px; min-height: 52px;">
+              <img src="{{ image_url(settings.get('brand_logo_url'), size='medium') }}" alt="Active Brand Logo" style="max-height: {{ settings.get('logo_max_height', '40') }}px; max-width: 220px; object-fit: contain;">
+              {% if settings.get('logo_display_mode') == 'image_and_text' %}
+                <span style="margin-left: 0.5rem; font-family: var(--font-serif); font-weight: 700; font-size: 1.15rem; color: var(--text-main);">{{ settings.get('company_name', 'Scented Bubbles') }}</span>
+              {% endif %}
+            </div>
+            <div>
+              <div style="font-weight: 700; font-size: 0.875rem; color: #166534; display: flex; align-items: center; gap: 0.35rem;">
+                <span>✓ Custom Logo Active</span>
+              </div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem;">
+                Active on storefront header, mobile drawer menu, and admin portal.
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8125rem; color: #DC2626; cursor: pointer; background: #FEF2F2; border: 1px solid #FECACA; padding: 0.45rem 0.85rem; border-radius: 6px;">
+              <input type="checkbox" name="remove_brand_logo" value="1">
+              <span>Reset to default SVG bubble mark</span>
+            </label>
+          </div>
+        </div>
+      {% else %}
+        <div style="background: #FFFFFF; border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.85rem 1.25rem; display: flex; align-items: center; gap: 1rem;">
+          <div style="background: #FAF8F5; border: 1px dashed #D6D0C7; border-radius: 6px; padding: 0.4rem 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+            <svg class="bubble-icon" style="width: 24px; height: 24px; color: var(--gold-primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"/>
+              <path d="M9 9a3 3 0 0 1 3-3"/>
+              <circle cx="16" cy="8" r="1.5" fill="currentColor"/>
+              <circle cx="7" cy="15" r="1" fill="currentColor"/>
+            </svg>
+            <span style="font-family: var(--font-serif); font-weight: 700; font-size: 1.05rem;">{{ settings.get('company_name', 'Scented Bubbles') }}</span>
+          </div>
+          <div style="font-size: 0.8125rem; color: var(--text-muted);">
+            ℹ️ Currently displaying default SVG gold bubble icon + brand text. Upload an image above to replace it with your custom brand logo.
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
     <div class="form-row">
       <div class="form-group">
         <label for="homepage_title">Homepage Title (Browser Tab &amp; URL Title)</label>

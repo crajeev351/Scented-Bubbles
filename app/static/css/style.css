@@ -350,6 +350,33 @@ img {
   letter-spacing: -0.015em;
   white-space: nowrap;
   flex-shrink: 0;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.brand-logo:hover {
+  opacity: 0.92;
+}
+
+.brand-logo-img {
+  height: auto;
+  max-height: 42px;
+  max-width: 220px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.brand-logo:hover .brand-logo-img {
+  transform: scale(1.02);
+}
+
+.brand-logo-text {
+  display: inline-block;
+  line-height: 1.1;
 }
 
 .brand-logo .bubble-icon {
@@ -680,12 +707,30 @@ body.drawer-open {
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--text-main);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.drawer-brand-img {
+  height: auto;
+  max-height: 36px;
+  max-width: 170px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+}
+
+.drawer-brand-text {
+  display: inline-block;
+  line-height: 1.1;
 }
 
 .drawer-brand .bubble-icon {
   width: 22px;
   height: 22px;
   color: var(--gold-primary);
+  flex-shrink: 0;
 }
 
 .drawer-close-btn {
@@ -2186,6 +2231,11 @@ html, body {
     flex-shrink: 0;
   }
 
+  .brand-logo-img {
+    max-height: 38px;
+    max-width: 180px;
+  }
+
   /* Hide long horizontal links; accessible via luxury drawer */
   .nav-links {
     display: none !important;
@@ -2510,6 +2560,11 @@ html, body {
   .brand-logo .bubble-icon {
     width: 22px;
     height: 22px;
+  }
+
+  .brand-logo-img {
+    max-height: 34px;
+    max-width: 150px;
   }
 
   .header-account-btn {
@@ -2946,6 +3001,11 @@ html, body {
     height: 22px;
   }
 
+  .brand-logo-img {
+    max-height: 30px;
+    max-width: 130px;
+  }
+
   /* Keep 2 columns on phones */
   .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3063,6 +3123,11 @@ html, body {
   .brand-logo .bubble-icon {
     width: 20px;
     height: 20px;
+  }
+
+  .brand-logo-img {
+    max-height: 26px;
+    max-width: 110px;
   }
 
   .product-grid {

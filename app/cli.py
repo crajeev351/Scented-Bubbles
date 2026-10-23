@@ -68,6 +68,9 @@ def seed_demo_command():
         "gst_number": ("36AABCS1234F1Z5", "GSTIN identification"),
         "instagram_url": ("https://instagram.com/scentedbubbles", "Instagram handle"),
         "footer_text": ("Handcrafted fine fragrances and artisanal car diffusers designed to refresh your world.", "Footer summary"),
+        "brand_logo_url": ("", "Store custom brand logo image path or URL"),
+        "logo_display_mode": ("image_only", "Logo presentation style: image_only or image_and_text"),
+        "logo_max_height": ("40", "Maximum logo display height in pixels"),
     }
 
     for key, (val, desc) in default_settings.items():
