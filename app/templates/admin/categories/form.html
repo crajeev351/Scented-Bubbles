@@ -3,10 +3,15 @@
 {% block page_title %}{{ 'Edit Category: ' ~ category.name if category else 'Add New Category' }}{% endblock %}
 
 {% block content %}
-<div style="max-width: 650px; margin: 0 auto;">
+<div style="max-width: 840px; margin: 0 auto;">
   
   <div class="admin-header-row" style="margin-bottom: 2rem;">
-    <h2 style="font-size: 1.5rem; margin: 0;">{{ 'Edit Category: ' ~ category.name if category else 'Create New Category' }}</h2>
+    <div>
+      <h2 style="font-size: 1.5rem; margin: 0;">{{ 'Edit Category: ' ~ category.name if category else 'Create New Category' }}</h2>
+      <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0.25rem 0 0;">
+        Configure category information, card background image, and assigned catalog products.
+      </p>
+    </div>
     <a href="{{ url_for('admin.category_list') }}" class="btn btn-secondary btn-sm">&larr; Back to Categories</a>
   </div>
 
@@ -19,8 +24,12 @@
   </div>
   {% endif %}
 
-  <form method="POST" enctype="multipart/form-data" class="admin-card">
+  <form method="POST" enctype="multipart/form-data" class="admin-card" style="padding: 2rem;" id="category-main-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <h3 style="font-size: 1.15rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 0.5rem;">
+      <span style="color: var(--gold-primary);">1.</span> Category Information
+    </h3>
 
     <div class="form-group">
       <label for="name">Category Name *</label>
@@ -90,6 +99,117 @@
       </label>
     </div>
 
+    {# ================= Section 2: Category Products Management ================= #}
+    <div id="category-products-card" style="margin: 2.25rem 0 1.5rem; padding-top: 1.75rem; border-top: 1.5px solid var(--border-light, #E8E2D9);">
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <h3 style="font-size: 1.15rem; margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--text-main);">
+            <span style="color: var(--gold-primary);">2.</span> Products in this Category
+          </h3>
+          <p style="font-size: 0.8125rem; color: var(--text-muted); margin: 0.25rem 0 0;">
+            Search and add fragrances from the catalog dropdown. Products can belong to multiple categories simultaneously.
+          </p>
+        </div>
+        
+        <span id="cat-prod-badge" style="background: rgba(197, 160, 89, 0.15); color: #8C6D23; font-weight: 700; font-size: 0.8125rem; padding: 0.3rem 0.85rem; border-radius: 9999px; border: 1px solid rgba(197, 160, 89, 0.3);">
+          <span id="cat-prod-count-num">{{ assigned_products|length }}</span> Products
+        </span>
+      </div>
+
+      {# Feedback Alert Notification #}
+      <div id="cat-prod-feedback" style="display: none; padding: 0.65rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; margin-bottom: 1rem;"></div>
+
+      {# Search & Dropdown Tool #}
+      <div style="background: var(--bg-subtle, #FAF8F5); border: 1.5px solid var(--border-light, #E8E2D9); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem;">
+        <label style="font-weight: 600; font-size: 0.875rem; margin-bottom: 0.5rem; display: block; color: var(--text-main);">
+          Search &amp; Add Product to Category:
+        </label>
+
+        <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+          {# Search Box with Autocomplete Popup #}
+          <div style="position: relative; flex: 1.2; min-width: 220px;">
+            <input type="text" id="cat-product-search-input" class="form-control" placeholder="🔍 Search product by name..." autocomplete="off" style="background: #FFFFFF; height: 42px;">
+            <div id="cat-product-search-dropdown" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #FFFFFF; border: 1px solid var(--border-light); border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); z-index: 100; max-height: 250px; overflow-y: auto;"></div>
+          </div>
+
+          {# Catalog Select Dropdown #}
+          <div style="flex: 1.5; min-width: 240px;">
+            <select id="cat-product-select" class="form-control" style="background: #FFFFFF; height: 42px;">
+              <option value="">-- Choose from catalog dropdown ({{ all_products|length }} available) --</option>
+              {% for p in all_products %}
+                {% set is_assigned = (p in assigned_products) %}
+                <option value="{{ p.id }}" 
+                        data-name="{{ p.name }}"
+                        data-thumb="{{ p.thumbnail_url }}"
+                        data-price="{{ p.default_variant.price if p.default_variant else '0' }}"
+                        data-assigned="{{ '1' if is_assigned else '0' }}"
+                        {{ 'disabled' if is_assigned else '' }}>
+                  {{ p.name }} {% if is_assigned %}(Already in category){% elif p.default_variant %}— ₹{{ "%.2f"|format(p.default_variant.price) }}{% endif %}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          {# Add to Category Button #}
+          <button type="button" id="btn-add-cat-product" class="btn btn-primary" style="height: 42px; padding: 0 1.25rem; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.35rem;">
+            <span>+ Add to Category</span>
+          </button>
+        </div>
+        <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.5rem; display: block;">
+          Tip: Type in the search field to filter products instantly, or scroll through the dropdown and click <strong>+ Add to Category</strong>.
+        </small>
+      </div>
+
+      {# Current Products Container #}
+      <div id="assigned-products-wrap">
+        <div style="font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.65rem;">
+          Assigned Fragrances (<span id="assigned-list-count">{{ assigned_products|length }}</span>)
+        </div>
+
+        {# Empty State #}
+        <div id="assigned-products-empty" style="{% if assigned_products %}display: none;{% endif %} text-align: center; padding: 2.25rem 1rem; background: var(--bg-subtle, #FAF8F5); border: 1.5px dashed var(--border-light, #E8E2D9); border-radius: 8px;">
+          <div style="font-size: 1.75rem; margin-bottom: 0.35rem;">📦</div>
+          <strong style="color: var(--text-main); font-size: 0.95rem; display: block;">No products assigned to this category yet</strong>
+          <span style="color: var(--text-muted); font-size: 0.8125rem; display: block; margin-top: 0.25rem;">
+            Use the search box or dropdown above to add products to this collection.
+          </span>
+        </div>
+
+        {# Products List #}
+        <div id="assigned-products-list" style="display: flex; flex-direction: column; gap: 0.6rem;">
+          {% for p in assigned_products %}
+          <div class="assigned-prod-row" id="assigned-prod-{{ p.id }}" data-product-id="{{ p.id }}" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem; background: #FFFFFF; border: 1px solid var(--border-light, #E8E2D9); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); transition: all 0.2s ease;">
+            <input type="hidden" name="assigned_product_ids" value="{{ p.id }}">
+            
+            <div style="display: flex; align-items: center; gap: 0.85rem; min-width: 0;">
+              <img src="{{ p.thumbnail_url }}" alt="{{ p.name }}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-light); flex-shrink: 0;">
+              <div style="min-width: 0;">
+                <a href="{{ url_for('admin.product_edit', id=p.id) }}" target="_blank" style="font-weight: 600; font-size: 0.9rem; color: var(--text-main); text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="Edit product in new tab">
+                  {{ p.name }} <span style="font-size: 0.75rem; color: var(--gold-dark);">&nearr;</span>
+                </a>
+                <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.6rem; margin-top: 2px;">
+                  {% if p.default_variant %}
+                    <span style="color: var(--gold-dark); font-weight: 600;">₹{{ "%.2f"|format(p.default_variant.price) }}</span>
+                  {% endif %}
+                  {% if p.active %}
+                    <span style="color: #166534; background: #dcfce7; padding: 0.1rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">Active</span>
+                  {% else %}
+                    <span style="color: #991b1b; background: #fee2e2; padding: 0.1rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">Disabled</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <button type="button" class="btn btn-secondary btn-sm btn-remove-cat-prod" data-product-id="{{ p.id }}" data-product-name="{{ p.name }}" title="Remove '{{ p.name }}' from this category" style="color: var(--color-danger, #C62828); border: 1px solid var(--border-light); background: #fff; padding: 0.35rem 0.75rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; flex-shrink: 0;">
+              ✕ Remove
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
     <div style="margin-top: 2rem; display: flex; gap: 1rem;">
       <button type="submit" class="btn btn-primary" style="padding: 0.85rem 2rem;">
         {{ 'Save Changes' if category else 'Create Category' }}
@@ -100,4 +220,381 @@
   </form>
 
 </div>
+
+{# JSON Data of All Catalog Products for instant search #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const isEditMode = {{ 'true' if category else 'false' }};
+  const categoryId = {{ category.id if category else 'null' }};
+  const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || 
+                    document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+  const addUrl = isEditMode ? `/admin/categories/${categoryId}/products/add` : '';
+  const removeUrl = isEditMode ? `/admin/categories/${categoryId}/products/remove` : '';
+
+  const catalogProducts = [
+    {% for p in all_products %}
+    {
+      id: {{ p.id }},
+      name: {{ p.name|tojson }},
+      thumbnail: {{ p.thumbnail_url|tojson }},
+      price: {{ (p.default_variant.price if p.default_variant else 0.0)|float }},
+      active: {{ 'true' if p.active else 'false' }},
+      editUrl: {{ url_for('admin.product_edit', id=p.id)|tojson }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  const searchInput = document.getElementById('cat-product-search-input');
+  const searchDropdown = document.getElementById('cat-product-search-dropdown');
+  const selectElement = document.getElementById('cat-product-select');
+  const addBtn = document.getElementById('btn-add-cat-product');
+  const productsList = document.getElementById('assigned-products-list');
+  const emptyState = document.getElementById('assigned-products-empty');
+  const countBadgeNum = document.getElementById('cat-prod-count-num');
+  const listCountSpan = document.getElementById('assigned-list-count');
+  const feedbackBanner = document.getElementById('cat-prod-feedback');
+
+  function showFeedback(message, type) {
+    if (!feedbackBanner) return;
+    feedbackBanner.style.display = 'block';
+    if (type === 'success') {
+      feedbackBanner.style.background = '#dcfce7';
+      feedbackBanner.style.color = '#166534';
+      feedbackBanner.style.border = '1px solid #bbf7d0';
+    } else if (type === 'error') {
+      feedbackBanner.style.background = '#fee2e2';
+      feedbackBanner.style.color = '#991b1b';
+      feedbackBanner.style.border = '1px solid #fecaca';
+    } else {
+      feedbackBanner.style.background = '#e0f2fe';
+      feedbackBanner.style.color = '#0369a1';
+      feedbackBanner.style.border = '1px solid #bae6fd';
+    }
+    feedbackBanner.textContent = message;
+    setTimeout(() => {
+      feedbackBanner.style.display = 'none';
+    }, 4000);
+  }
+
+  function isProductAssigned(prodId) {
+    return !!productsList.querySelector(`.assigned-prod-row[data-product-id="${prodId}"]`);
+  }
+
+  function updateCounts() {
+    const total = productsList.querySelectorAll('.assigned-prod-row').length;
+    if (countBadgeNum) countBadgeNum.textContent = total;
+    if (listCountSpan) listCountSpan.textContent = total;
+    if (emptyState) {
+      emptyState.style.display = total === 0 ? 'block' : 'none';
+    }
+  }
+
+  function markOptionAssigned(prodId, assigned) {
+    if (!selectElement) return;
+    const opt = selectElement.querySelector(`option[value="${prodId}"]`);
+    if (opt) {
+      opt.disabled = assigned;
+      opt.setAttribute('data-assigned', assigned ? '1' : '0');
+      const baseName = opt.getAttribute('data-name');
+      const price = parseFloat(opt.getAttribute('data-price') || '0');
+      if (assigned) {
+        opt.textContent = `${baseName} (Already in category)`;
+      } else {
+        opt.textContent = `${baseName}${price ? ' — ₹' + price.toFixed(2) : ''}`;
+      }
+    }
+  }
+
+  function renderProductRow(product) {
+    const row = document.createElement('div');
+    row.className = 'assigned-prod-row';
+    row.id = `assigned-prod-${product.id}`;
+    row.setAttribute('data-product-id', product.id);
+    row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem; background: #FFFFFF; border: 1px solid var(--border-light, #E8E2D9); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); transition: all 0.2s ease; animation: fadeInRow 0.3s ease;';
+
+    const statusBadge = product.active 
+      ? '<span style="color: #166534; background: #dcfce7; padding: 0.1rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">Active</span>'
+      : '<span style="color: #991b1b; background: #fee2e2; padding: 0.1rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">Disabled</span>';
+
+    const priceText = product.price > 0 ? `<span style="color: var(--gold-dark); font-weight: 600;">₹${product.price.toFixed(2)}</span>` : '';
+
+    row.innerHTML = `
+      <input type="hidden" name="assigned_product_ids" value="${product.id}">
+      <div style="display: flex; align-items: center; gap: 0.85rem; min-width: 0;">
+        <img src="${product.thumbnail || '/static/images/placeholder_perfume.webp'}" alt="${product.name}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-light); flex-shrink: 0;">
+        <div style="min-width: 0;">
+          <a href="${product.editUrl || '#'}" target="_blank" style="font-weight: 600; font-size: 0.9rem; color: var(--text-main); text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="Edit product in new tab">
+            ${product.name} <span style="font-size: 0.75rem; color: var(--gold-dark);">&nearr;</span>
+          </a>
+          <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.6rem; margin-top: 2px;">
+            ${priceText}
+            ${statusBadge}
+          </div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm btn-remove-cat-prod" data-product-id="${product.id}" data-product-name="${product.name}" title="Remove '${product.name}' from this category" style="color: var(--color-danger, #C62828); border: 1px solid var(--border-light); background: #fff; padding: 0.35rem 0.75rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; flex-shrink: 0;">
+        ✕ Remove
+      </button>
+    `;
+
+    // Attach remove event listener
+    row.querySelector('.btn-remove-cat-prod').addEventListener('click', function() {
+      removeProduct(product.id, product.name);
+    });
+
+    return row;
+  }
+
+  // Real-time Live Search Input
+  if (searchInput && searchDropdown) {
+    searchInput.addEventListener('input', function() {
+      const q = this.value.trim().toLowerCase();
+      if (!q) {
+        searchDropdown.style.display = 'none';
+        searchDropdown.innerHTML = '';
+        // Reset select dropdown visibility
+        if (selectElement) {
+          Array.from(selectElement.options).forEach(opt => {
+            opt.hidden = false;
+          });
+        }
+        return;
+      }
+
+      // Filter catalog products
+      const matches = catalogProducts.filter(p => p.name.toLowerCase().includes(q));
+
+      // Also filter select dropdown
+      if (selectElement) {
+        Array.from(selectElement.options).forEach(opt => {
+          if (!opt.value) return;
+          const match = (opt.getAttribute('data-name') || '').toLowerCase().includes(q);
+          opt.hidden = !match;
+        });
+      }
+
+      if (matches.length === 0) {
+        searchDropdown.innerHTML = '<div style="padding: 10px 14px; color: var(--text-muted); font-size: 0.8125rem;">No matching fragrances found</div>';
+        searchDropdown.style.display = 'block';
+        return;
+      }
+
+      searchDropdown.innerHTML = matches.map(p => {
+        const assigned = isProductAssigned(p.id);
+        return `
+          <div class="search-drop-item" data-id="${p.id}" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border-light); cursor: ${assigned ? 'default' : 'pointer'}; background: ${assigned ? '#f8fafc' : '#fff'}; opacity: ${assigned ? '0.6' : '1'};">
+            <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+              <img src="${p.thumbnail}" style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px; flex-shrink: 0;">
+              <div style="min-width: 0;">
+                <div style="font-weight: 600; font-size: 0.84rem; color: #222; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.name}</div>
+                <div style="font-size: 0.75rem; color: var(--gold-dark);">₹${p.price.toFixed(2)}</div>
+              </div>
+            </div>
+            ${assigned ? '<span style="font-size: 0.7rem; color: #64748b; font-weight: 600; background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">Added</span>' : '<button type="button" class="btn btn-sm btn-primary" style="padding: 2px 8px; font-size: 0.72rem; font-weight: 600;">+ Add</button>'}
+          </div>
+        `;
+      }).join('');
+
+      searchDropdown.style.display = 'block';
+
+      // Attach click handlers to dropdown items
+      searchDropdown.querySelectorAll('.search-drop-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+          const pid = parseInt(this.getAttribute('data-id'));
+          if (isProductAssigned(pid)) return;
+          addProduct(pid);
+          searchDropdown.style.display = 'none';
+          searchInput.value = '';
+        });
+      });
+    });
+
+    // Close search dropdown on click outside
+    document.addEventListener('click', function(e) {
+      if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+        searchDropdown.style.display = 'none';
+      }
+    });
+
+    // Enter key in search box adds the first non-assigned matching product
+    searchInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const firstItem = searchDropdown.querySelector('.search-drop-item:not([style*="opacity: 0.6"])');
+        if (firstItem) {
+          const pid = parseInt(firstItem.getAttribute('data-id'));
+          addProduct(pid);
+          searchDropdown.style.display = 'none';
+          searchInput.value = '';
+        } else if (selectElement && selectElement.value) {
+          addProduct(parseInt(selectElement.value));
+        }
+      }
+    });
+  }
+
+  // When select dropdown changes, update searchInput
+  if (selectElement) {
+    selectElement.addEventListener('change', function() {
+      if (this.value) {
+        const opt = this.options[this.selectedIndex];
+        if (searchInput) searchInput.value = opt.getAttribute('data-name') || '';
+      }
+    });
+  }
+
+  // Add Product Action
+  async function addProduct(prodId) {
+    if (!prodId) return;
+
+    if (isProductAssigned(prodId)) {
+      showFeedback('This product is already in this category.', 'warning');
+      return;
+    }
+
+    const prodData = catalogProducts.find(p => p.id === prodId);
+    if (!prodData) return;
+
+    // In Edit mode, perform instant AJAX save
+    if (isEditMode && addUrl) {
+      addBtn.disabled = true;
+      addBtn.textContent = 'Adding...';
+
+      try {
+        const res = await fetch(addUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({ product_id: prodId })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          const row = renderProductRow({
+            id: data.product.id,
+            name: data.product.name,
+            thumbnail: data.product.thumbnail_url,
+            price: data.product.price,
+            active: data.product.active,
+            editUrl: data.product.edit_url
+          });
+          productsList.appendChild(row);
+          markOptionAssigned(prodId, true);
+          updateCounts();
+          showFeedback(data.message || `Added '${data.product.name}' to category.`, 'success');
+        } else {
+          showFeedback(data.error || 'Failed to add product.', 'error');
+        }
+      } catch (err) {
+        console.error('Add product error:', err);
+        showFeedback('Network error while adding product.', 'error');
+      } finally {
+        addBtn.disabled = false;
+        addBtn.innerHTML = '<span>+ Add to Category</span>';
+        if (selectElement) selectElement.value = '';
+        if (searchInput) searchInput.value = '';
+      }
+    } else {
+      // In Create mode (client-side staging before save)
+      const row = renderProductRow(prodData);
+      productsList.appendChild(row);
+      markOptionAssigned(prodId, true);
+      updateCounts();
+      showFeedback(`Added '${prodData.name}' (will be saved when category is created).`, 'info');
+      if (selectElement) selectElement.value = '';
+      if (searchInput) searchInput.value = '';
+    }
+  }
+
+  // Remove Product Action
+  async function removeProduct(prodId, prodName) {
+    if (!prodId) return;
+
+    const row = document.getElementById(`assigned-prod-${prodId}`);
+    if (!row) return;
+
+    if (isEditMode && removeUrl) {
+      const removeBtn = row.querySelector('.btn-remove-cat-prod');
+      if (removeBtn) {
+        removeBtn.disabled = true;
+        removeBtn.textContent = 'Removing...';
+      }
+
+      try {
+        const res = await fetch(removeUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({ product_id: prodId })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          row.style.opacity = '0';
+          row.style.transform = 'scale(0.95)';
+          setTimeout(() => {
+            row.remove();
+            markOptionAssigned(prodId, false);
+            updateCounts();
+          }, 200);
+          showFeedback(data.message || `Removed '${prodName}' from category.`, 'info');
+        } else {
+          if (removeBtn) {
+            removeBtn.disabled = false;
+            removeBtn.textContent = '✕ Remove';
+          }
+          showFeedback(data.error || 'Failed to remove product.', 'error');
+        }
+      } catch (err) {
+        console.error('Remove product error:', err);
+        if (removeBtn) {
+          removeBtn.disabled = false;
+          removeBtn.textContent = '✕ Remove';
+        }
+        showFeedback('Network error while removing product.', 'error');
+      }
+    } else {
+      // Create mode
+      row.remove();
+      markOptionAssigned(prodId, false);
+      updateCounts();
+      showFeedback(`Removed '${prodName}'.`, 'info');
+    }
+  }
+
+  // Attach click listener to + Add to Category button
+  if (addBtn) {
+    addBtn.addEventListener('click', function() {
+      let prodId = selectElement ? parseInt(selectElement.value) : null;
+      if (!prodId && searchInput && searchInput.value) {
+        // Try finding product by exact or fuzzy name
+        const q = searchInput.value.trim().toLowerCase();
+        const found = catalogProducts.find(p => p.name.toLowerCase() === q || p.name.toLowerCase().startsWith(q));
+        if (found) prodId = found.id;
+      }
+      if (prodId) {
+        addProduct(prodId);
+      } else {
+        showFeedback('Please select or search a product to add.', 'warning');
+      }
+    });
+  }
+
+  // Attach existing remove button handlers
+  document.querySelectorAll('.btn-remove-cat-prod').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const pid = parseInt(this.getAttribute('data-product-id'));
+      const pname = this.getAttribute('data-product-name');
+      removeProduct(pid, pname);
+    });
+  });
+});
+</script>
 {% endblock %}

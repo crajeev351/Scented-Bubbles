@@ -1020,7 +1020,14 @@ def category_list():
 @admin_bp.route("/categories/new", methods=["GET", "POST"])
 @admin_required
 def category_create():
-    """Add a new category."""
+    """Add a new category with optional initial product assignments."""
+    all_products = (
+        Product.query.filter_by(is_deleted=False)
+        .options(selectinload(Product.images), selectinload(Product.variants))
+        .order_by(Product.name.asc())
+        .all()
+    )
+
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         slug = request.form.get("slug", "").strip() or re.sub(r"[^\w\-]", "-", name.lower()).strip("-")
@@ -1030,7 +1037,7 @@ def category_create():
 
         if not name:
             flash("Category name is required.", "error")
-            return render_template("admin/categories/form.html", category=None)
+            return render_template("admin/categories/form.html", category=None, all_products=all_products, assigned_products=[])
 
         existing = Category.query.filter_by(slug=slug).first()
         if existing:
@@ -1042,7 +1049,7 @@ def category_create():
                 )
             else:
                 flash(f"Category slug '{slug}' already exists.", "error")
-            return render_template("admin/categories/form.html", category=None)
+            return render_template("admin/categories/form.html", category=None, all_products=all_products, assigned_products=[])
 
         cat = Category(
             name=name,
@@ -1061,19 +1068,52 @@ def category_create():
                 flash(str(ve), "error")
 
         db.session.add(cat)
+        db.session.flush()
+
+        # Link selected products
+        assigned_pids = [int(pid) for pid in request.form.getlist("assigned_product_ids") if pid.isdigit()]
+        if assigned_pids:
+            selected_prods = Product.query.filter(Product.id.in_(assigned_pids), Product.is_deleted.is_(False)).all()
+            for p in selected_prods:
+                if cat not in p.categories:
+                    p.categories.append(cat)
+                if not p.category_id:
+                    p.category_id = cat.id
+
         db.session.commit()
         cache.invalidate_all()
-        flash(f"Category '{cat.name}' created successfully!", "success")
+        flash(f"Category '{cat.name}' created successfully with {len(assigned_pids)} product(s) assigned!", "success")
         return redirect(url_for("admin.category_list"))
 
-    return render_template("admin/categories/form.html", category=None)
+    return render_template("admin/categories/form.html", category=None, all_products=all_products, assigned_products=[])
 
 
 @admin_bp.route("/categories/<int:id>/edit", methods=["GET", "POST"])
 @admin_required
 def category_edit(id):
-    """Edit existing category."""
+    """Edit existing category and manage its assigned products."""
     category = db.get_or_404(Category, id)
+    all_products = (
+        Product.query.filter_by(is_deleted=False)
+        .options(selectinload(Product.images), selectinload(Product.variants))
+        .order_by(Product.name.asc())
+        .all()
+    )
+
+    def get_assigned_products():
+        return (
+            Product.query.filter(
+                or_(
+                    Product.category_id == category.id,
+                    Product.categories.any(Category.id == category.id),
+                ),
+                Product.is_deleted.is_(False),
+            )
+            .options(selectinload(Product.images), selectinload(Product.variants))
+            .order_by(Product.name.asc())
+            .all()
+        )
+
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         slug = request.form.get("slug", "").strip() or re.sub(r"[^\w\-]", "-", name.lower()).strip("-")
@@ -1083,12 +1123,12 @@ def category_edit(id):
 
         if not name:
             flash("Category name is required.", "error")
-            return render_template("admin/categories/form.html", category=category)
+            return render_template("admin/categories/form.html", category=category, all_products=all_products, assigned_products=get_assigned_products())
 
         existing = Category.query.filter(Category.slug == slug, Category.id != category.id).first()
         if existing:
             flash(f"Category slug '{slug}' is already taken.", "error")
-            return render_template("admin/categories/form.html", category=category)
+            return render_template("admin/categories/form.html", category=category, all_products=all_products, assigned_products=get_assigned_products())
 
         category.name = name
         category.slug = slug
@@ -1110,12 +1150,130 @@ def category_edit(id):
         if active and category.is_deleted:
             category.is_deleted = False
 
+        # If assigned_product_ids was submitted, sync products
+        if "assigned_product_ids" in request.form:
+            assigned_pids = set([int(pid) for pid in request.form.getlist("assigned_product_ids") if pid.isdigit()])
+            current_prods = get_assigned_products()
+            current_ids = {p.id for p in current_prods}
+
+            # Add newly assigned
+            to_add_ids = assigned_pids - current_ids
+            if to_add_ids:
+                for p in Product.query.filter(Product.id.in_(to_add_ids), Product.is_deleted.is_(False)).all():
+                    if category not in p.categories:
+                        p.categories.append(category)
+                    if not p.category_id:
+                        p.category_id = category.id
+
+            # Remove unassigned
+            to_remove_ids = current_ids - assigned_pids
+            if to_remove_ids:
+                for p in Product.query.filter(Product.id.in_(to_remove_ids)).all():
+                    if category in p.categories:
+                        p.categories.remove(category)
+                    if p.category_id == category.id:
+                        p.category_id = p.categories[0].id if p.categories else None
+
         db.session.commit()
         cache.invalidate_all()
         flash(f"Category '{category.name}' updated successfully!", "success")
         return redirect(url_for("admin.category_list"))
 
-    return render_template("admin/categories/form.html", category=category)
+    return render_template(
+        "admin/categories/form.html",
+        category=category,
+        all_products=all_products,
+        assigned_products=get_assigned_products(),
+    )
+
+
+@admin_bp.route("/categories/<int:id>/products/add", methods=["POST"])
+@admin_required
+def category_add_product(id):
+    """AJAX and Form endpoint to add a product to a category."""
+    category = db.get_or_404(Category, id)
+    data = request.get_json(silent=True)
+    product_id = None
+    if data and isinstance(data, dict):
+        product_id = data.get("product_id")
+    if not product_id:
+        product_id = request.form.get("product_id", type=int)
+
+    if not product_id:
+        if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"success": False, "error": "Product ID is required."}), 400
+        flash("Please select a product to add.", "error")
+        return redirect(url_for("admin.category_edit", id=id) + "#category-products-card")
+
+    product = db.get_or_404(Product, int(product_id))
+
+    if category not in product.categories:
+        product.categories.append(category)
+    if not product.category_id:
+        product.category_id = category.id
+
+    db.session.commit()
+    cache.invalidate_all()
+
+    if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        price = float(product.default_variant.price) if product.default_variant else 0.0
+        return jsonify({
+            "success": True,
+            "message": f"Added '{product.name}' to {category.name}.",
+            "product": {
+                "id": product.id,
+                "name": product.name,
+                "thumbnail_url": product.thumbnail_url,
+                "price": price,
+                "active": product.active,
+                "edit_url": url_for("admin.product_edit", id=product.id),
+            },
+            "total_count": category.products.filter_by(is_deleted=False).count(),
+        })
+
+    flash(f"Added '{product.name}' to category '{category.name}'.", "success")
+    return redirect(url_for("admin.category_edit", id=id) + "#category-products-card")
+
+
+@admin_bp.route("/categories/<int:id>/products/remove", methods=["POST"])
+@admin_required
+def category_remove_product(id):
+    """AJAX and Form endpoint to remove a product from a category."""
+    category = db.get_or_404(Category, id)
+    data = request.get_json(silent=True)
+    product_id = None
+    if data and isinstance(data, dict):
+        product_id = data.get("product_id")
+    if not product_id:
+        product_id = request.form.get("product_id", type=int)
+
+    if not product_id:
+        if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"success": False, "error": "Product ID is required."}), 400
+        flash("Please select a product to remove.", "error")
+        return redirect(url_for("admin.category_edit", id=id) + "#category-products-card")
+
+    product = db.get_or_404(Product, int(product_id))
+
+    if category in product.categories:
+        product.categories.remove(category)
+
+    if product.category_id == category.id:
+        product.category_id = product.categories[0].id if product.categories else None
+
+    db.session.commit()
+    cache.invalidate_all()
+
+    if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({
+            "success": True,
+            "message": f"Removed '{product.name}' from {category.name}.",
+            "product_id": product.id,
+            "total_count": category.products.filter_by(is_deleted=False).count(),
+        })
+
+    flash(f"Removed '{product.name}' from category '{category.name}'.", "info")
+    return redirect(url_for("admin.category_edit", id=id) + "#category-products-card")
 
 
 @admin_bp.route("/categories/<int:id>/toggle", methods=["POST"])
