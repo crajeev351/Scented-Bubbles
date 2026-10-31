@@ -1372,7 +1372,7 @@ body.drawer-open {
   border-radius: var(--radius-pill);
 }
 
-/* ================= Category Tiles: 4-Pattern (2 Left & 2 Right Minimal Grid) ================= */
+/* ================= Category Tiles: Balanced Dynamic Grid ================= */
 .category-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1380,19 +1380,29 @@ body.drawer-open {
   margin-bottom: 2.75rem;
 }
 
+/* Odd last card expands across both columns to showcase full-width panoramic banners */
+@media (min-width: 769px) {
+  .category-grid .category-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    aspect-ratio: 4.2 / 1;
+    min-height: 185px;
+  }
+}
+
 .category-card {
   position: relative;
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: #181715; /* Luxury obsidian fallback - never flat dull grey */
+  background: #181715; /* Luxury obsidian fallback */
   border: 1px solid var(--border-light);
-  padding: 1.15rem 1.35rem;
+  padding: 1.25rem 1.45rem;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  min-height: 155px;
+  aspect-ratio: 2.6 / 1;
+  min-height: 165px;
   background-size: cover;
-  background-position: center;
+  background-position: right center;
   background-repeat: no-repeat;
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
   text-decoration: none;
@@ -1412,19 +1422,22 @@ body.drawer-open {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* Smart framing: anchor right so perfume bottles are always 100% visible */
+  object-position: right center;
   z-index: 1;
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
   pointer-events: none;
 }
 
 .category-card:hover .category-card-bg {
-  transform: scale(1.04);
+  transform: scale(1.03);
 }
 
 .category-card-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(14, 13, 11, 0.82) 0%, rgba(14, 13, 11, 0.48) 60%, rgba(14, 13, 11, 0.22) 100%);
+  /* Single high-contrast gradient: clear dark backing on left for text, transparent on right for bottles */
+  background: linear-gradient(90deg, rgba(14, 13, 11, 0.88) 0%, rgba(14, 13, 11, 0.55) 45%, rgba(14, 13, 11, 0.08) 80%, transparent 100%);
   pointer-events: none;
   z-index: 2;
   border-radius: inherit;
@@ -1432,26 +1445,16 @@ body.drawer-open {
 }
 
 .category-card:hover .category-card-overlay {
-  background: linear-gradient(90deg, rgba(14, 13, 11, 0.88) 0%, rgba(14, 13, 11, 0.55) 60%, rgba(14, 13, 11, 0.28) 100%);
+  background: linear-gradient(90deg, rgba(14, 13, 11, 0.92) 0%, rgba(14, 13, 11, 0.62) 45%, rgba(14, 13, 11, 0.12) 80%, transparent 100%);
 }
 
 .category-card.has-bg-image {
   border-color: rgba(255, 255, 255, 0.14);
 }
 
+/* Prevent double-overlay darkening */
 .category-card.has-bg-image::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, rgba(14, 13, 11, 0.82) 0%, rgba(14, 13, 11, 0.48) 60%, rgba(14, 13, 11, 0.22) 100%);
-  pointer-events: none;
-  z-index: 2;
-  border-radius: inherit;
-  transition: background 0.25s ease;
-}
-
-.category-card:hover.has-bg-image::before {
-  background: linear-gradient(90deg, rgba(14, 13, 11, 0.88) 0%, rgba(14, 13, 11, 0.55) 60%, rgba(14, 13, 11, 0.28) 100%);
+  display: none !important;
 }
 
 .category-card-inner {
@@ -2534,17 +2537,18 @@ html, body {
   /* Category Showcase & Product Grids on Tablet */
   .category-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 1.25rem;
+    gap: 1.15rem;
     margin-bottom: 3rem;
   }
 
   .category-card {
-    padding: 1.25rem 1.35rem;
-    min-height: 160px;
+    padding: 1.15rem 1.25rem;
+    aspect-ratio: 2.3 / 1;
+    min-height: 155px;
   }
 
   .category-card-title {
-    font-size: 1.35rem;
+    font-size: 1.25rem;
   }
 
   .product-grid {
@@ -2940,20 +2944,53 @@ html, body {
   .badge-tag { left: 0.5rem; }
   .badge-discount { right: 0.5rem; }
 
-  /* Category Tiles & Combos */
+  /* Category Tiles & Combos on Mobile */
   .category-grid, .combo-grid {
     grid-template-columns: 1fr;
-    gap: 1.25rem;
+    gap: 1rem;
     margin-bottom: 2.5rem;
   }
 
   .category-card {
-    padding: 1.35rem 1.25rem;
-    min-height: 195px;
+    padding: 1.15rem 1.25rem;
+    aspect-ratio: 2.25 / 1;
+    min-height: 150px;
+  }
+
+  .category-card-bg {
+    object-fit: cover;
+    object-position: right center;
   }
 
   .category-card-title {
-    font-size: 1.45rem;
+    font-size: 1.2rem;
+  }
+
+  .category-card-desc {
+    max-width: 270px;
+    font-size: 0.74rem;
+  }
+
+  @media (max-width: 440px) {
+    .category-card {
+      aspect-ratio: 2.05 / 1;
+      min-height: 140px;
+      padding: 1rem 1.1rem;
+    }
+
+    .category-card-title {
+      font-size: 1.1rem;
+    }
+
+    .category-card-desc {
+      max-width: 210px;
+      font-size: 0.72rem;
+    }
+
+    .category-card-btn {
+      padding: 0.28rem 0.75rem;
+      font-size: 0.68rem;
+    }
   }
 
   /* GPU Layer Acceleration for 60/120 FPS Mobile Touch Scrolling */
