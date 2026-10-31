@@ -112,6 +112,114 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Escape') closeMobileDrawer();
   });
 
+  // 2.5 Dynamic Responsive Header Navigation
+  // Converts category links into top-left menu bar when logo size increases or horizontal space is constrained
+  function initResponsiveHeaderNav() {
+    const siteHeader = document.getElementById('site-header');
+    if (!siteHeader) return;
+
+    const headerInner = siteHeader.querySelector('.header-inner');
+    const navLinks = siteHeader.querySelector('.nav-links');
+    const brandLogo = document.getElementById('brand-logo-link') || siteHeader.querySelector('.brand-logo');
+    const logoImg = document.getElementById('site-brand-logo');
+    const headerActions = siteHeader.querySelector('.header-actions');
+
+    if (!headerInner || !navLinks) return;
+
+    let cachedNavWidth = 0;
+
+    function measureNaturalNavWidth() {
+      // Clone navLinks to an offscreen container with natural max-content width
+      const clone = navLinks.cloneNode(true);
+      clone.style.cssText = 'position: absolute !important; top: -9999px !important; left: -9999px !important; visibility: hidden !important; display: flex !important; width: max-content !important; max-width: none !important; pointer-events: none !important; opacity: 0 !important;';
+      document.body.appendChild(clone);
+      const measured = Math.ceil(clone.getBoundingClientRect().width);
+      document.body.removeChild(clone);
+      if (measured > 0) {
+        cachedNavWidth = measured;
+      }
+      return cachedNavWidth;
+    }
+
+    // Measure initially
+    measureNaturalNavWidth();
+
+    // Re-measure after custom web fonts finish rendering (to capture accurate text metrics)
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => {
+        measureNaturalNavWidth();
+        updateNavState();
+      });
+    }
+
+    function updateNavState() {
+      // Below 1200px, tablet and mobile media queries handle layout automatically
+      if (window.innerWidth < 1200) {
+        siteHeader.classList.remove('header-nav-collapsed');
+        return;
+      }
+
+      if (!cachedNavWidth) {
+        measureNaturalNavWidth();
+      }
+
+      const containerWidth = headerInner.clientWidth;
+      const logoWidth = brandLogo ? brandLogo.offsetWidth : 0;
+      const actionsWidth = headerActions ? headerActions.offsetWidth : 0;
+      const availableWidth = containerWidth - logoWidth - actionsWidth;
+
+      // Generous buffer so categories never touch, wrap, or push Track Order/Combos out
+      const COLLAPSE_BUFFER = 60;
+      const EXPAND_BUFFER = 95; // Hysteresis buffer prevents flicker
+
+      const isCollapsed = siteHeader.classList.contains('header-nav-collapsed');
+
+      if (isCollapsed) {
+        // Expand back only if available width comfortably accommodates all categories
+        if (availableWidth >= (cachedNavWidth + EXPAND_BUFFER)) {
+          siteHeader.classList.remove('header-nav-collapsed');
+        }
+      } else {
+        // Collapse into top-left menu bar if space is insufficient
+        if (availableWidth < (cachedNavWidth + COLLAPSE_BUFFER)) {
+          siteHeader.classList.add('header-nav-collapsed');
+        }
+      }
+    }
+
+    // Run layout calculation immediately
+    updateNavState();
+
+    // Re-check once logo image finishes loading (in case aspect ratio expands width)
+    if (logoImg) {
+      if (logoImg.complete) {
+        updateNavState();
+      } else {
+        logoImg.addEventListener('load', () => {
+          updateNavState();
+        });
+      }
+    }
+
+    // Debounced window resize handler
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(updateNavState, 40);
+    }, { passive: true });
+
+    // ResizeObserver for zero-lag responsiveness when logo or container changes size
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(() => {
+        updateNavState();
+      });
+      ro.observe(headerInner);
+      if (brandLogo) ro.observe(brandLogo);
+    }
+  }
+
+  initResponsiveHeaderNav();
+
   // 3. Floating Smart Header (Hide on scroll down, reveal on scroll up for mobile, iPad, & all screens)
   const siteHeader = document.getElementById('site-header') || document.querySelector('.site-header');
   const headerWrapper = document.getElementById('header-wrapper');

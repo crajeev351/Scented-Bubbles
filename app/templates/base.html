@@ -63,13 +63,16 @@
 
   {# Main Header Wrapper #}
   <div class="header-wrapper" id="header-wrapper">
-    <header class="site-header" id="site-header">
+    <header class="site-header{% if logo_max_height and logo_max_height|int(40) >= 46 %} header-nav-collapsed{% endif %}" id="site-header" data-logo-max-height="{{ logo_max_height or '40' }}">
       <div class="container header-inner">
-        {# Mobile Menu Toggle (Hamburger) #}
-        <button type="button" class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Open navigation menu" aria-controls="mobile-drawer" aria-expanded="false">
-          <span class="hamburger-bar"></span>
-          <span class="hamburger-bar"></span>
-          <span class="hamburger-bar"></span>
+        {# Mobile & Dynamic Menu Toggle (Top Left Menu Bar) #}
+        <button type="button" class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Open navigation menu" aria-controls="mobile-drawer" aria-expanded="false" title="Menu &amp; Categories">
+          <span class="hamburger-icon" aria-hidden="true">
+            <span class="hamburger-bar"></span>
+            <span class="hamburger-bar"></span>
+            <span class="hamburger-bar"></span>
+          </span>
+          <span class="menu-toggle-label">Menu</span>
         </button>
 
         {# Brand Logo & Wordmark (Taps to Main Page) #}
@@ -154,8 +157,8 @@
   {# Mobile Navigation Side Panel Overlay #}
   <div class="mobile-drawer-overlay" id="mobile-drawer-overlay" aria-hidden="true"></div>
 
-  {# Mobile Navigation Side Panel Drawer #}
-  <aside class="mobile-drawer" id="mobile-drawer" aria-label="Mobile Navigation" aria-hidden="true">
+  {# Store Navigation Side Panel Drawer (Categories, Combos, Track Order, Account) #}
+  <aside class="mobile-drawer" id="mobile-drawer" aria-label="Store Navigation Menu" aria-hidden="true">
     <div class="drawer-header">
       <a href="{{ url_for('main.index') }}" class="drawer-brand" title="{{ brand_name }}" id="drawer-brand-link">
         {% if brand_logo_url %}

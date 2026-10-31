@@ -362,7 +362,7 @@ img {
 .brand-logo-img {
   height: auto;
   max-height: 42px;
-  max-width: 220px;
+  max-width: clamp(220px, 24vw, 340px);
   width: auto;
   object-fit: contain;
   display: block;
@@ -614,28 +614,41 @@ img {
 }
 
 
-/* ================= Mobile Menu Toggle & Side Panel Drawer ================= */
+/* ================= Mobile & Desktop Menu Toggle ================= */
 .mobile-menu-toggle {
   display: none;
-  flex-direction: column;
-  justify-content: center;
   align-items: center;
-  gap: 5px;
-  width: 40px;
+  justify-content: center;
+  gap: 8px;
+  width: auto;
+  min-width: 40px;
   height: 40px;
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  padding: 6px;
+  padding: 6px 10px;
   color: var(--text-main);
   transition: var(--transition-smooth);
   flex-shrink: 0;
+  text-decoration: none;
+  user-select: none;
 }
 
 .mobile-menu-toggle:hover {
   background: var(--bg-subtle);
   border-color: var(--border-light);
+}
+
+.hamburger-icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 22px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .hamburger-bar {
@@ -644,6 +657,18 @@ img {
   background-color: var(--text-main);
   border-radius: 2px;
   transition: var(--transition-smooth);
+}
+
+.menu-toggle-label {
+  display: none;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-main);
+  line-height: 1;
+  transition: color 0.2s ease;
 }
 
 /* Mobile Drawer Overlay */
@@ -688,6 +713,64 @@ img {
 
 body.drawer-open {
   overflow: hidden !important;
+}
+
+/* ================= Dynamic Header Collapse (Desktop Menu Bar) ================= */
+/* When logo size increases or horizontal space is constrained, categories convert into top-left menu bar */
+.site-header.header-nav-collapsed .container.header-inner,
+.site-header.header-nav-collapsed .header-inner {
+  justify-content: space-between;
+}
+
+.site-header.header-nav-collapsed .mobile-menu-toggle {
+  display: inline-flex !important;
+  order: 1;
+  flex-shrink: 0;
+  height: 40px;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 4px rgba(20, 18, 16, 0.05);
+  margin-right: clamp(0.5rem, 0.8vw, 1.25rem);
+  text-decoration: none;
+}
+
+.site-header.header-nav-collapsed .menu-toggle-label {
+  display: inline-block;
+}
+
+.site-header.header-nav-collapsed .mobile-menu-toggle:hover {
+  background: #FFFFFF;
+  border-color: var(--gold-primary);
+  color: var(--gold-dark);
+  box-shadow: 0 2px 10px rgba(197, 160, 89, 0.16);
+}
+
+.site-header.header-nav-collapsed .mobile-menu-toggle:hover .hamburger-bar {
+  background-color: var(--gold-dark);
+}
+
+.site-header.header-nav-collapsed .mobile-menu-toggle:hover .menu-toggle-label {
+  color: var(--gold-dark);
+}
+
+.site-header.header-nav-collapsed .brand-logo {
+  order: 2;
+  margin-right: auto;
+}
+
+.site-header.header-nav-collapsed .brand-logo-img {
+  max-width: clamp(250px, 28vw, 380px);
+}
+
+.site-header.header-nav-collapsed .nav-links {
+  display: none !important;
+}
+
+.site-header.header-nav-collapsed .header-actions {
+  order: 3;
+  margin-left: auto;
 }
 
 .drawer-header {
@@ -777,6 +860,25 @@ body.drawer-open {
   font-weight: 500;
   font-size: 0.95rem;
   transition: var(--transition-smooth);
+}
+
+.drawer-nav-link::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-top: 2px solid var(--text-light);
+  border-right: 2px solid var(--text-light);
+  transform: rotate(45deg);
+  opacity: 0.45;
+  transition: transform 0.2s ease, opacity 0.2s ease, border-color 0.2s ease;
+  margin-left: auto;
+}
+
+.drawer-nav-link:hover::after,
+.drawer-nav-link.active::after {
+  opacity: 1;
+  border-color: var(--gold-dark);
+  transform: translateX(3px) rotate(45deg);
 }
 
 .drawer-nav-link:hover, .drawer-nav-link.active {
@@ -2214,6 +2316,13 @@ html, body {
     display: flex !important;
     order: 1;
     flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    padding: 6px;
+  }
+
+  .menu-toggle-label {
+    display: none !important;
   }
 
   .brand-logo {
